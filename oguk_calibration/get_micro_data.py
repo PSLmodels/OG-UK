@@ -4,7 +4,6 @@ This program extracts tax rate and income data from the microsimulation
 model (OpenFisca-UK).
 ------------------------------------------------------------------------
 '''
-from taxcalc import Records, Calculator, Policy
 from pandas import DataFrame
 from dask import delayed, compute
 import dask.multiprocessing
@@ -13,16 +12,22 @@ import os
 import pickle
 import pkg_resources
 from ogusa.constants import DEFAULT_START_YEAR, TC_LAST_YEAR, PUF_START_YEAR
+from openfisca_uk import PopulationSim
+from openfisca_core.model_api import *
+import pandas as pd
+import warnings
+import microdf as mdf
+warnings.filterwarnings("ignore"
 
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
+DATA_LAST_YEAR = 2030  # this is the last year data are extrapolated for
 
-
-def get_calculator(baseline, calculator_start_year, reform=None,
-                   data=None, gfactors=None, weights=None,
-                   records_start_year=PUF_START_YEAR):
+def get_calculator(baseline, year, reform=None,
+                   data=None):
     '''
-    This function creates the tax calculator object with the policy
-    specified in reform and the data specified with the data kwarg.
+    This function creates an OpenFisca PopulationSim object with the
+    policy specified in reform and the data specified with the data
+    kwarg.
 
     Args:
         baseline (boolean): True if baseline tax policy
@@ -43,51 +48,55 @@ def get_calculator(baseline, calculator_start_year, reform=None,
             current_year equal to calculator_start_year
 
     '''
-    # create a calculator
-    policy1 = Policy()
-    if data is not None and "cps" in data:
-        records1 = Records.cps_constructor()
-        # impute short and long term capital gains if using CPS data
-        # in 2012 SOI data 6.587% of CG as short-term gains
-        records1.p22250 = 0.06587 * records1.e01100
-        records1.p23250 = (1 - 0.06587) * records1.e01100
-        # set total capital gains to zero
-        records1.e01100 = np.zeros(records1.e01100.shape[0])
-    elif data is not None:  # pragma: no cover
-        records1 = Records(data=data, gfactors=gfactors, weights=weights,
-                           start_year=records_start_year)  # pragma: no cover
-    else:  # pragma: no cover
-        records1 = Records()  # pragma: no cover
+    # create a simulation
+    if data is None:
+        sim = PopulationSim(reform)
+    else:
+        # pass PopulationSim a data argument
 
     if baseline:
-        if not reform:
-            print("Running current law policy baseline")
-        else:
-            print("Baseline policy is: ", reform)
+        print("Running current law policy baseline")
     else:
-        if not reform:
-            print("Running with current law as reform")
-        else:
-            print("Reform policy is: ", reform)
-            print("TYPE", type(reform))
-    policy1.implement_reform(reform)
-
-    # the default set up increments year to 2013
-    calc1 = Calculator(records=records1, policy=policy1)
+        print("Baseline policy is: ", reform)
 
     # Check that start_year is appropriate
-    if calculator_start_year > TC_LAST_YEAR:
+    if year > DATA_LAST_YEAR:
         raise RuntimeError("Start year is beyond data extrapolation.")
 
-    return calc1
+    # define market income - taking expanded_income and excluding gov't
+    # transfer benefits found in the Tax-Calculator expanded income
+    market_income = (sim.df['gross_income']).values
+
+    # Compute marginal tax rates (can only do on earned income now)
+    mtr = sim.calc_mtr()
+
+    # Put MTRs, income, tax liability, and other variables in dict
+    length = len(sim.df['benunit_weight'])
+    tax_dict = {
+        'mtr_labinc': mtr,
+        'mtr_capinc': mtr,
+        'age': sim.df['age'].values,
+        'total_labinc': sim.df['earned_income'].values,
+        'total_capinc': market_income - sim.df['earned_income'].values,
+        'market_income': market_income,
+        'total_tax_liab': sim.df['income_tax'],
+        'payroll_tax_liab': np.zeros(length), # is this in OpenFisca-UK?
+        'etr': sim.df['income_tax'] / market_income,
+        'year': year * np.ones(length),
+        'weight': sim.df['benunit_weight'].values}
+
+    # garbage collection
+    del sim
+
+    return tax_dict
 
 
-def get_data(baseline=False, start_year=DEFAULT_START_YEAR, reform={},
+def get_data(baseline=False, start_year=DEFAULT_START_YEAR, reform=None,
              data=None, path=CUR_PATH, client=None, num_workers=1):
     '''
     This function creates dataframes of micro data with marginal tax
     rates and information to compute effective tax rates from the
-    Tax-Calculator output.  The resulting dictionary of dataframes is
+    PopulationSim object.  The resulting dictionary of dataframes is
     returned and saved to disk in a pickle file.
 
     Args:
@@ -109,11 +118,11 @@ def get_data(baseline=False, start_year=DEFAULT_START_YEAR, reform={},
         taxcalc_version (str): version of Tax-Calculator used
 
     '''
-    # Compute MTRs and taxes or each year, but not beyond TC_LAST_YEAR
+    # Compute MTRs and taxes or each year, but not beyond DATA_LAST_YEAR
     lazy_values = []
-    for year in range(start_year, TC_LAST_YEAR + 1):
+    for year in range(start_year, DATA_LAST_YEAR + 1):
         lazy_values.append(
-            delayed(taxcalc_advance)(baseline, start_year, reform,
+            delayed(get_calculator)(baseline, start_year, reform,
                                      data, year))
     if client:  # pragma: no cover
         futures = client.compute(lazy_values, num_workers=num_workers)
@@ -140,69 +149,69 @@ def get_data(baseline=False, start_year=DEFAULT_START_YEAR, reform={},
     # Do some garbage collection
     del results
 
-    # Pull Tax-Calc version for reference
-    taxcalc_version = pkg_resources.get_distribution("taxcalc").version
+    # Pull OpenFisca-UK version for reference
+    OpenFiscaUK_version = pkg_resources.get_distribution("taxcalc").version
 
-    return micro_data_dict, taxcalc_version
+    return micro_data_dict, OpenFiscaUK_version
 
 
-def taxcalc_advance(baseline, start_year, reform, data, year):
-    '''
-    This function advances the year used in Tax-Calculator, compute
-    taxes and rates, and save the results to a dictionary.
+# def calc_advance(baseline, start_year, reform, data, year):
+#     '''
+#     This function advances the year used in OpenFisca-UK, compute
+#     taxes and rates, and save the results to a dictionary.
 
-    Args:
-        calc1 (Tax-Calculator Calculator object): TC calculator
-        year (int): year to begin advancing from
+#     Args:
+#         calc1 (Tax-Calculator Calculator object): TC calculator
+#         year (int): year to begin advancing from
 
-    Returns:
-        tax_dict (dict): a dictionary of microdata with marginal tax
-            rates and other information computed in TC
-    '''
-    calc1 = get_calculator(baseline=baseline,
-                           calculator_start_year=start_year,
-                           reform=reform, data=data)
-    calc1.advance_to_year(year)
-    calc1.calc_all()
-    print('Year: ', str(calc1.current_year))
+#     Returns:
+#         tax_dict (dict): a dictionary of microdata with marginal tax
+#             rates and other information computed in TC
+#     '''
+#     calc1 = get_calculator(baseline=baseline,
+#                            start_year=start_year,
+#                            reform=reform, data=data)
+#     calc1.advance_to_year(year)
+#     calc1.calc_all()
+#     print('Year: ', str(calc1.current_year))
 
-    # define market income - taking expanded_income and excluding gov't
-    # transfer benefits found in the Tax-Calculator expanded income
-    market_income = (calc1.array('expanded_income') -
-                     calc1.array('benefit_value_total'))
+#     # define market income - taking expanded_income and excluding gov't
+#     # transfer benefits found in the Tax-Calculator expanded income
+#     market_income = (calc1.array('expanded_income') -
+#                      calc1.array('benefit_value_total'))
 
-    # Compute mtr on capital income
-    mtr_combined_capinc = cap_inc_mtr(calc1)
+#     # Compute mtr on capital income
+#     mtr_combined_capinc = cap_inc_mtr(calc1)
 
-    # Compute weighted avg mtr for labor income
-    # Note the index [2] in the mtr results means that we are pulling
-    # the combined mtr from the IIT + FICA taxes
-    mtr_combined_labinc = ((
-        calc1.mtr('e00200p')[2] * np.abs(calc1.array('e00200')) +
-        calc1.mtr('e00900p')[2] * np.abs(calc1.array('sey'))) /
-        (np.abs(calc1.array('sey')) + np.abs(calc1.array('e00200'))))
+#     # Compute weighted avg mtr for labor income
+#     # Note the index [2] in the mtr results means that we are pulling
+#     # the combined mtr from the IIT + FICA taxes
+#     mtr_combined_labinc = ((
+#         calc1.mtr('e00200p')[2] * np.abs(calc1.array('e00200')) +
+#         calc1.mtr('e00900p')[2] * np.abs(calc1.array('sey'))) /
+#         (np.abs(calc1.array('sey')) + np.abs(calc1.array('e00200'))))
 
-    # Put MTRs, income, tax liability, and other variables in dict
-    length = len(calc1.array('s006'))
-    tax_dict = {
-        'mtr_labinc': mtr_combined_labinc,
-        'mtr_capinc': mtr_combined_capinc,
-        'age': calc1.array('age_head'),
-        'total_labinc': calc1.array('sey') + calc1.array('e00200'),
-        'total_capinc': (market_income -
-                         calc1.array('sey') + calc1.array('e00200')),
-        'market_income': market_income,
-        'total_tax_liab': calc1.array('combined'),
-        'payroll_tax_liab': calc1.array('payrolltax'),
-        'etr': ((calc1.array('combined') - calc1.array('ubi')) /
-                market_income),
-        'year': calc1.current_year * np.ones(length),
-        'weight': calc1.array('s006')}
+#     # Put MTRs, income, tax liability, and other variables in dict
+#     length = len(calc1.array('s006'))
+#     tax_dict = {
+#         'mtr_labinc': mtr_combined_labinc,
+#         'mtr_capinc': mtr_combined_capinc,
+#         'age': calc1.array('age_head'),
+#         'total_labinc': calc1.array('sey') + calc1.array('e00200'),
+#         'total_capinc': (market_income -
+#                          calc1.array('sey') + calc1.array('e00200')),
+#         'market_income': market_income,
+#         'total_tax_liab': calc1.array('combined'),
+#         'payroll_tax_liab': calc1.array('payrolltax'),
+#         'etr': ((calc1.array('combined') - calc1.array('ubi')) /
+#                 market_income),
+#         'year': calc1.current_year * np.ones(length),
+#         'weight': calc1.array('s006')}
 
-    # garbage collection
-    del calc1
+#     # garbage collection
+#     del calc1
 
-    return tax_dict
+#     return tax_dict
 
 
 def cap_inc_mtr(calc1):  # pragma: no cover
