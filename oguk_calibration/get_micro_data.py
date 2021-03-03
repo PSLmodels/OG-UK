@@ -17,13 +17,13 @@ from openfisca_core.model_api import *
 import pandas as pd
 import warnings
 import microdf as mdf
-warnings.filterwarnings("ignore"
+warnings.filterwarnings("ignore")
 
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
 DATA_LAST_YEAR = 2030  # this is the last year data are extrapolated for
 
-def get_calculator(baseline, year, reform=None,
-                   data=None):
+
+def get_calculator_output(baseline, year, reform=None, data=None):
     '''
     This function creates an OpenFisca PopulationSim object with the
     policy specified in reform and the data specified with the data
@@ -31,21 +31,15 @@ def get_calculator(baseline, year, reform=None,
 
     Args:
         baseline (boolean): True if baseline tax policy
-        calculator_start_year (int): first year of budget window
-        reform (dictionary): IIT policy reform parameters, None if
-            baseline
+        year (int): year of data to simulate
+        reform (OpenFisca Reform object): IIT policy reform parameters,
+            None if baseline
         data (DataFrame or str): DataFrame or path to datafile for
-            Records object
-        gfactors (Tax-Calculator GrowthFactors object): growth factors
-            to use to extrapolate data over budget window
-        weights (DataFrame): weights for Records object
-        records_start_year (int): the start year for the data and
-            weights dfs (default is set to the PUF start year as defined
-            in the Tax-Calculator project)
+            the PopulationSim object
 
     Returns:
-        calc1 (Tax-Calculator Calculator object): Calulator object with
-            current_year equal to calculator_start_year
+        tax_dict (dict): a dictionary of microdata with marginal tax
+            rates and other information computed from OpenFisca-UK
 
     '''
     # create a simulation
@@ -53,7 +47,7 @@ def get_calculator(baseline, year, reform=None,
         sim = PopulationSim(reform)
     else:
         # pass PopulationSim a data argument
-
+        pass
     if baseline:
         print("Running current law policy baseline")
     else:
@@ -101,11 +95,11 @@ def get_data(baseline=False, start_year=DEFAULT_START_YEAR, reform=None,
 
     Args:
         baseline (boolean): True if baseline tax policy
-        calculator_start_year (int): first year of budget window
-        reform (dictionary): IIT policy reform parameters, None if
-            baseline
+        start_year (int): first year of budget window
+        reform (OpenFisca Reform object): IIT policy reform parameters,
+            None if baseline
         data (DataFrame or str): DataFrame or path to datafile for
-            Records object
+            the PopulationSim object
         path (str): path to save microdata files to
         client (Dask Client object): client for Dask multiprocessing
         num_workers (int): number of workers to use for Dask
@@ -113,17 +107,17 @@ def get_data(baseline=False, start_year=DEFAULT_START_YEAR, reform=None,
 
     Returns:
         micro_data_dict (dict): dict of Pandas Dataframe, one for each
-            year from start_year to the maximum year Tax-Calculator can
+            year from start_year to the maximum year OpenFisca-UK can
             analyze
-        taxcalc_version (str): version of Tax-Calculator used
+        OpenFiscaUK_version (str): version of OpenFisca-UK used
 
     '''
     # Compute MTRs and taxes or each year, but not beyond DATA_LAST_YEAR
     lazy_values = []
     for year in range(start_year, DATA_LAST_YEAR + 1):
         lazy_values.append(
-            delayed(get_calculator)(baseline, start_year, reform,
-                                     data, year))
+            delayed(get_calculator_output)(
+                baseline, year, reform, data))
     if client:  # pragma: no cover
         futures = client.compute(lazy_values, num_workers=num_workers)
         results = client.gather(futures)
@@ -150,7 +144,7 @@ def get_data(baseline=False, start_year=DEFAULT_START_YEAR, reform=None,
     del results
 
     # Pull OpenFisca-UK version for reference
-    OpenFiscaUK_version = pkg_resources.get_distribution("taxcalc").version
+    OpenFiscaUK_version = None#pkg_resources.get_distribution("taxcalc").version
 
     return micro_data_dict, OpenFiscaUK_version
 
