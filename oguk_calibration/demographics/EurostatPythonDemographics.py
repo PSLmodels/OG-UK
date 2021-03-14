@@ -21,14 +21,52 @@ StartPeriod = Year
 EndPeriod = Year
 
 filter_pars = {'GEO': [Country]}
-# df_pop = eurostat.get_sdmx_data_df('demo_pjan', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
-# df_mort = eurostat.get_sdmx_data_df('demo_magec', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
+df_pop = eurostat.get_sdmx_data_df('demo_pjan', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
+df_mort = eurostat.get_sdmx_data_df('demo_magec', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
 df_fert = eurostat.get_sdmx_data_df('demo_fasec', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
 
 # print(df_pop)
 # print(df_mort)
-print(df_fert)
+# print(df_fert)
 ############## Download Basic Data - END ##################
+
+############## Isolate Required Mortality Data - START ##################
+# STEP 1: Remove totals and other unused rows 
+indexNames = df_mort[(df_mort['AGE'] == 'TOTAL') |
+                     (df_mort['AGE'] == 'UNK') |
+                     (df_mort['AGE'] == 'Y_LT1') |
+                     (df_mort['AGE'] == 'Y_OPEN')].index 
+df_mort.drop(indexNames , inplace=True)
+
+# STEP 2: Keep only totals
+df_mort = df_mort[(df_mort['SEX'] == 'T')]
+
+# STEP 3: Select columns = Age, Frequency; drop others
+df_mort = df_mort.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', '2018_OBS_STATUS'])
+
+print(df_mort)
+############## Isolate Required Mortality Data - END ##################
+
+############## Isolate Required Population Data - START ##################
+# STEP 1: Remove totals and other unused rows 
+indexNames = df_pop[(df_pop['AGE'] == 'TOTAL') |
+                    (df_pop['AGE'] == 'UNK') |
+                    (df_pop['AGE'] == 'Y_LT1') |
+                    (df_pop['AGE'] == 'Y_OPEN')].index 
+df_pop.drop(indexNames , inplace=True)
+
+# STEP 2: Keep gender specific population, to calculate fertility per person
+df_pop_m = df_pop[(df_pop['SEX'] == 'M')]
+df_pop_f = df_pop[(df_pop['SEX'] == 'F')]
+df_pop = df_pop[(df_pop['SEX'] == 'T')]
+
+# STEP 3: Select columns = Age, Frequency; drop others
+df_pop_m = df_pop_m.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', '2018_OBS_STATUS'])
+df_pop_f = df_pop_f.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', '2018_OBS_STATUS'])
+df_pop = df_pop.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', '2018_OBS_STATUS'])
+
+print(df_pop_m, df_pop_f, df_pop)
+############## Isolate Required Population Data - END ##################
 
 ############## Isolate Required Fertility Data - START ##################
 # STEP 1: Select Sex = T (meaning "Total" of boys and girls born); drop others
