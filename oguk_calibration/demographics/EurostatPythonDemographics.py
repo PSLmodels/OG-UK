@@ -24,28 +24,7 @@ filter_pars = {'GEO': [Country]}
 df_pop = eurostat.get_sdmx_data_df('demo_pjan', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
 df_mort = eurostat.get_sdmx_data_df('demo_magec', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
 df_fert = eurostat.get_sdmx_data_df('demo_fasec', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
-
-# print(df_pop)
-# print(df_mort)
-# print(df_fert)
 ############## Download Basic Data - END ##################
-
-############## Isolate Required Mortality Data - START ##################
-# STEP 1: Remove totals and other unused rows 
-indexNames = df_mort[(df_mort['AGE'] == 'TOTAL') |
-                     (df_mort['AGE'] == 'UNK') |
-                     (df_mort['AGE'] == 'Y_LT1') |
-                     (df_mort['AGE'] == 'Y_OPEN')].index 
-df_mort.drop(indexNames , inplace=True)
-
-# STEP 2: Keep only totals
-df_mort = df_mort[(df_mort['SEX'] == 'T')]
-
-# STEP 3: Select columns = Age, Frequency; drop others
-df_mort = df_mort.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', '2018_OBS_STATUS'])
-
-print(df_mort)
-############## Isolate Required Mortality Data - END ##################
 
 ############## Isolate Required Population Data - START ##################
 # STEP 1: Remove totals and other unused rows 
@@ -67,6 +46,31 @@ df_pop = df_pop.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', '2018_OBS_STATUS'])
 
 print(df_pop_m, df_pop_f, df_pop)
 ############## Isolate Required Population Data - END ##################
+
+############## Population make csv - START ##################
+# TO DO
+############## Population make csv - END ##################
+
+############## Isolate Required Mortality Data - START ##################
+# STEP 1: Remove totals and other unused rows 
+indexNames = df_mort[(df_mort['AGE'] == 'TOTAL') |
+                     (df_mort['AGE'] == 'UNK') |
+                     (df_mort['AGE'] == 'Y_LT1') |
+                     (df_mort['AGE'] == 'Y_OPEN')].index 
+df_mort.drop(indexNames , inplace=True)
+
+# STEP 2: Keep only totals
+df_mort = df_mort[(df_mort['SEX'] == 'T')]
+
+# STEP 3: Select columns = Age, Frequency; drop others
+df_mort = df_mort.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', '2018_OBS_STATUS'])
+
+print(df_mort)
+############## Isolate Required Mortality Data - END ##################
+
+############## Calculate Mortality Rates & make csv - START ##################
+# TO DO
+############## Calculate Mortality Rates & make csv - END ##################
 
 ############## Isolate Required Fertility Data - START ##################
 # STEP 1: Select Sex = T (meaning "Total" of boys and girls born); drop others
@@ -102,3 +106,7 @@ df_fert.drop(indexNames , inplace=True)
 
 print('df_fert: ', df_fert)
 ############## Isolate Required Fertility Data - END ##################
+
+############## Calculate Fertility per person - START ##################
+# TO DO
+############## Calculate Fertility per person - END ##################
