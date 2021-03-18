@@ -16,6 +16,8 @@ Country = 'UK'
 Year = 2018
 ############################################
 
+# TO DO: Replace all hardcoding of '2018' with 'Year'
+
 ############## Download Basic Data - START ##################
 StartPeriod = Year
 EndPeriod = Year
@@ -23,19 +25,24 @@ EndPeriod = Year
 filter_pars = {'GEO': [Country]}
 df_pop = eurostat.get_sdmx_data_df('demo_pjan', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
 df_mort = eurostat.get_sdmx_data_df('demo_magec', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
-df_fert = eurostat.get_sdmx_data_df('demo_fasec', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
+# df_fert = eurostat.get_sdmx_data_df('demo_fasec', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
 ############## Download Basic Data - END ##################
 
 ############## Isolate Required Population Data - START ##################
 # STEP 1: Remove totals and other unused rows 
 indexNames = df_pop[(df_pop['AGE'] == 'TOTAL') |
                     (df_pop['AGE'] == 'UNK') |
-                    (df_pop['AGE'] == 'Y_LT1') |
                     (df_pop['AGE'] == 'Y_OPEN')].index 
 df_pop.drop(indexNames , inplace=True)
 
+# STEP: Rename Y_LT1 to 0 (means 'less than one year')
+df_pop.AGE[df_pop.AGE=='Y_LT1'] = 'Y0'
+
 # STEP 2: Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
 df_pop['AGE'] = df_pop['AGE'].str[1:]
+
+# reorder so that AGE goes 0 to 99
+df_pop = df_pop.sort_values(by=['AGE'])
 
 # STEP 3: Keep gender specific population, to calculate fertility per person
 df_pop_m = df_pop[(df_pop['SEX'] == 'M')]
@@ -47,7 +54,7 @@ df_pop_m = df_pop_m.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', '2018_OBS_STATUS
 df_pop_f = df_pop_f.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', '2018_OBS_STATUS'])
 df_pop = df_pop.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', '2018_OBS_STATUS'])
 
-print(df_pop_m, df_pop_f, df_pop)
+print('df_pop_m, df_pop_f, df_pop: ', df_pop_m, df_pop_f, df_pop)
 ############## Isolate Required Population Data - END ##################
 
 ############## Population make csv - START ##################
@@ -55,27 +62,36 @@ df_pop.to_csv (r'df_pop.csv', index = False, float_format='%.0f', header=True)
 ############## Population make csv - END ##################
 
 ############## Isolate Required Mortality Data - START ##################
-# STEP 1: Remove totals and other unused rows 
+# STEP: Remove totals and other unused rows 
 indexNames = df_mort[(df_mort['AGE'] == 'TOTAL') |
                      (df_mort['AGE'] == 'UNK') |
-                     (df_mort['AGE'] == 'Y_LT1') |
                      (df_mort['AGE'] == 'Y_OPEN')].index 
 df_mort.drop(indexNames , inplace=True)
 
-# STEP 2: Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
+# STEP: Rename Y_LT1 to 0 (means 'less than one year')
+df_mort.AGE[df_mort.AGE=='Y_LT1'] = 'Y0'
+
+# STEP: Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
 df_mort['AGE'] = df_mort['AGE'].str[1:]
 
-# STEP 3: Keep only totals
+# reorder so that AGE goes 0 to 99
+df_mort = df_mort.sort_values(by=['AGE'])
+
+# STEP: Keep only totals
 df_mort = df_mort[(df_mort['SEX'] == 'T')]
 
-# STEP 4: Select columns = Age, Frequency; drop others
+# STEP: Select columns = Age, Frequency; drop others
 df_mort = df_mort.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', '2018_OBS_STATUS'])
 
-print(df_mort)
+print('df_mort: ', df_mort)
 ############## Isolate Required Mortality Data - END ##################
 
 ############## Calculate Mortality Rates & make csv - START ##################
 # TO DO: Calculation
+# adding total population column from df_pop
+df_mort['POP'] = df_pop[2018].values
+
+# STEP: divide mortality number by total population = mortality rate
 
 # df_mort.to_csv (r'df_mort.csv', index = False, header=True)
 ############## Calculate Mortality Rates & make csv - END ##################
@@ -120,4 +136,6 @@ print('df_fert: ', df_fert)
 
 ############## Calculate Fertility per person - START ##################
 # TO DO
+
+# df_fert.to_csv (r'df_fert.csv', index = False, header=True)
 ############## Calculate Fertility per person - END ##################
