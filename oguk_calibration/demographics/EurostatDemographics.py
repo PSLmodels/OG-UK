@@ -94,13 +94,13 @@ df_fert.AGE[df_fert.AGE=='Y_GE50'] = 'Y50'
 df1row = pd.DataFrame([['Y51', 0]], columns=list(('AGE',2018)))
 df_fert = df_fert.append(df1row, ignore_index=True)
 
-# STEP 5: spread value for age 50+ evenly across age 50 and 51
+# STEP 4: spread value for age 50+ evenly across age 50 and 51
 df_fert2 = df_fert.copy()
 mask = df_fert2['AGE'].str.startswith('Y50') | df_fert2['AGE'].str.startswith('Y51')
 df_fert_age50_float = df_fert[2018].loc[df_fert['AGE'] == 'Y50'].values.astype(np.float)
 df_fert.loc[mask, 2018] = df_fert_age50_float*0.5
 
-# STEP 6: Remove remaining total and subtotals 
+# STEP 5: Remove remaining total and subtotals 
 indexNames = df_fert[(df_fert['AGE'] == 'TOTAL') |
                      (df_fert['AGE'] == 'UNK') |
                      (df_fert['AGE'] == 'Y15-19') |
@@ -112,9 +112,8 @@ indexNames = df_fert[(df_fert['AGE'] == 'TOTAL') |
                      (df_fert['AGE'] == 'Y45-49')].index 
 df_fert.drop(indexNames , inplace=True)
 
-# STEP 4: Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
+# STEP 6: Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
 df_fert['AGE'] = df_fert['AGE'].str[1:]
-
 
 print('df_fert: ', df_fert)
 ############## Isolate Required Fertility Data - END ##################
@@ -122,4 +121,3 @@ print('df_fert: ', df_fert)
 ############## Calculate Fertility per person - START ##################
 # TO DO
 ############## Calculate Fertility per person - END ##################
-print('really is this file')
