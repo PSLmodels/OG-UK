@@ -34,12 +34,15 @@ indexNames = df_pop[(df_pop['AGE'] == 'TOTAL') |
                     (df_pop['AGE'] == 'Y_OPEN')].index 
 df_pop.drop(indexNames , inplace=True)
 
-# STEP 2: Keep gender specific population, to calculate fertility per person
+# STEP 2: Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
+df_pop['AGE'] = df_pop['AGE'].str[1:]
+
+# STEP 3: Keep gender specific population, to calculate fertility per person
 df_pop_m = df_pop[(df_pop['SEX'] == 'M')]
 df_pop_f = df_pop[(df_pop['SEX'] == 'F')]
 df_pop = df_pop[(df_pop['SEX'] == 'T')]
 
-# STEP 3: Select columns = Age, Frequency; drop others
+# STEP 4: Select columns = Age, Frequency; drop others
 df_pop_m = df_pop_m.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', '2018_OBS_STATUS'])
 df_pop_f = df_pop_f.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', '2018_OBS_STATUS'])
 df_pop = df_pop.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', '2018_OBS_STATUS'])
@@ -48,7 +51,7 @@ print(df_pop_m, df_pop_f, df_pop)
 ############## Isolate Required Population Data - END ##################
 
 ############## Population make csv - START ##################
-# TO DO
+df_pop.to_csv (r'df_pop.csv', index = False, float_format='%.0f', header=True)
 ############## Population make csv - END ##################
 
 ############## Isolate Required Mortality Data - START ##################
@@ -59,17 +62,22 @@ indexNames = df_mort[(df_mort['AGE'] == 'TOTAL') |
                      (df_mort['AGE'] == 'Y_OPEN')].index 
 df_mort.drop(indexNames , inplace=True)
 
-# STEP 2: Keep only totals
+# STEP 2: Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
+df_mort['AGE'] = df_mort['AGE'].str[1:]
+
+# STEP 3: Keep only totals
 df_mort = df_mort[(df_mort['SEX'] == 'T')]
 
-# STEP 3: Select columns = Age, Frequency; drop others
+# STEP 4: Select columns = Age, Frequency; drop others
 df_mort = df_mort.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', '2018_OBS_STATUS'])
 
 print(df_mort)
 ############## Isolate Required Mortality Data - END ##################
 
 ############## Calculate Mortality Rates & make csv - START ##################
-# TO DO
+# TO DO: Calculation
+
+# df_mort.to_csv (r'df_mort.csv', index = False, header=True)
 ############## Calculate Mortality Rates & make csv - END ##################
 
 ############## Isolate Required Fertility Data - START ##################
@@ -86,13 +94,13 @@ df_fert.AGE[df_fert.AGE=='Y_GE50'] = 'Y50'
 df1row = pd.DataFrame([['Y51', 0]], columns=list(('AGE',2018)))
 df_fert = df_fert.append(df1row, ignore_index=True)
 
-# STEP 4: spread value for age 50+ evenly across age 50 and 51
+# STEP 5: spread value for age 50+ evenly across age 50 and 51
 df_fert2 = df_fert.copy()
 mask = df_fert2['AGE'].str.startswith('Y50') | df_fert2['AGE'].str.startswith('Y51')
 df_fert_age50_float = df_fert[2018].loc[df_fert['AGE'] == 'Y50'].values.astype(np.float)
 df_fert.loc[mask, 2018] = df_fert_age50_float*0.5
 
-# STEP 5: Remove remaining total and subtotals 
+# STEP 6: Remove remaining total and subtotals 
 indexNames = df_fert[(df_fert['AGE'] == 'TOTAL') |
                      (df_fert['AGE'] == 'UNK') |
                      (df_fert['AGE'] == 'Y15-19') |
@@ -104,9 +112,14 @@ indexNames = df_fert[(df_fert['AGE'] == 'TOTAL') |
                      (df_fert['AGE'] == 'Y45-49')].index 
 df_fert.drop(indexNames , inplace=True)
 
+# STEP 4: Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
+df_fert['AGE'] = df_fert['AGE'].str[1:]
+
+
 print('df_fert: ', df_fert)
 ############## Isolate Required Fertility Data - END ##################
 
 ############## Calculate Fertility per person - START ##################
 # TO DO
 ############## Calculate Fertility per person - END ##################
+print('really is this file')
