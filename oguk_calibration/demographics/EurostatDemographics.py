@@ -25,7 +25,7 @@ EndPeriod = Year
 filter_pars = {'GEO': [Country]}
 df_pop = eurostat.get_sdmx_data_df('demo_pjan', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
 df_mort = eurostat.get_sdmx_data_df('demo_magec', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
-# df_fert = eurostat.get_sdmx_data_df('demo_fasec', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
+df_fert = eurostat.get_sdmx_data_df('demo_fasec', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
 ############## Download Basic Data - END ##################
 
 ############## Isolate Required Population Data - START ##################
@@ -56,10 +56,6 @@ df_pop = df_pop.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', '2018_OBS_STATUS'])
 
 print('df_pop_m, df_pop_f, df_pop: ', df_pop_m, df_pop_f, df_pop)
 ############## Isolate Required Population Data - END ##################
-
-############## Population make csv - START ##################
-df_pop.to_csv (r'df_pop.csv', index = False, float_format='%.0f', header=True)
-############## Population make csv - END ##################
 
 ############## Isolate Required Mortality Data - START ##################
 # STEP: Remove totals and other unused rows 
