@@ -1,9 +1,7 @@
-workflow "Check black formatting" {
-  on = "push"
-  resolves = ["Lint"]
-}
+name:  Check black formatting
+on: [push, pull_request]
 
-action "Lint" {
-  uses = "lgeiger/black-action@master"
-  args = ". --check"
-}
+jobs:
+    Lint:
+        uses: lgeiger/black-action@master
+        args: ". --check"
