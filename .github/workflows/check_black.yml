@@ -1,7 +1,13 @@
-name:  Check black formatting
+name: Check Black formatting
+
 on: [push, pull_request]
 
 jobs:
-    Lint:
+  run-linters:
+    name: Run linters
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check Black formatting
         uses: lgeiger/black-action@master
         args: ". --check"
