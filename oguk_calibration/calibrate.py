@@ -104,7 +104,9 @@ class Calibration:
             else:
                 pckl = "TxFuncEst_policy{}.pkl".format(guid)
                 tax_func_path = os.path.join(CUR_PATH, pckl)
-                print("Using reform policy tax parameters from ", tax_func_path)
+                print(
+                    "Using reform policy tax parameters from ", tax_func_path
+                )
         # create directory for tax function pickles to be saved to
         mkdirs(os.path.split(tax_func_path)[0])
         # If run_micro is false, check to see if parameters file exists
@@ -134,7 +136,8 @@ class Calibration:
         try:
             frac_tax_payroll = np.append(
                 dict_params["tfunc_frac_tax_payroll"],
-                np.ones(p.T + p.S - p.BW) * dict_params["tfunc_frac_tax_payroll"][-1],
+                np.ones(p.T + p.S - p.BW)
+                * dict_params["tfunc_frac_tax_payroll"][-1],
             )
         except KeyError:
             pass
@@ -179,7 +182,8 @@ class Calibration:
                 dict_params["tfunc_avg_" + item] = np.append(
                     dict_params["tfunc_avg_" + item],
                     np.tile(
-                        dict_params["tfunc_avg_" + item][-1], (p.BW - BW_in_tax_params)
+                        dict_params["tfunc_avg_" + item][-1],
+                        (p.BW - BW_in_tax_params),
                     ),
                 )
         if p.S != S_in_tax_params:

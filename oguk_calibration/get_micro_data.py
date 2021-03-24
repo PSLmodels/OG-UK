@@ -61,7 +61,10 @@ def get_calculator(
         records1.e01100 = np.zeros(records1.e01100.shape[0])
     elif data is not None:  # pragma: no cover
         records1 = Records(
-            data=data, gfactors=gfactors, weights=weights, start_year=records_start_year
+            data=data,
+            gfactors=gfactors,
+            weights=weights,
+            start_year=records_start_year,
         )  # pragma: no cover
     else:  # pragma: no cover
         records1 = Records()  # pragma: no cover
@@ -134,7 +137,9 @@ def get_data(
         results = client.gather(futures)
     else:
         results = results = compute(
-            *lazy_values, scheduler=dask.multiprocessing.get, num_workers=num_workers
+            *lazy_values,
+            scheduler=dask.multiprocessing.get,
+            num_workers=num_workers,
         )
 
     # dictionary of data frames to return
@@ -174,7 +179,10 @@ def taxcalc_advance(baseline, start_year, reform, data, year):
             rates and other information computed in TC
     """
     calc1 = get_calculator(
-        baseline=baseline, calculator_start_year=start_year, reform=reform, data=data
+        baseline=baseline,
+        calculator_start_year=start_year,
+        reform=reform,
+        data=data,
     )
     calc1.advance_to_year(year)
     calc1.calc_all()
@@ -182,7 +190,9 @@ def taxcalc_advance(baseline, start_year, reform, data, year):
 
     # define market income - taking expanded_income and excluding gov't
     # transfer benefits found in the Tax-Calculator expanded income
-    market_income = calc1.array("expanded_income") - calc1.array("benefit_value_total")
+    market_income = calc1.array("expanded_income") - calc1.array(
+        "benefit_value_total"
+    )
 
     # Compute mtr on capital income
     mtr_combined_capinc = cap_inc_mtr(calc1)
@@ -202,11 +212,15 @@ def taxcalc_advance(baseline, start_year, reform, data, year):
         "mtr_capinc": mtr_combined_capinc,
         "age": calc1.array("age_head"),
         "total_labinc": calc1.array("sey") + calc1.array("e00200"),
-        "total_capinc": (market_income - calc1.array("sey") + calc1.array("e00200")),
+        "total_capinc": (
+            market_income - calc1.array("sey") + calc1.array("e00200")
+        ),
         "market_income": market_income,
         "total_tax_liab": calc1.array("combined"),
         "payroll_tax_liab": calc1.array("payrolltax"),
-        "etr": ((calc1.array("combined") - calc1.array("ubi")) / market_income),
+        "etr": (
+            (calc1.array("combined") - calc1.array("ubi")) / market_income
+        ),
         "year": calc1.current_year * np.ones(length),
         "weight": calc1.array("s006"),
     }
@@ -279,8 +293,12 @@ def cap_inc_mtr(calc1):  # pragma: no cover
     ]
     mtr_combined_capinc = np.zeros_like(total_cap_inc)
     mtr_combined_capinc[total_cap_inc != 0] = (
-        sum(capital_mtr + rent_royalty_mtr * rent_royalty_inc)[total_cap_inc != 0]
+        sum(capital_mtr + rent_royalty_mtr * rent_royalty_inc)[
+            total_cap_inc != 0
+        ]
         / total_cap_inc[total_cap_inc != 0]
     )
-    mtr_combined_capinc[total_cap_inc == 0] = all_mtrs["e00300"][2][total_cap_inc == 0]
+    mtr_combined_capinc[total_cap_inc == 0] = all_mtrs["e00300"][2][
+        total_cap_inc == 0
+    ]
     return mtr_combined_capinc
