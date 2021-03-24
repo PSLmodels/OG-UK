@@ -10,4 +10,4 @@ jobs:
     steps:
       - name: Check Black formatting
         uses: lgeiger/black-action@master
-        args: ". --check"
+        # args: ". --check"
