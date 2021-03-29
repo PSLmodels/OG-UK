@@ -1,9 +1,9 @@
-'''
+"""
 ------------------------------------------------------------------------
 This program extracts tax rate and income data from the microsimulation
 model (OpenFisca-UK).
 ------------------------------------------------------------------------
-'''
+"""
 from pandas import DataFrame
 from dask import delayed, compute
 import dask.multiprocessing
@@ -17,6 +17,7 @@ from openfisca_core.model_api import *
 import pandas as pd
 import warnings
 import microdf as mdf
+
 warnings.filterwarnings("ignore")
 
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
@@ -24,7 +25,7 @@ DATA_LAST_YEAR = 2030  # this is the last year data are extrapolated for
 
 
 def get_calculator_output(baseline, year, reform=None, data=None):
-    '''
+    """
     This function creates an OpenFisca PopulationSim object with the
     policy specified in reform and the data specified with the data
     kwarg.
@@ -41,7 +42,7 @@ def get_calculator_output(baseline, year, reform=None, data=None):
         tax_dict (dict): a dictionary of microdata with marginal tax
             rates and other information computed from OpenFisca-UK
 
-    '''
+    """
     # create a simulation
     if data is None:
         sim = PopulationSim(reform)
@@ -59,25 +60,26 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     # define market income - taking expanded_income and excluding gov't
     # transfer benefits found in the Tax-Calculator expanded income
-    market_income = (sim.df['gross_income']).values
+    market_income = (sim.df["gross_income"]).values
 
     # Compute marginal tax rates (can only do on earned income now)
     mtr = sim.calc_mtr()
 
     # Put MTRs, income, tax liability, and other variables in dict
-    length = len(sim.df['benunit_weight'])
+    length = len(sim.df["benunit_weight"])
     tax_dict = {
-        'mtr_labinc': mtr,
-        'mtr_capinc': mtr,
-        'age': sim.df['age'].values,
-        'total_labinc': sim.df['earned_income'].values,
-        'total_capinc': market_income - sim.df['earned_income'].values,
-        'market_income': market_income,
-        'total_tax_liab': sim.df['income_tax'],
-        'payroll_tax_liab': np.zeros(length), # is this in OpenFisca-UK?
-        'etr': sim.df['income_tax'] / market_income,
-        'year': year * np.ones(length),
-        'weight': sim.df['benunit_weight'].values}
+        "mtr_labinc": mtr,
+        "mtr_capinc": mtr,
+        "age": sim.df["age"].values,
+        "total_labinc": sim.df["earned_income"].values,
+        "total_capinc": market_income - sim.df["earned_income"].values,
+        "market_income": market_income,
+        "total_tax_liab": sim.df["income_tax"],
+        "payroll_tax_liab": np.zeros(length),  # is this in OpenFisca-UK?
+        "etr": sim.df["income_tax"] / market_income,
+        "year": year * np.ones(length),
+        "weight": sim.df["benunit_weight"].values,
+    }
 
     # garbage collection
     del sim
@@ -85,9 +87,16 @@ def get_calculator_output(baseline, year, reform=None, data=None):
     return tax_dict
 
 
-def get_data(baseline=False, start_year=DEFAULT_START_YEAR, reform=None,
-             data=None, path=CUR_PATH, client=None, num_workers=1):
-    '''
+def get_data(
+    baseline=False,
+    start_year=DEFAULT_START_YEAR,
+    reform=None,
+    data=None,
+    path=CUR_PATH,
+    client=None,
+    num_workers=1,
+):
+    """
     This function creates dataframes of micro data with marginal tax
     rates and information to compute effective tax rates from the
     PopulationSim object.  The resulting dictionary of dataframes is
@@ -111,20 +120,22 @@ def get_data(baseline=False, start_year=DEFAULT_START_YEAR, reform=None,
             analyze
         OpenFiscaUK_version (str): version of OpenFisca-UK used
 
-    '''
+    """
     # Compute MTRs and taxes or each year, but not beyond DATA_LAST_YEAR
     lazy_values = []
     for year in range(start_year, DATA_LAST_YEAR + 1):
         lazy_values.append(
-            delayed(get_calculator_output)(
-                baseline, year, reform, data))
+            delayed(get_calculator_output)(baseline, year, reform, data)
+        )
     if client:  # pragma: no cover
         futures = client.compute(lazy_values, num_workers=num_workers)
         results = client.gather(futures)
     else:
         results = results = compute(
-            *lazy_values, scheduler=dask.multiprocessing.get,
-            num_workers=num_workers)
+            *lazy_values,
+            scheduler=dask.multiprocessing.get,
+            num_workers=num_workers,
+        )
 
     # dictionary of data frames to return
     micro_data_dict = {}
@@ -144,13 +155,15 @@ def get_data(baseline=False, start_year=DEFAULT_START_YEAR, reform=None,
     del results
 
     # Pull OpenFisca-UK version for reference
-    OpenFiscaUK_version = None#pkg_resources.get_distribution("taxcalc").version
+    OpenFiscaUK_version = (
+        None  # pkg_resources.get_distribution("taxcalc").version
+    )
 
     return micro_data_dict, OpenFiscaUK_version
 
 
 # def calc_advance(baseline, start_year, reform, data, year):
-#     '''
+#     """
 #     This function advances the year used in OpenFisca-UK, compute
 #     taxes and rates, and save the results to a dictionary.
 
@@ -161,7 +174,7 @@ def get_data(baseline=False, start_year=DEFAULT_START_YEAR, reform=None,
 #     Returns:
 #         tax_dict (dict): a dictionary of microdata with marginal tax
 #             rates and other information computed in TC
-#     '''
+#     """
 #     calc1 = get_calculator(baseline=baseline,
 #                            start_year=start_year,
 #                            reform=reform, data=data)
@@ -209,7 +222,7 @@ def get_data(baseline=False, start_year=DEFAULT_START_YEAR, reform=None,
 
 
 def cap_inc_mtr(calc1):  # pragma: no cover
-    '''
+    """
     This function computes the marginal tax rate on capital income,
     which is calculated as a weighted average of the marginal tax rates
     on different sources of capital income.
@@ -221,7 +234,7 @@ def cap_inc_mtr(calc1):  # pragma: no cover
         mtr_combined_capinc (Numpy array): array with marginal tax rates
             for each observation in the TC Records object
 
-    '''
+    """
     # Note: PUF does not have variable for non-taxable IRA distributions
     # Exclude Sch E income (e02000) from this list since we'll compute
     # MTRs for this income in two parts - one for overall Sch C and one
@@ -238,30 +251,44 @@ def cap_inc_mtr(calc1):  # pragma: no cover
     # e26270 = partnership and s corp income/loss
     # e02000 = Sch E income (includes e26270)
     capital_income_sources = (
-        'e00300', 'e00400', 'e00600', 'e00650', 'e01400', 'e01700',
-        'p22250', 'p23250', 'e26270')
-    rent_royalty_inc = np.abs(
-        calc1.array('e02000') - calc1.array('e26270'))
+        "e00300",
+        "e00400",
+        "e00600",
+        "e00650",
+        "e01400",
+        "e01700",
+        "p22250",
+        "p23250",
+        "e26270",
+    )
+    rent_royalty_inc = np.abs(calc1.array("e02000") - calc1.array("e26270"))
     # assign overall Sch E mtr to rent and royalities since TC can't do
     # this component separately
-    rent_royalty_mtr = calc1.mtr('e02000')[2]
+    rent_royalty_mtr = calc1.mtr("e02000")[2]
     # calculating MTRs separately - can skip items with zero tax
-    all_mtrs = {income_source: calc1.mtr(income_source) for
-                income_source in capital_income_sources}
+    all_mtrs = {
+        income_source: calc1.mtr(income_source)
+        for income_source in capital_income_sources
+    }
     # Get each column of income sources, to include non-taxable income
     record_columns = [calc1.array(x) for x in capital_income_sources]
     # Compute weighted average of all those MTRs
     # first find total capital income
-    total_cap_inc = (sum(map(abs, record_columns)) + rent_royalty_inc)
+    total_cap_inc = sum(map(abs, record_columns)) + rent_royalty_inc
     # Note that all_mtrs gives fica (0), iit (1), and combined (2) mtrs
     # We'll use the combined - hence all_mtrs[source][2]
-    capital_mtr = [abs(col) * all_mtrs[source][2] for col, source in
-                   zip(record_columns, capital_income_sources)]
+    capital_mtr = [
+        abs(col) * all_mtrs[source][2]
+        for col, source in zip(record_columns, capital_income_sources)
+    ]
     mtr_combined_capinc = np.zeros_like(total_cap_inc)
     mtr_combined_capinc[total_cap_inc != 0] = (
-        sum(capital_mtr + rent_royalty_mtr *
-            rent_royalty_inc)[total_cap_inc != 0] /
-        total_cap_inc[total_cap_inc != 0])
-    mtr_combined_capinc[total_cap_inc == 0] = (
-        all_mtrs['e00300'][2][total_cap_inc == 0])
+        sum(capital_mtr + rent_royalty_mtr * rent_royalty_inc)[
+            total_cap_inc != 0
+        ]
+        / total_cap_inc[total_cap_inc != 0]
+    )
+    mtr_combined_capinc[total_cap_inc == 0] = all_mtrs["e00300"][2][
+        total_cap_inc == 0
+    ]
     return mtr_combined_capinc
