@@ -19,8 +19,6 @@ Country = 'UK'
 Year = 2018
 ############################################
 
-# TO DO: Replace all hardcoding of '2018' with 'Year'
-
 ############## Download Basic Data - START ##################
 StartPeriod = Year
 EndPeriod = Year

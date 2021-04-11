@@ -5,11 +5,14 @@ model
 ------------------------------------------------------------------------
 """
 # Import packages
-import os
+import os, sys
 import numpy as np
 import scipy.optimize as opt
 import pandas as pd
 from ogusa import parameter_plots as pp
+import eurostat
+from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
 
 
 # create output director for figures
@@ -25,76 +28,183 @@ Define functions
 ------------------------------------------------------------------------
 """
 
-
-def get_fert(totpers, min_yr, max_yr, graph=False):
+def get_fert(totpers, base_yr, graph=False):
     """
     This function generates a vector of fertility rates by model period
     age that corresponds to the fertility rate data by age in years
-    using data from the National Center for Health Statistics National
-    Vital Statistic System:
-    https://www.cdc.gov/nchs/nvss/cohort_fertility_tables.htm
+    using data from Eurostat.
 
     Args:
         totpers (int): total number of agent life periods (E+S), >= 3
-        min_yr (int): age in years at which agents are born, >= 0
-        max_yr (int): age in years at which agents die with certainty,
-            >= 4
+        base_yr: base year
         graph (bool): =True if want graphical output
 
     Returns:
         fert_rates (Numpy array): fertility rates for each model period
             of life
-
     """
-    # Read raw data from NCHS
-    raw = pd.read_csv(
-        "ftp://ftp.cdc.gov/pub/Health_Statistics/NCHS/nvss/birth/"
-        + "cohort/Table01.csv",
-        skiprows=4,
-    )
-    # keep only latest year in data
-    fert_data = raw[raw["Calendar year"] == 2005]
-    fert_data = fert_data[fert_data["Race of women"] == "All races 1"][
-        ["Current age of women", "Live-birth order total"]
-    ]
-    fert_data.rename(
-        columns={
-            "Current age of women": "Age",
-            "Live-birth order total": "Births per 1000",
-        },
-        inplace=True,
-    )
-    fert_rates_all = np.append(
-        np.append(
-            np.zeros(int(fert_data.Age.min()) - min_yr),
-            fert_data["Births per 1000"].values,
-        ),
-        np.zeros(int(max_yr - fert_data.Age.max())),
-    )
-    # divide by 2000 because fertility rates per woman and we want per
-    # household
-    fert_rates_all = fert_rates_all / 2000
-    # Calculate implied fertility rates in sub-bins of fert_rates_all.
-    fert_rates_mxyr = fert_rates_all[0:max_yr]
-    num_sub_bins = int(100)
-    len_subbins = (np.float64((max_yr - min_yr + 1) * num_sub_bins)) / totpers
-    fert_rates_sub = np.zeros(num_sub_bins * max_yr, dtype=float)
-    for i in range(max_yr):
-        fert_rates_sub[i * num_sub_bins : (i + 1) * num_sub_bins] = 1 - (
-            (1 - fert_rates_mxyr[i]) ** (1.0 / num_sub_bins)
-        )
-    fert_rates = np.zeros(totpers)
-    end_sub_bin = 0
-    for i in range(totpers):
-        beg_sub_bin = int(end_sub_bin)
-        end_sub_bin = int(np.rint((i + 1) * len_subbins))
-        fert_rates[i] = (
-            1 - (1 - (fert_rates_sub[beg_sub_bin:end_sub_bin])).prod()
-        )
+    Country = 'UK'
+    Year = base_yr
 
-    # if graph:  # need to fix plot function for new data output
-    #     pp.plot_fert_rates(fert_rates, age_midp, totpers, min_yr, max_yr,
-    #                        fert_data, fert_rates, output_dir=OUTPUT_DIR)
+    ############## Download Eurostat Data - START ##################
+    StartPeriod = Year
+    EndPeriod = Year
+
+    filter_pars = {'GEO': [Country]}
+    df_pop = eurostat.get_sdmx_data_df('demo_pjan', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
+    df_fert = eurostat.get_sdmx_data_df('demo_fasec', StartPeriod, EndPeriod, filter_pars, flags = True, verbose=True)
+    ############## Download Eurostat Data - END ##################
+
+    # TO DO: Decide how to load population
+    #        probably don't want to load separately in get_fert
+
+    ############## Process Population Data - START ##################
+    # Remove totals and other unused rows 
+    indexNames = df_pop[(df_pop['AGE'] == 'TOTAL') |
+                        (df_pop['AGE'] == 'UNK') |
+                        (df_pop['AGE'] == 'Y_OPEN')].index 
+    df_pop.drop(indexNames , inplace=True)
+
+    # Rename Y_LT1 to 0 (means 'less than one year')
+    df_pop.AGE[df_pop.AGE=='Y_LT1'] = 'Y0'
+
+    #  Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
+    df_pop['AGE'] = df_pop['AGE'].str[1:]
+
+    # Drop gender specific population, keep only total
+    df_pop = df_pop[(df_pop['SEX'] == 'T')]
+
+    # Name of 1 column includes the year - create column name before dropping
+    Obs_status_col = str(Year) + '_OBS_STATUS'
+    # Drop columns except: Age, Frequency
+    df_pop = df_pop.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', Obs_status_col])
+
+    # convert strings to float to allow for sort_values
+    df_pop = df_pop.astype(float)
+
+    # sort values by AGE
+    df_pop = df_pop.sort_values(by=['AGE'])
+    
+    np_pop = df_pop[Year].to_numpy().astype(np.float)
+    ############## Process Population Data - END ##################
+
+    ############## Select Fertility Data - START ##################
+    # Select Sex = T (meaning "Total" of boys and girls born); drop others
+    df_fert = df_fert[(df_fert['SEX'] == 'T')]
+
+    # Drop columns except: Age, Frequency
+    df_fert = df_fert.drop(columns=['UNIT', 'SEX', 'GEO', 'FREQ', Obs_status_col])
+
+    # Record values for 10-14 year old and over 50 year old for tail estimation
+    under15total = df_fert[Year].loc[df_fert['AGE'] == 'Y10-14'].values.astype(np.float) 
+    over50total = df_fert[Year].loc[df_fert['AGE'] == 'Y_GE50'].values.astype(np.float)
+
+    # Remove remaining total and subtotals 
+    indexNames = df_fert[(df_fert['AGE'] == 'TOTAL') |
+                        (df_fert['AGE'] == 'UNK') |
+                        (df_fert['AGE'] == 'Y10-14') |
+                        (df_fert['AGE'] == 'Y15-19') |
+                        (df_fert['AGE'] == 'Y20-24') |
+                        (df_fert['AGE'] == 'Y25-29') |
+                        (df_fert['AGE'] == 'Y30-34') |
+                        (df_fert['AGE'] == 'Y35-39') | 
+                        (df_fert['AGE'] == 'Y40-44') | 
+                        (df_fert['AGE'] == 'Y45-49') |
+                        (df_fert['AGE'] == 'Y_GE50') ].index 
+    df_fert.drop(indexNames , inplace=True)
+
+    # convert to numpy array, keeping only fertility values
+    np_fert = df_fert[Year].to_numpy().astype(np.float)
+    ############## Select Fertility Data - START ##################
+
+    ############## Add tails for under 15 and over 50 - START ######
+    # data contains single values for ages 10-14 & over 50
+    # spread data from ages 10-14 and 50-60 
+    # using expontial function, based on shape of adjacent data
+
+    # Top tail estimation: 
+    # select final 6 single-age values (ages 44-49) 
+    Y_44_49 = np_fert[-7: -1]
+    x_44_49 = np.linspace(1, len(Y_44_49), len(Y_44_49))
+
+    # define negative exponential curve
+    def expon(x, a, b):
+        return a*np.exp(-b*x)
+
+    # estimate the best fit
+    popt_top, pcov = curve_fit(expon, x_44_49, Y_44_49)
+
+    # num_over50 is the number of years beyond age 49, e.g. 11 --> 50 to 60
+    num_over50 = 11
+    x_over50 = np.linspace(len(Y_44_49) + 1, len(Y_44_49) + num_over50, num_over50)
+
+    # predict over 50 values based on estimated curve
+    over50pred_unscaled = expon(x_over50, *popt_top)
+
+    # scale predicted values to match the total over 50 births
+    over50pred = over50pred_unscaled * over50total / over50pred_unscaled.sum()
+
+    if graph:
+        x_44_over50 = np.linspace(1, len(Y_44_49) + num_over50, 
+                                    len(Y_44_49) + num_over50)
+        plt.title('Fertility data ages 44-49 and predictions ages 44-60')
+        plt.plot(x_44_49, Y_44_49, 'b-', label='fert data')
+        plt.plot(x_44_over50, expon(x_44_over50, *popt_top), 'r-',
+                label='a.exp(-b x) fit: a=%5.3f, b=%5.3f' % tuple(popt_top))
+        plt.legend()
+        plt.show()
+
+    # Bottom tail estimation: 
+    # select initial 3 values (ages 15-17) 
+    # Note: taking more than 3 values misses the steep decline in the data
+    Y_15_17 = np_fert[: 3]
+    Y_15_17 = np.flip(Y_15_17)
+    x_15_17 = np.linspace(1, len(Y_15_17), len(Y_15_17))
+
+    # estimate the best fit
+    popt_low, pcov = curve_fit(expon, x_15_17, Y_15_17)
+
+    # num_under15 is the number of years below age 15: ages 10-14
+    num_under15 = 5
+    x_under15 = np.linspace(len(Y_15_17) + 1, len(Y_15_17) + num_under15, 
+                                                             num_under15)
+
+    # predict under 15 values based on estimated curve
+    under15pred_unscaled = expon(x_under15, *popt_low)
+
+    # scale predicted values to match the total under 15 births
+    under15pred = (under15pred_unscaled * under15total / 
+                  under15pred_unscaled.sum())
+    under15pred = np.flip(under15pred)
+
+    if graph:
+        x_under15_17 = np.linspace(1, len(Y_15_17) + num_under15, 
+                                      len(Y_15_17) + num_under15)
+        plt.title('Fertility data ages 17-15 and predictions ages 14-10')
+        plt.plot(x_15_17, Y_15_17, 'b-', label='fert data')
+        plt.plot(x_under15_17, expon(x_under15_17, *popt_low), 'r-',
+                 label='a.exp(-b x) fit: a=%5.3f, b=%5.3f' % tuple(popt_low))
+        plt.legend()
+        plt.show()
+    ############## Add tails for under 15 and over 50 - END ########
+
+    ############## Calculate rate for all ages - START ############# 
+    # extend fert to 100 ages with values for tails and zero elsewhere
+    # under 15 year olds
+    fert100 = np.hstack((under15pred, np_fert))
+    fert100 = np.hstack((np.zeros(15 - num_under15), fert100))
+    # over 50 year olds
+    fert100 = np.hstack((fert100, over50pred))
+    fert100 = np.hstack((fert100, np.zeros(50 - num_over50)))
+
+    # convert to fertility rates per person
+    fert_rates = fert100 / np_pop
+
+    if graph:
+        plt.title('Fertility rate by age per person')
+        plt.plot(fert_rates)
+        plt.show()
+    ############## Calculate rate for all ages - END ############# 
 
     return fert_rates
 
