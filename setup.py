@@ -15,9 +15,9 @@ config = {
     "download_url": "https://github.com/PLSmodels/OG-UK-Calibration/",
     "version": version,
     "license": "CC0 1.0 Universal public domain dedication",
-    "packages": ["oguk_calibrate"],
+    "packages": ["og_uk_calibrate"],
     "include_package_data": True,
-    "name": "oguk_calibrate",
+    "name": "og_uk_calibrate",
     "install_requires": [],
     "package_data": {"oguk": ["data/*"]},
     "classifiers": [
