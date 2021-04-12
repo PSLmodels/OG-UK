@@ -53,10 +53,20 @@ def get_fert(totpers, base_yr, graph=False):
 
     filter_pars = {"GEO": [Country]}
     df_pop = eurostat.get_sdmx_data_df(
-        "demo_pjan", StartPeriod, EndPeriod, filter_pars, flags=True, verbose=True
+        "demo_pjan",
+        StartPeriod,
+        EndPeriod,
+        filter_pars,
+        flags=True,
+        verbose=True,
     )
     df_fert = eurostat.get_sdmx_data_df(
-        "demo_fasec", StartPeriod, EndPeriod, filter_pars, flags=True, verbose=True
+        "demo_fasec",
+        StartPeriod,
+        EndPeriod,
+        filter_pars,
+        flags=True,
+        verbose=True,
     )
     ############## Download Eurostat Data - END ##################
 
@@ -84,7 +94,9 @@ def get_fert(totpers, base_yr, graph=False):
     # Name of 1 column includes the year - create column name before dropping
     Obs_status_col = str(Year) + "_OBS_STATUS"
     # Drop columns except: Age, Frequency
-    df_pop = df_pop.drop(columns=["UNIT", "SEX", "GEO", "FREQ", Obs_status_col])
+    df_pop = df_pop.drop(
+        columns=["UNIT", "SEX", "GEO", "FREQ", Obs_status_col]
+    )
 
     # convert strings to float to allow for sort_values
     df_pop = df_pop.astype(float)
@@ -100,11 +112,17 @@ def get_fert(totpers, base_yr, graph=False):
     df_fert = df_fert[(df_fert["SEX"] == "T")]
 
     # Drop columns except: Age, Frequency
-    df_fert = df_fert.drop(columns=["UNIT", "SEX", "GEO", "FREQ", Obs_status_col])
+    df_fert = df_fert.drop(
+        columns=["UNIT", "SEX", "GEO", "FREQ", Obs_status_col]
+    )
 
     # Record values for 10-14 year old and over 50 year old for tail estimation
-    under15total = df_fert[Year].loc[df_fert["AGE"] == "Y10-14"].values.astype(np.float)
-    over50total = df_fert[Year].loc[df_fert["AGE"] == "Y_GE50"].values.astype(np.float)
+    under15total = (
+        df_fert[Year].loc[df_fert["AGE"] == "Y10-14"].values.astype(np.float)
+    )
+    over50total = (
+        df_fert[Year].loc[df_fert["AGE"] == "Y_GE50"].values.astype(np.float)
+    )
 
     # Remove remaining total and subtotals
     indexNames = df_fert[
@@ -145,7 +163,9 @@ def get_fert(totpers, base_yr, graph=False):
 
     # num_over50 is the number of years beyond age 49, e.g. 11 --> 50 to 60
     num_over50 = 11
-    x_over50 = np.linspace(len(Y_44_49) + 1, len(Y_44_49) + num_over50, num_over50)
+    x_over50 = np.linspace(
+        len(Y_44_49) + 1, len(Y_44_49) + num_over50, num_over50
+    )
 
     # predict over 50 values based on estimated curve
     over50pred_unscaled = expon(x_over50, *popt_top)
@@ -180,13 +200,17 @@ def get_fert(totpers, base_yr, graph=False):
 
     # num_under15 is the number of years below age 15: ages 10-14
     num_under15 = 5
-    x_under15 = np.linspace(len(Y_15_17) + 1, len(Y_15_17) + num_under15, num_under15)
+    x_under15 = np.linspace(
+        len(Y_15_17) + 1, len(Y_15_17) + num_under15, num_under15
+    )
 
     # predict under 15 values based on estimated curve
     under15pred_unscaled = expon(x_under15, *popt_low)
 
     # scale predicted values to match the total under 15 births
-    under15pred = under15pred_unscaled * under15total / under15pred_unscaled.sum()
+    under15pred = (
+        under15pred_unscaled * under15total / under15pred_unscaled.sum()
+    )
     under15pred = np.flip(under15pred)
 
     if graph:
@@ -269,7 +293,9 @@ def get_mort(totpers, min_yr, max_yr, graph=False):
         },
         inplace=True,
     )
-    raw_data_male = raw_data_male[["Year", "Age", "Male Mort. Rate", "Num. Male Lives"]]
+    raw_data_male = raw_data_male[
+        ["Year", "Age", "Male Mort. Rate", "Num. Male Lives"]
+    ]
     raw_data_female.rename(
         columns={
             "x": "Age",
@@ -307,7 +333,9 @@ def get_mort(totpers, min_yr, max_yr, graph=False):
     for i in range(totpers):
         beg_sub_bin = int(end_sub_bin)
         end_sub_bin = int(np.rint((i + 1) * len_subbins))
-        mort_rates[i] = 1 - (1 - (mort_rates_sub[beg_sub_bin:end_sub_bin])).prod()
+        mort_rates[i] = (
+            1 - (1 - (mort_rates_sub[beg_sub_bin:end_sub_bin])).prod()
+        )
     mort_rates[-1] = 1  # Mortality rate in last period is set to 1
 
     if graph:
@@ -349,7 +377,9 @@ def pop_rebin(curr_pop_dist, totpers_new):
         curr_pop_new = curr_pop_dist
     elif int(totpers_new) < totpers_orig:
         num_sub_bins = float(10000)
-        curr_pop_sub = np.repeat(np.float64(curr_pop_dist) / num_sub_bins, num_sub_bins)
+        curr_pop_sub = np.repeat(
+            np.float64(curr_pop_dist) / num_sub_bins, num_sub_bins
+        )
         len_subbins = (np.float64(totpers_orig * num_sub_bins)) / totpers_new
         curr_pop_new = np.zeros(totpers_new, dtype=np.float64)
         end_sub_bin = 0
@@ -437,9 +467,15 @@ def get_imm_resid(totpers, min_yr, max_yr):
     imm_mat[:, 0] = (pop21vec - (1 - infmort_rate) * newbornvec) / pop11vec
     # Estimate 3 years of immigration rates for all other-aged
     # individuals
-    pop17mat = np.vstack((pop_2016_EpS[:-1], pop_2017_EpS[:-1], pop_2018_EpS[:-1]))
-    pop18mat = np.vstack((pop_2016_EpS[1:], pop_2017_EpS[1:], pop_2018_EpS[1:]))
-    pop19mat = np.vstack((pop_2017_EpS[1:], pop_2018_EpS[1:], pop_2019_EpS[1:]))
+    pop17mat = np.vstack(
+        (pop_2016_EpS[:-1], pop_2017_EpS[:-1], pop_2018_EpS[:-1])
+    )
+    pop18mat = np.vstack(
+        (pop_2016_EpS[1:], pop_2017_EpS[1:], pop_2018_EpS[1:])
+    )
+    pop19mat = np.vstack(
+        (pop_2017_EpS[1:], pop_2018_EpS[1:], pop_2019_EpS[1:])
+    )
     mort_mat = np.tile(mort_rates[:-1], (3, 1))
     imm_mat[:, 1:] = (pop19mat - (1 - mort_mat) * pop17mat) / pop18mat
     # Final estimated immigration rates are the averages over 3 years
@@ -537,7 +573,9 @@ def get_pop_objs(E, S, T, min_yr, max_yr, curr_year, GraphDiag=False):
     # decomposition
     eigvalues, eigvectors = np.linalg.eig(OMEGA_orig)
     g_n_SS = (eigvalues[np.isreal(eigvalues)].real).max() - 1
-    eigvec_raw = eigvectors[:, (eigvalues[np.isreal(eigvalues)].real).argmax()].real
+    eigvec_raw = eigvectors[
+        :, (eigvalues[np.isreal(eigvalues)].real).argmax()
+    ].real
     omega_SS_orig = eigvec_raw / eigvec_raw.sum()
 
     # Generate time path of the nonstationary population distribution
@@ -586,7 +624,9 @@ def get_pop_objs(E, S, T, min_yr, max_yr, curr_year, GraphDiag=False):
     # Age the data to the current year
     for per in range(curr_year - data_year):
         pop_next = np.dot(OMEGA_orig, pop_curr)
-        g_n_curr = (pop_next[-S:].sum() - pop_curr[-S:].sum()) / pop_curr[-S:].sum()
+        g_n_curr = (pop_next[-S:].sum() - pop_curr[-S:].sum()) / pop_curr[
+            -S:
+        ].sum()
         pop_past = pop_curr
         pop_curr = pop_next
 
@@ -628,14 +668,17 @@ def get_pop_objs(E, S, T, min_yr, max_yr, curr_year, GraphDiag=False):
     g_n_path = np.zeros(T + S)
     g_n_path[0] = g_n_curr.copy()
     g_n_path[1:] = (
-        omega_path_lev[-S:, 1:].sum(axis=0) - omega_path_lev[-S:, :-1].sum(axis=0)
+        omega_path_lev[-S:, 1:].sum(axis=0)
+        - omega_path_lev[-S:, :-1].sum(axis=0)
     ) / omega_path_lev[-S:, :-1].sum(axis=0)
     g_n_path[fixper + 1 :] = g_n_SS
     omega_S_preTP = (pop_past.copy()[-S:]) / (pop_past.copy()[-S:].sum())
     imm_rates_mat = np.hstack(
         (
             np.tile(np.reshape(imm_rates_orig[E:], (S, 1)), (1, fixper)),
-            np.tile(np.reshape(imm_rates_adj[E:], (S, 1)), (1, T + S - fixper)),
+            np.tile(
+                np.reshape(imm_rates_adj[E:], (S, 1)), (1, T + S - fixper)
+            ),
         )
     )
 
