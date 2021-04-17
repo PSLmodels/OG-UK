@@ -10,8 +10,6 @@ import dask.multiprocessing
 import numpy as np
 import os
 import pickle
-import pkg_resources
-from ogusa.constants import DEFAULT_START_YEAR, TC_LAST_YEAR, PUF_START_YEAR
 from openfisca_uk import PopulationSim
 from openfisca_core.model_api import *
 import pandas as pd
@@ -60,25 +58,26 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     # define market income - taking expanded_income and excluding gov't
     # transfer benefits found in the Tax-Calculator expanded income
-    market_income = (sim.df["gross_income"]).values
+    market_income = sim.df(["gross_income"]).values.squeeze()
 
     # Compute marginal tax rates (can only do on earned income now)
     mtr = sim.calc_mtr()
 
     # Put MTRs, income, tax liability, and other variables in dict
-    length = len(sim.df["benunit_weight"])
+    length = len(sim.df(["benunit_weight"]))
     tax_dict = {
         "mtr_labinc": mtr,
         "mtr_capinc": mtr,
-        "age": sim.df["age"].values,
-        "total_labinc": sim.df["earned_income"].values,
-        "total_capinc": market_income - sim.df["earned_income"].values,
+        "age": sim.df(["age"]).values.squeeze(),
+        "total_labinc": sim.df(["earned_income"]).values.squeeze(),
+        "total_capinc": market_income
+        - sim.df(["earned_income"]).values.squeeze(),
         "market_income": market_income,
-        "total_tax_liab": sim.df["income_tax"],
+        "total_tax_liab": sim.df(["income_tax"]).values.squeeze(),
         "payroll_tax_liab": np.zeros(length),  # is this in OpenFisca-UK?
-        "etr": sim.df["income_tax"] / market_income,
+        "etr": sim.df(["income_tax"]).values.squeeze() / market_income,
         "year": year * np.ones(length),
-        "weight": sim.df["benunit_weight"].values,
+        "weight": sim.df(["benunit_weight"]).values.squeeze(),
     }
 
     # garbage collection
@@ -89,7 +88,7 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
 def get_data(
     baseline=False,
-    start_year=DEFAULT_START_YEAR,
+    start_year=2021,
     reform=None,
     data=None,
     path=CUR_PATH,
@@ -141,7 +140,7 @@ def get_data(
     micro_data_dict = {}
     for i, result in enumerate(results):
         year = start_year + i
-        micro_data_dict[str(year)] = DataFrame(result)
+        micro_data_dict[str(year)] = pd.DataFrame.from_dict(result)
 
     if baseline:
         pkl_path = os.path.join(path, "micro_data_baseline.pkl")
