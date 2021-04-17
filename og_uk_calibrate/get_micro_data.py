@@ -42,7 +42,7 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     """
     # create a simulation
-    if data is None:
+    if data is None or "frs":
         sim = PopulationSim(reform)
     else:
         # pass PopulationSim a data argument
