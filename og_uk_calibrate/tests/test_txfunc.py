@@ -6,7 +6,7 @@ import numpy as np
 import os
 import pickle
 import bz2
-from ogusa import utils
+from ogusa.utils import safe_read_pickle
 
 NUM_WORKERS = 2
 CUR_PATH = os.path.abspath(os.path.dirname(__file__))
@@ -227,7 +227,7 @@ def test_txfunc_est(
     Test txfunc.txfunc_est() function.  The test is that given
     inputs from previous run, the outputs are unchanged.
     """
-    input_tuple = utils.safe_read_pickle(
+    input_tuple = safe_read_pickle(
         os.path.join(CUR_PATH, "test_io_data", "txfunc_est_inputs.pkl")
     )
     (df, s, t, _, output_dir, graph) = input_tuple
@@ -270,7 +270,7 @@ def test_txfunc_est_on_GH(
     Test txfunc.txfunc_est() function.  The test is that given
     inputs from previous run, the outputs are unchanged.
     """
-    input_tuple = utils.safe_read_pickle(
+    input_tuple = safe_read_pickle(
         os.path.join(CUR_PATH, "test_io_data", "txfunc_est_inputs.pkl")
     )
     (df, s, t, _, output_dir, graph) = input_tuple
@@ -297,7 +297,7 @@ def test_txfunc_est_on_GH(
 
 
 def test_txfunc_est_exception():
-    input_tuple = utils.safe_read_pickle(
+    input_tuple = safe_read_pickle(
         os.path.join(CUR_PATH, "test_io_data", "txfunc_est_inputs.pkl")
     )
     (df, s, t, rate_type, output_dir, graph) = input_tuple
@@ -322,7 +322,7 @@ def test_tax_data_sample():
     """
     Test of txfunc.tax_data_sample() function
     """
-    data = utils.safe_read_pickle(
+    data = safe_read_pickle(
         os.path.join(CUR_PATH, "test_io_data", "micro_data_dict_for_tests.pkl")
     )
     df = txfunc.tax_data_sample(data["2030"])
@@ -410,7 +410,7 @@ def test_tax_func_loop():
         numparams,
     )
     age_specific = False
-    expected_tuple = utils.safe_read_pickle(
+    expected_tuple = safe_read_pickle(
         os.path.join(CUR_PATH, "test_io_data", "tax_func_loop_outputs.pkl")
     )
     (
@@ -713,7 +713,7 @@ def test_tax_func_estimate(dask_client):
     Test txfunc.tax_func_loop() function.  The test is that given
     inputs from previous run, the outputs are unchanged.
     """
-    input_tuple = utils.safe_read_pickle(
+    input_tuple = safe_read_pickle(
         os.path.join(CUR_PATH, "test_io_data", "tax_func_estimate_inputs.pkl")
     )
     (
@@ -748,7 +748,7 @@ def test_tax_func_estimate(dask_client):
         client=dask_client,
         num_workers=NUM_WORKERS,
     )
-    expected_dict = utils.safe_read_pickle(
+    expected_dict = safe_read_pickle(
         os.path.join(CUR_PATH, "test_io_data", "tax_func_estimate_outputs.pkl")
     )
     del expected_dict["tfunc_time"], expected_dict["taxcalc_version"]
