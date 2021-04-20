@@ -196,7 +196,7 @@ def test_get_mort():
     )
     assert mort_rates_1.shape[0] == totpers
     assert infmort_rate_1 == 0.003507
-    assert mort_rates_1 == mort_rates_100
+    assert np.allclose(mort_rates_1, mort_rates_100)
 
     # Test that we get the right mort_rates and infmort_rate when downloading
     # data from the internet
@@ -205,7 +205,7 @@ def test_get_mort():
     )
     assert mort_rates_2.shape[0] == totpers
     assert infmort_rate_2 == 0.003507
-    assert mort_rates_2 == mort_rates_100
+    assert np.allclose(mort_rates_2, mort_rates_100)
 
     # Test that we get the right mort_rates and infmort_rate when we use a
     # a smaller number of total model periods
@@ -215,7 +215,7 @@ def test_get_mort():
     )
     assert mort_rates_3.shape[0] == totpers_small
     assert infmort_rate_3 == 0.003507
-    assert mort_rates_3 == mort_rates_11
+    assert np.allclose(mort_rates_3, mort_rates_11)
 
 
 # def test_pop_rebin():
