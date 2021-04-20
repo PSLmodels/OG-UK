@@ -35,4 +35,5 @@ dependencies:
   - cs-kit
   - cs2tc
   - pandas-datareader
+  - eurostat
   - git+https://github.com/PSLmodels/OG-USA.git
