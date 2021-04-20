@@ -251,16 +251,17 @@ def get_fert(totpers, base_yr, graph=False):
 
     return fert_rates
 
-    def get_mort(
-        totpers,
-        min_age_yr,
-        max_age_yr,
-        beg_yr=2018,
-        end_yr=2018,
-        download=False,
-        save_data=False,
-        graph=False,
-    ):
+
+def get_mort(
+    totpers,
+    min_age_yr,
+    max_age_yr,
+    beg_yr=2018,
+    end_yr=2018,
+    download=False,
+    save_data=False,
+    graph=False,
+):
     """
     This function generates a vector of mortality rates by model period age.
     Source: Eurostat demographic data using the Eurostat Python package
