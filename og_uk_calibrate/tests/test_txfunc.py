@@ -1,4 +1,4 @@
-from ogusa_calibrate import txfunc
+from og_uk_calibrate import txfunc
 from distributed import Client, LocalCluster
 import pytest
 import pandas as pd
@@ -168,16 +168,16 @@ def test_replace_outliers():
 expected_tuple_DEP = (
     np.array(
         [
-            6.37000261e-22,
-            2.73401629e-03,
-            1.54672458e-08,
-            1.43446236e-02,
-            2.32797367e-01,
+            8.45858172e-09,
+            2.75217148e-03,
+            1.77658560e-08,
+            1.60554436e-02,
+            2.32465044e-01,
             1.00000000e-04,
             1.00000000e00,
             -3.69059719e-02,
             -1.01967001e-01,
-            3.96030053e-02,
+            3.95996820e-02,
             1.02987671e-01,
             -1.30433574e-01,
         ]
@@ -188,11 +188,11 @@ expected_tuple_DEP = (
 expected_tuple_DEP_totalinc = (
     np.array(
         [
-            6.73787858e-10,
-            5.41788589e-02,
-            1.55761571e-01,
+            2.73730648e-10,
+            5.22612840e-02,
+            1.55772745e-01,
             -1.01967001e-01,
-            1.04544287e-01,
+            1.04544398e-01,
             -1.30433574e-01,
         ]
     ),
@@ -201,7 +201,7 @@ expected_tuple_DEP_totalinc = (
 )
 expected_tuple_linear = (0.15381972028750876, 0.0, 3798)
 expected_tuple_GS = (
-    np.array([1.29769078e-01, 4.36131826e00, 4.44887761e-07]),
+    np.array([1.29769044e-01, 4.36139091e00, 4.44767848e-07]),
     20323.465971499016,
     3798,
 )
