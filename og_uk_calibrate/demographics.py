@@ -8,7 +8,7 @@ import os
 import numpy as np
 import pandas as pd
 import eurostat
-import parameter_plots as pp
+from og_uk_calibrate import parameter_plots as pp
 from scipy.optimize import curve_fit
 
 # Create current directory path object
