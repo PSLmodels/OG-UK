@@ -16,11 +16,12 @@ import scipy.optimize as opt
 from dask import delayed, compute
 import dask.multiprocessing
 import pickle
-from ogusa_calibrate import get_micro_data
+from og_uk_calibrate import get_micro_data
 import ogusa.parameter_plots as pp
-from ogusa.constants import DEFAULT_START_YEAR, SHOW_RUNTIME
 import warnings
 
+SHOW_RUNTIME = False
+DEFAULT_START_YEAR = 2020
 
 if not SHOW_RUNTIME:
     warnings.simplefilter("ignore", RuntimeWarning)
