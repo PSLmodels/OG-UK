@@ -59,7 +59,7 @@ def test_get_fert():
     Test of function to get fertility rates from data
     '''
     S = 100
-    fert_rates = demographics.get_fert(100, 2018, graph=True)
+    fert_rates = demographics.get_fert(100, 2018, graph=False)
     assert (fert_rates.shape[0] == S)
 
 
