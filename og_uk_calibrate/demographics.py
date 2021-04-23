@@ -5,13 +5,14 @@ Functions for generating demographic objects necessary for the OG-UK model
 """
 # Import packages
 import os
+import sys
 import numpy as np
 import pandas as pd
 import eurostat
 from og_uk_calibrate import parameter_plots as pp
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
-
+import xlsxwriter
 
 # Create current directory path object
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
@@ -534,17 +535,15 @@ def get_imm_resid(totpers, min_yr, max_yr, base_yr, graph=False):
     newbornvec = np.dot(
         fert_rates, np_pop.T
     )
-    print('newbornvec: ', newbornvec)
-    print('np_pop[0]: ', np_pop[0])
 
     # infmort already accounted for in fert_rates
     #  imm_mat[:, 0] = (np_pop - (1 - infmort_rate) * newbornvec) / np_pop
     imm_rates[0] = (np_pop[0] - newbornvec) / np_pop[0]
-    print('imm_rates[0]: ', imm_rates[0])
+
     # Estimate immigration rates for all other-aged individuals
-    imm_rates[1:] = (np_pop[1:] - (1 - mort_rates[:-1]) * np_pop[:-1]) / np_pop[1:]
-    print('imm_rates_unsmoothed: ', imm_rates)
-    print('np_pop: ', np_pop)
+    imm_rates[1:] = ((np_pop[1:] - (1 - mort_rates[:-1]) * np_pop[:-1]) 
+                    / np_pop[1:])
+
     if graph:
         plt.title("Immigration rates (unsmoothed) by age per person")
         plt.plot(imm_rates)
@@ -569,3 +568,232 @@ def get_imm_resid(totpers, min_yr, max_yr, base_yr, graph=False):
         plt.show()
 
     return imm_rates
+
+
+def immsolve(imm_rates, *args):
+    """
+    This function generates a vector of errors representing the
+    difference in two consecutive periods stationary population
+    distributions. This vector of differences is the zero-function
+    objective used to solve for the immigration rates vector, similar to
+    the original immigration rates vector from get_imm_resid(), that
+    sets the steady-state population distribution by age equal to the
+    population distribution in period int(1.5*S)
+
+    Args:
+        imm_rates (Numpy array):immigration rates that correspond to
+            each period of life, length E+S
+        args (tuple): (fert_rates, mort_rates, infmort_rate, omega_cur,
+            g_n_SS)
+
+    Returns:
+        omega_errs (Numpy array): difference between omega_new and
+            omega_cur_pct, length E+S
+
+    """
+    # TO DO: Test immsolve from get_pop_objs
+    fert_rates, mort_rates, infmort_rate, omega_cur_lev, g_n_SS = args
+    omega_cur_pct = omega_cur_lev / omega_cur_lev.sum()
+    totpers = len(fert_rates)
+    OMEGA = np.zeros((totpers, totpers))
+    OMEGA[0, :] = (1 - infmort_rate) * fert_rates + np.hstack(
+        (imm_rates[0], np.zeros(totpers - 1))
+    )
+    OMEGA[1:, :-1] += np.diag(1 - mort_rates[:-1])
+    OMEGA[1:, 1:] += np.diag(imm_rates[1:])
+    omega_new = np.dot(OMEGA, omega_cur_pct) / (1 + g_n_SS)
+    omega_errs = omega_new - omega_cur_pct
+
+    return omega_errs
+
+
+def get_pop_objs(E, S, T, min_yr, max_yr, base_yr, GraphDiag=False):
+    """
+    This function produces the demographics objects to be used in the
+    OG-USA model package.
+
+    Args:
+        E (int): number of model periods in which agent is not
+            economically active, >= 1
+        S (int): number of model periods in which agent is economically
+            active, >= 3
+        T (int): number of periods to be simulated in TPI, > 2*S
+        min_yr (int): age in years at which agents are born, >= 0
+        max_yr (int): age in years at which agents die with certainty,
+            >= 4
+        curr_year (int): current year for which analysis will begin,
+            >= 2016
+        GraphDiag (bool): =True if want graphical output and printed
+                diagnostics
+
+    Returns:
+        pop_dict (dict): includes:
+            omega_path_S (Numpy array), time path of the population
+                distribution from the current state to the steady-state,
+                size T+S x S
+            g_n_SS (scalar): steady-state population growth rate
+            omega_SS (Numpy array): normalized steady-state population
+                distribution, length S
+            surv_rates (Numpy array): survival rates that correspond to
+                each model period of life, length S
+            mort_rates (Numpy array): mortality rates that correspond to
+                each model period of life, length S
+            g_n_path (Numpy array): population growth rates over the time
+                path, length T + S
+
+    """
+    # assert curr_year >= 2019
+
+    # age_per = np.linspace(min_yr, max_yr, E+S)
+    fert_rates = get_fert(E + S, base_yr, graph=False)
+    mort_rates, infmort_rate = get_mort(E + S, min_yr, max_yr, beg_yr=2018,
+                end_yr=2018, download=False, save_data=False, graph=False)
+    mort_rates_S = mort_rates[-S:]
+    imm_rates_orig = get_imm_resid(E + S, min_yr, max_yr, base_yr, graph=False)
+
+    OMEGA_orig = np.zeros((E + S, E + S))
+    OMEGA_orig[0, :] = fert_rates + np.hstack(
+        (imm_rates_orig[0], np.zeros(E + S - 1))
+    )
+    OMEGA_orig[1:, :-1] += np.diag(1 - mort_rates[:-1])
+    OMEGA_orig[1:, 1:] += np.diag(imm_rates_orig[1:])
+
+    print('OMEGA_orig: ', OMEGA_orig)
+
+    # workbook = xlsxwriter.Workbook('OMEGA_orig.xlsx')
+    # worksheet1 = workbook.add_worksheet('OMEGA_orig')
+    # row = 0
+    # for col, data in enumerate(OMEGA_orig):
+    #     worksheet1.write_column(row, col, data)
+
+    # Solve for steady-state population growth rate and steady-state
+    # population distribution by age using eigenvalue and eigenvector
+    # decomposition
+    eigvalues, eigvectors = np.linalg.eig(OMEGA_orig)
+    g_n_SS = (eigvalues[np.isreal(eigvalues)].real).max() - 1
+    eigvec_raw = eigvectors[
+        :, (eigvalues[np.isreal(eigvalues)].real).argmax()
+    ].real
+    omega_SS_orig = eigvec_raw / eigvec_raw.sum()
+
+
+    # TO DO: how to download multiple years from Eurostat for population
+
+    # Generate time path of the nonstationary population distribution
+    omega_path_lev = np.zeros((E + S, T + S))
+    pop_data = pd.read_csv(
+        "https://www2.census.gov/programs-surveys/popest/"
+        + "technical-documentation/file-layouts/2010-2019/"
+        + "nc-est2019-agesex-res.csv"
+    )
+    pop_data = pop_data[pop_data["SEX"] == 0][
+        [
+            "AGE",
+            "POPESTIMATE2016",
+            "POPESTIMATE2017",
+            "POPESTIMATE2018",
+            "POPESTIMATE2019",
+        ]
+    ]
+    pop_data.rename(
+        columns={
+            "AGE": "Age",
+            "POPESTIMATE2016": "2016",
+            "POPESTIMATE2017": "2017",
+            "POPESTIMATE2018": "2018",
+            "POPESTIMATE2019": "2019",
+        },
+        inplace=True,
+    )
+    pop_data_samp = pop_data[
+        (pop_data["Age"] >= min_yr - 1) & (pop_data["Age"] <= max_yr - 1)
+    ]
+    pop_2019 = np.array(pop_data_samp["2019"], dtype="f")
+    # Generate the current population distribution given that E+S might
+    # be less than max_yr-min_yr+1
+    age_per_EpS = np.arange(1, E + S + 1)
+    pop_2019_EpS = pop_rebin(pop_2019, E + S)
+    pop_2019_pct = pop_2019_EpS / pop_2019_EpS.sum()
+    # Age most recent population data to the current year of analysis
+    pop_curr = pop_2019_EpS.copy()
+    data_year = 2019
+    pop_next = np.dot(OMEGA_orig, pop_curr)
+    g_n_curr = (pop_next[-S:].sum() - pop_curr[-S:].sum()) / pop_curr[
+        -S:
+    ].sum()  # g_n in 2019
+    pop_past = pop_curr  # assume 2018-2019 pop
+    # Age the data to the current year
+    for per in range(curr_year - data_year):
+        pop_next = np.dot(OMEGA_orig, pop_curr)
+        g_n_curr = (pop_next[-S:].sum() - pop_curr[-S:].sum()) / pop_curr[
+            -S:
+        ].sum()
+        pop_past = pop_curr
+        pop_curr = pop_next
+
+    # Generate time path of the population distribution
+    omega_path_lev[:, 0] = pop_curr.copy()
+    for per in range(1, T + S):
+        pop_next = np.dot(OMEGA_orig, pop_curr)
+        omega_path_lev[:, per] = pop_next.copy()
+        pop_curr = pop_next.copy()
+
+    # Force the population distribution after 1.5*S periods to be the
+    # steady-state distribution by adjusting immigration rates, holding
+    # constant mortality, fertility, and SS growth rates
+    imm_tol = 1e-14
+    fixper = int(1.5 * S)
+    omega_SSfx = omega_path_lev[:, fixper] / omega_path_lev[:, fixper].sum()
+    imm_objs = (
+        fert_rates,
+        mort_rates,
+        infmort_rate,
+        omega_path_lev[:, fixper],
+        g_n_SS,
+    )
+    imm_fulloutput = opt.fsolve(
+        immsolve,
+        imm_rates_orig,
+        args=(imm_objs),
+        full_output=True,
+        xtol=imm_tol,
+    )
+    imm_rates_adj = imm_fulloutput[0]
+    imm_diagdict = imm_fulloutput[1]
+    omega_path_S = omega_path_lev[-S:, :] / np.tile(
+        omega_path_lev[-S:, :].sum(axis=0), (S, 1)
+    )
+    omega_path_S[:, fixper:] = np.tile(
+        omega_path_S[:, fixper].reshape((S, 1)), (1, T + S - fixper)
+    )
+    g_n_path = np.zeros(T + S)
+    g_n_path[0] = g_n_curr.copy()
+    g_n_path[1:] = (
+        omega_path_lev[-S:, 1:].sum(axis=0)
+        - omega_path_lev[-S:, :-1].sum(axis=0)
+    ) / omega_path_lev[-S:, :-1].sum(axis=0)
+    g_n_path[fixper + 1 :] = g_n_SS
+    omega_S_preTP = (pop_past.copy()[-S:]) / (pop_past.copy()[-S:].sum())
+    imm_rates_mat = np.hstack(
+        (
+            np.tile(np.reshape(imm_rates_orig[E:], (S, 1)), (1, fixper)),
+            np.tile(
+                np.reshape(imm_rates_adj[E:], (S, 1)), (1, T + S - fixper)
+            ),
+        )
+    )
+
+    # return omega_path_S, g_n_SS, omega_SSfx, survival rates,
+    # mort_rates_S, and g_n_path
+    pop_dict = {
+        "omega": omega_path_S.T,
+        "g_n_SS": g_n_SS,
+        "omega_SS": omega_SSfx[-S:] / omega_SSfx[-S:].sum(),
+        "surv_rate": 1 - mort_rates_S,
+        "rho": mort_rates_S,
+        "g_n": g_n_path,
+        "imm_rates": imm_rates_mat.T,
+        "omega_S_preTP": omega_S_preTP,
+    }
+
+    return pop_dict
