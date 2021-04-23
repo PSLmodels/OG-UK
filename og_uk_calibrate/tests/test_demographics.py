@@ -230,10 +230,10 @@ def test_get_mort():
 #     assert (rebinned_data.shape[0] == totpers_new)
 
 
-# def test_get_imm_resid():
-#     '''
-#     Test of function to solve for immigration rates from population data
-#     '''
-#     S = 100
-#     imm_rates = demographics.get_imm_resid(S, 0, 100)
-#     assert (imm_rates.shape[0] == S)
+def test_get_imm_resid():
+    '''
+    Test of function to solve for immigration rates from population data
+    '''
+    S = 100
+    imm_rates = demographics.get_imm_resid(S, 0, 100, 2018, graph=False)
+    assert (imm_rates.shape[0] == S)

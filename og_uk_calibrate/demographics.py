@@ -446,3 +446,126 @@ def get_mort(
         )
 
     return mort_rates, infmort_rate
+
+
+def get_imm_resid(totpers, min_yr, max_yr, base_yr, graph=False):
+    """
+    Calculate immigration rates by age as a residual given population
+    levels in different periods, then output average calculated
+    immigration rate. We have to replace the first mortality rate in
+    this function in order to adjust the first implied immigration rate
+    (Source: Population data come Census National Population Characteristics
+    2010-2019, Annual Estimates of the Resident Population by Single
+    Year of Age and Sex for the United States: April 1, 2010 to
+    July 1, 2019 (NC-EST2019-AGESEX-RES))
+
+    Args:
+        totpers (int): total number of agent life periods (E+S), >= 3
+        min_yr (int): age in years at which agents are born, >= 0
+        max_yr (int): age in years at which agents die with certainty,
+            >= 4
+        graph (bool): =True if want graphical output
+
+    Returns:
+        imm_rates (Numpy array):immigration rates that correspond to
+            each period of life, length E+S
+
+    """
+    # TO DO: Consider replacing residual net migration estimates
+    #        with Eurostat data (residual estimates improbable):
+    #        https://ec.europa.eu/eurostat/databrowser/view/proj_19nanmig/default/table?lang=en
+
+    ############ download population data - START #####################
+    Country = "UK"
+    Year = base_yr
+
+    StartPeriod = Year
+    EndPeriod = Year
+
+    filter_pars = {"GEO": [Country]}
+    df_pop = eurostat.get_sdmx_data_df(
+        "demo_pjan",
+        StartPeriod,
+        EndPeriod,
+        filter_pars,
+        flags=True,
+        verbose=True,
+    )
+    ############ download population data - END #######################
+
+    ############## Process Population Data - START ##################
+    # Remove totals and other unused rows
+    indexNames = df_pop[
+        (df_pop["AGE"] == "TOTAL")
+        | (df_pop["AGE"] == "UNK")
+        | (df_pop["AGE"] == "Y_OPEN")
+    ].index
+    df_pop.drop(indexNames, inplace=True)
+
+    # Rename Y_LT1 to 0 (means 'less than one year')
+    df_pop.AGE[df_pop.AGE == "Y_LT1"] = "Y0"
+
+    #  Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
+    df_pop["AGE"] = df_pop["AGE"].str[1:]
+
+    # Drop gender specific population, keep only total
+    df_pop = df_pop[(df_pop["SEX"] == "T")]
+
+    # Name of 1 column includes the year - create column name before dropping
+    Obs_status_col = str(Year) + "_OBS_STATUS"
+    # Drop columns except: Age, Frequency
+    df_pop = df_pop.drop(
+        columns=["UNIT", "SEX", "GEO", "FREQ", Obs_status_col]
+    )
+
+    # convert strings to float to allow for sort_values
+    df_pop = df_pop.astype(float)
+
+    # sort values by AGE
+    df_pop = df_pop.sort_values(by=["AGE"])
+
+    np_pop = df_pop[Year].to_numpy().astype(float)
+    ############## Process Population Data - END ##################
+
+    imm_rates = np.zeros(totpers)
+    fert_rates = get_fert(totpers, base_yr, False)
+    mort_rates, infmort_rate = get_mort(totpers, min_yr, max_yr, False)
+    # Create estimated immigration rates for youngest age individuals
+    newbornvec = np.dot(
+        fert_rates, np_pop.T
+    )
+    print('newbornvec: ', newbornvec)
+    print('np_pop[0]: ', np_pop[0])
+
+    # infmort already accounted for in fert_rates
+    #  imm_mat[:, 0] = (np_pop - (1 - infmort_rate) * newbornvec) / np_pop
+    imm_rates[0] = (np_pop[0] - newbornvec) / np_pop[0]
+    print('imm_rates[0]: ', imm_rates[0])
+    # Estimate immigration rates for all other-aged individuals
+    imm_rates[1:] = (np_pop[1:] - (1 - mort_rates[:-1]) * np_pop[:-1]) / np_pop[1:]
+    print('imm_rates_unsmoothed: ', imm_rates)
+    print('np_pop: ', np_pop)
+    if graph:
+        plt.title("Immigration rates (unsmoothed) by age per person")
+        plt.plot(imm_rates)
+        plt.show()
+
+    # smooth values using 3-year moving average (because data very spiky)
+    imm_rates_orig = imm_rates
+    S = len(imm_rates)
+    imm_rates_smooth = np.zeros(S)
+    for i in range(S):
+        if (i == 0) or (i == (S - 1)):
+            imm_rates_smooth[i] = imm_rates[i]
+        else:
+            imm_rates_smooth[i] = ((
+                imm_rates[i-1] + imm_rates[i] + imm_rates[i+1]) / 3)
+    #overwrite with smoothed data
+    imm_rates = imm_rates_smooth
+    
+    if graph:
+        plt.title("Immigration rates (smoothed) by age per person")
+        plt.plot(imm_rates)
+        plt.show()
+
+    return imm_rates
