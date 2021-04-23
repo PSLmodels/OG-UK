@@ -10,6 +10,8 @@ import pandas as pd
 import eurostat
 from og_uk_calibrate import parameter_plots as pp
 from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
+
 
 # Create current directory path object
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
@@ -106,7 +108,7 @@ def get_fert(totpers, base_yr, graph=False):
     # sort values by AGE
     df_pop = df_pop.sort_values(by=["AGE"])
 
-    np_pop = df_pop[Year].to_numpy().astype(np.float)
+    np_pop = df_pop[Year].to_numpy().astype(float)
     ############## Process Population Data - END ##################
 
     ############## Select Fertility Data - START ##################
@@ -120,10 +122,10 @@ def get_fert(totpers, base_yr, graph=False):
 
     # Record values for 10-14 year old and over 50 year old for tail estimation
     under15total = (
-        df_fert[Year].loc[df_fert["AGE"] == "Y10-14"].values.astype(np.float)
+        df_fert[Year].loc[df_fert["AGE"] == "Y10-14"].values.astype(float)
     )
     over50total = (
-        df_fert[Year].loc[df_fert["AGE"] == "Y_GE50"].values.astype(np.float)
+        df_fert[Year].loc[df_fert["AGE"] == "Y_GE50"].values.astype(float)
     )
 
     # Remove remaining total and subtotals
@@ -143,7 +145,7 @@ def get_fert(totpers, base_yr, graph=False):
     df_fert.drop(indexNames, inplace=True)
 
     # convert to numpy array, keeping only fertility values
-    np_fert = df_fert[Year].to_numpy().astype(np.float)
+    np_fert = df_fert[Year].to_numpy().astype(float)
     ############## Select Fertility Data - START ##################
 
     ############## Add tails for under 15 and over 50 - START ######
