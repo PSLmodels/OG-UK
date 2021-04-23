@@ -372,7 +372,7 @@ def get_mort(
         )
         # Set the mortality rate in max_age_yr = 1.0
         df_mort["mort_rate_yr_mod"] = df_mort["mort_rate_yr_data"]
-        df_mort["mort_rate_yr_mod"][df_mort["age"] == max_age_yr - 1] = 1.0
+        df_mort.loc[df_mort["age"] == max_age_yr - 1, "mort_rate_yr_mod"] = 1.0
         if save_data:
             mort_data_csv_path = os.path.join(DATA_DIR, "mort_rate_data.csv")
             df_mort.to_csv(mort_data_csv_path, index=False)
