@@ -9,7 +9,7 @@ import dask.multiprocessing
 import numpy as np
 import os
 import pickle
-from openfisca_uk import PopulationSim
+from openfisca_uk import Microsimulation
 import pandas as pd
 import warnings
 
@@ -40,7 +40,7 @@ def get_calculator_output(baseline, year, reform=None, data=None):
     """
     # create a simulation
     if data is None or "frs":
-        sim = PopulationSim(reform)
+        sim = Microsimulation(*(reform,), year=year)
     else:
         # pass PopulationSim a data argument
         pass
@@ -55,26 +55,26 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     # define market income - taking expanded_income and excluding gov't
     # transfer benefits found in the Tax-Calculator expanded income
-    market_income = sim.df(["gross_income"]).values.squeeze()
+    market_income = sim.calc("gross_income").values
 
     # Compute marginal tax rates (can only do on earned income now)
-    mtr = sim.calc_mtr()
+    mtr = sim.mtr().values
 
     # Put MTRs, income, tax liability, and other variables in dict
     length = len(sim.df(["benunit_weight"]))
     tax_dict = {
         "mtr_labinc": mtr,
         "mtr_capinc": mtr,
-        "age": sim.df(["age"]).values.squeeze(),
-        "total_labinc": sim.df(["earned_income"]).values.squeeze(),
+        "age": sim.calc("age").values,
+        "total_labinc": sim.calc("earned_income").values,
         "total_capinc": market_income
         - sim.df(["earned_income"]).values.squeeze(),
         "market_income": market_income,
-        "total_tax_liab": sim.df(["income_tax"]).values.squeeze(),
-        "payroll_tax_liab": np.zeros(length),  # is this in OpenFisca-UK?
-        "etr": sim.df(["income_tax"]).values.squeeze() / market_income,
+        "total_tax_liab": sim.calc("income_tax").values,
+        "payroll_tax_liab": sim.calc("national_insurance").values,  # is this in OpenFisca-UK?
+        "etr": sim.calc("tax").values / market_income,
         "year": year * np.ones(length),
-        "weight": sim.df(["benunit_weight"]).values.squeeze(),
+        "weight": sim.calc("person_weight").values,
     }
 
     # garbage collection
