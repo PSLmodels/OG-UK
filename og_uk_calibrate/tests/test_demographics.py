@@ -1,5 +1,7 @@
 import numpy as np
+import eurostat
 from og_uk_calibrate import demographics
+
 
 
 # def test_get_pop_objs():
@@ -52,13 +54,13 @@ from og_uk_calibrate import demographics
 #                                pop_dict['imm_rates'][1:, :]) < 0.0001))
 
 
-# def test_get_fert():
-#     '''
-#     Test of function to get fertility rates from data
-#     '''
-#     S = 100
-#     fert_rates = demographics.get_fert(S, 0, 100, graph=False)
-#     assert (fert_rates.shape[0] == S)
+def test_get_fert():
+    '''
+    Test of function to get fertility rates from data
+    '''
+    S = 100
+    fert_rates = demographics.get_fert(100, 2018, graph=True)
+    assert (fert_rates.shape[0] == S)
 
 
 def test_get_mort():
