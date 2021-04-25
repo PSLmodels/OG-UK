@@ -11,6 +11,7 @@ import pandas as pd
 import eurostat
 from og_uk_calibrate import parameter_plots as pp
 from scipy.optimize import curve_fit
+import scipy.optimize as opt
 import matplotlib.pyplot as plt
 import xlsxwriter
 
@@ -475,6 +476,8 @@ def get_imm_resid(totpers, min_yr, max_yr, base_yr, graph=False):
     # TO DO: Consider replacing residual net migration estimates
     #        with Eurostat data (residual estimates improbable):
     #        https://ec.europa.eu/eurostat/databrowser/view/proj_19nanmig/default/table?lang=en
+    #        Current method doesn't even use multiple years, gives
+    #        implausible imm_rates.
 
     ############ download population data - START #####################
     Country = "UK"
@@ -659,6 +662,7 @@ def get_pop_objs(E, S, T, min_yr, max_yr, base_yr, GraphDiag=False):
     OMEGA_orig[1:, 1:] += np.diag(imm_rates_orig[1:])
 
     print('OMEGA_orig: ', OMEGA_orig)
+    print('OMEGA_orig[0, 9:62] fert: ', OMEGA_orig[0, 9:62])
 
     # workbook = xlsxwriter.Workbook('OMEGA_orig.xlsx')
     # worksheet1 = workbook.add_worksheet('OMEGA_orig')
@@ -677,46 +681,112 @@ def get_pop_objs(E, S, T, min_yr, max_yr, base_yr, GraphDiag=False):
     omega_SS_orig = eigvec_raw / eigvec_raw.sum()
 
 
-    # TO DO: how to download multiple years from Eurostat for population
+    # TO DO: download multiple years from Eurostat for population
+
+    ##### download previous year population - START ############
+    Country = "UK"
+    Year = 2018
+    StartPeriod = 2015
+    EndPeriod = Year
+
+    filter_pars = {"GEO": [Country]}
+    df_pop = eurostat.get_sdmx_data_df(
+        "demo_pjan", StartPeriod, EndPeriod, filter_pars, flags=True, verbose=True
+    )
+    print('df_pop: ', df_pop)
+
+    # Remove totals and other unused rows
+    indexNames = df_pop[
+        (df_pop["AGE"] == "TOTAL")
+        | (df_pop["AGE"] == "UNK")
+        | (df_pop["AGE"] == "Y_OPEN")
+    ].index
+    df_pop.drop(indexNames, inplace=True)
+
+    # Rename Y_LT1 to 0 (means 'less than one year')
+    df_pop.AGE[df_pop.AGE == "Y_LT1"] = "Y0"
+
+    # Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
+    df_pop["AGE"] = df_pop["AGE"].str[1:]
+
+    # Keep gender specific population, to calculate fertility per person
+    df_pop_m = df_pop[(df_pop["SEX"] == "M")]
+    df_pop_f = df_pop[(df_pop["SEX"] == "F")]
+    df_pop = df_pop[(df_pop["SEX"] == "T")]
+
+    # Name of 1 column includes the year - create column name before dropping
+    Obs_status_col = str(Year) + "_OBS_STATUS"
+    # Drop columns except: Age, Frequency
+    df_pop = df_pop.drop(columns=["UNIT", "SEX", "GEO", "FREQ", Obs_status_col])
+
+    if StartPeriod != Year:
+        num_yr = Year - StartPeriod
+        for n in range(1, num_yr + 1):
+            print('n: ', n)
+            Obs_status_col_SP = str(Year-n) + "_OBS_STATUS"
+            df_pop = df_pop.drop(columns=[Obs_status_col_SP])
+
+    # convert strings to float
+    df_pop = df_pop.astype(float)
+
+    # sort values by AGE
+    df_pop = df_pop.sort_values(by=["AGE"])
+    print("df_pop[-20:]: ", df_pop[-20:])
+
+    np_pop = df_pop[Year].to_numpy().astype(float)
+    print("np_pop[-20:]: ", np_pop[-20:])
+    print('np_pop.shape: ', np_pop.shape)
+
+    if StartPeriod != Year:
+        num_yr = Year - StartPeriod
+        np_pop_prev = np.zeros((len(np_pop), num_yr))
+        for n in range(1, num_yr + 1):
+            np_pop_prev[:, n - 1] = df_pop[Year - n].to_numpy().astype(float)
+            print("np_pop_prev[-20:]: ", np_pop_prev[-20:, n - 1])
+            print('np_pop_prev.shape: ', np_pop_prev.shape)
+    ##### download previous year population - END ############
 
     # Generate time path of the nonstationary population distribution
     omega_path_lev = np.zeros((E + S, T + S))
-    pop_data = pd.read_csv(
-        "https://www2.census.gov/programs-surveys/popest/"
-        + "technical-documentation/file-layouts/2010-2019/"
-        + "nc-est2019-agesex-res.csv"
-    )
-    pop_data = pop_data[pop_data["SEX"] == 0][
-        [
-            "AGE",
-            "POPESTIMATE2016",
-            "POPESTIMATE2017",
-            "POPESTIMATE2018",
-            "POPESTIMATE2019",
-        ]
-    ]
-    pop_data.rename(
-        columns={
-            "AGE": "Age",
-            "POPESTIMATE2016": "2016",
-            "POPESTIMATE2017": "2017",
-            "POPESTIMATE2018": "2018",
-            "POPESTIMATE2019": "2019",
-        },
-        inplace=True,
-    )
-    pop_data_samp = pop_data[
-        (pop_data["Age"] >= min_yr - 1) & (pop_data["Age"] <= max_yr - 1)
-    ]
-    pop_2019 = np.array(pop_data_samp["2019"], dtype="f")
-    # Generate the current population distribution given that E+S might
-    # be less than max_yr-min_yr+1
-    age_per_EpS = np.arange(1, E + S + 1)
-    pop_2019_EpS = pop_rebin(pop_2019, E + S)
-    pop_2019_pct = pop_2019_EpS / pop_2019_EpS.sum()
+    # pop_data = pd.read_csv(
+    #     "https://www2.census.gov/programs-surveys/popest/"
+    #     + "technical-documentation/file-layouts/2010-2019/"
+    #     + "nc-est2019-agesex-res.csv"
+    # )
+    # pop_data = pop_data[pop_data["SEX"] == 0][
+    #     [
+    #         "AGE",
+    #         "POPESTIMATE2016",
+    #         "POPESTIMATE2017",
+    #         "POPESTIMATE2018",
+    #         "POPESTIMATE2019",
+    #     ]
+    # ]
+    # pop_data.rename(
+    #     columns={
+    #         "AGE": "Age",
+    #         "POPESTIMATE2016": "2016",
+    #         "POPESTIMATE2017": "2017",
+    #         "POPESTIMATE2018": "2018",
+    #         "POPESTIMATE2019": "2019",
+    #     },
+    #     inplace=True,
+    # )
+    # pop_data_samp = pop_data[
+    #     (pop_data["Age"] >= min_yr - 1) & (pop_data["Age"] <= max_yr - 1)
+    # ]
+    # pop_2019 = np.array(pop_data_samp["2019"], dtype="f")
+    # # Generate the current population distribution given that E+S might
+    # # be less than max_yr-min_yr+1
+    # age_per_EpS = np.arange(1, E + S + 1)
+    # pop_2019_EpS = pop_rebin(pop_2019, E + S)
+    # pop_2019_pct = pop_2019_EpS / pop_2019_EpS.sum()
+
     # Age most recent population data to the current year of analysis
-    pop_curr = pop_2019_EpS.copy()
-    data_year = 2019
+    # pop_curr = pop_2019_EpS.copy()
+    pop_curr = np_pop
+    data_year = 2018
+    curr_year = 2019
     pop_next = np.dot(OMEGA_orig, pop_curr)
     g_n_curr = (pop_next[-S:].sum() - pop_curr[-S:].sum()) / pop_curr[
         -S:
@@ -795,5 +865,7 @@ def get_pop_objs(E, S, T, min_yr, max_yr, base_yr, GraphDiag=False):
         "imm_rates": imm_rates_mat.T,
         "omega_S_preTP": omega_S_preTP,
     }
+
+    print('pop_dict: ', pop_dict)
 
     return pop_dict
