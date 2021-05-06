@@ -473,18 +473,11 @@ def get_imm_resid(totpers, min_yr, max_yr, base_yr, graph=False):
             each period of life, length E+S
 
     """
-    # TO DO: Consider replacing residual net migration estimates
-    #        with Eurostat data (residual estimates improbable):
-    #        https://ec.europa.eu/eurostat/databrowser/view/proj_19nanmig/default/table?lang=en
-    #        Current method doesn't even use multiple years, gives
-    #        implausible imm_rates.
 
-    ############ download population data - START #####################
+    ##### download previous years of population - START ############
     Country = "UK"
-    Year = base_yr
-
-    StartPeriod = Year
-    EndPeriod = Year
+    StartPeriod = 2015
+    EndPeriod = base_yr
 
     filter_pars = {"GEO": [Country]}
     df_pop = eurostat.get_sdmx_data_df(
@@ -495,9 +488,7 @@ def get_imm_resid(totpers, min_yr, max_yr, base_yr, graph=False):
         flags=True,
         verbose=True,
     )
-    ############ download population data - END #######################
 
-    ############## Process Population Data - START ##################
     # Remove totals and other unused rows
     indexNames = df_pop[
         (df_pop["AGE"] == "TOTAL")
@@ -509,66 +500,127 @@ def get_imm_resid(totpers, min_yr, max_yr, base_yr, graph=False):
     # Rename Y_LT1 to 0 (means 'less than one year')
     df_pop.AGE[df_pop.AGE == "Y_LT1"] = "Y0"
 
-    #  Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
+    # Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
     df_pop["AGE"] = df_pop["AGE"].str[1:]
 
-    # Drop gender specific population, keep only total
+    # Keep gender specific population, to calculate fertility per person
+    df_pop_m = df_pop[(df_pop["SEX"] == "M")]
+    df_pop_f = df_pop[(df_pop["SEX"] == "F")]
     df_pop = df_pop[(df_pop["SEX"] == "T")]
 
     # Name of 1 column includes the year - create column name before dropping
-    Obs_status_col = str(Year) + "_OBS_STATUS"
+    Obs_status_col = str(base_yr) + "_OBS_STATUS"
     # Drop columns except: Age, Frequency
     df_pop = df_pop.drop(
         columns=["UNIT", "SEX", "GEO", "FREQ", Obs_status_col]
     )
 
-    # convert strings to float to allow for sort_values
+    if StartPeriod != base_yr:
+        num_yr = base_yr - StartPeriod
+        for n in range(1, num_yr + 1):
+            print("n: ", n)
+            Obs_status_col_SP = str(base_yr - n) + "_OBS_STATUS"
+            df_pop = df_pop.drop(columns=[Obs_status_col_SP])
     df_pop = df_pop.astype(float)
-
-    # sort values by AGE
     df_pop = df_pop.sort_values(by=["AGE"])
+    np_pop = df_pop[base_yr].to_numpy().astype(float)
 
-    np_pop = df_pop[Year].to_numpy().astype(float)
-    ############## Process Population Data - END ##################
+    if StartPeriod != base_yr:
+        num_yr = base_yr - StartPeriod
+        np_pop_prev = np.zeros((len(np_pop), num_yr))
+        for n in range(1, num_yr + 1):
+            np_pop_prev[:, n - 1] = (
+                df_pop[base_yr - n].to_numpy().astype(float)
+            )
+    ##### download previous year population - END ############
 
-    imm_rates = np.zeros(totpers)
-    fert_rates = get_fert(totpers, base_yr, False)
-    mort_rates, infmort_rate = get_mort(totpers, min_yr, max_yr, False)
-    # Create estimated immigration rates for youngest age individuals
-    newbornvec = np.dot(
-        fert_rates, np_pop.T
+    # Create three years of estimated immigration rates for youngest age
+    # individuals
+    imm_mat = np.zeros((3, totpers))
+    # years 2017,2016,2015:
+    pop11vec = np_pop_prev[0, :].transpose()
+    # years 2018,2017,2016:
+    pop21vec = np.zeros(3)
+    pop21vec = np.vstack((np_pop[0], np_pop_prev[0, 0], np_pop_prev[0, 1])).T
+
+    # # fert_rates2018 massively underestimates new borns in 2015-2017
+    # # use different methodology below
+    # fert_rates = get_fert(totpers, base_yr, False)
+    # newbornvec = np.dot(fert_rates, np_pop_prev)
+
+    #download total new borns in 2015,2016,2017
+    Country = "UK"
+    Year = base_yr
+    StartPeriod = 2015
+    EndPeriod = Year
+    Total = "TOTAL"
+    Gender = "T"
+    filter_pars = {"GEO": [Country], "AGE": [Total], "SEX": [Gender]}
+    df_fert_total = eurostat.get_sdmx_data_df(
+        "demo_fasec",
+        StartPeriod,
+        EndPeriod,
+        filter_pars,
+        flags=True,
+        verbose=True,
     )
 
-    # infmort already accounted for in fert_rates
-    #  imm_mat[:, 0] = (np_pop - (1 - infmort_rate) * newbornvec) / np_pop
-    imm_rates[0] = (np_pop[0] - newbornvec) / np_pop[0]
+    newbornvec = (np.vstack((
+        df_fert_total[2017].loc[df_fert_total["AGE"] == "TOTAL"].values.astype(float),
+        df_fert_total[2016].loc[df_fert_total["AGE"] == "TOTAL"].values.astype(float),
+        df_fert_total[2015].loc[df_fert_total["AGE"] == "TOTAL"].values.astype(float)
+    )).T)
+    imm_mat[:, 0] = (pop21vec - newbornvec) / pop11vec
 
-    # Estimate immigration rates for all other-aged individuals
-    imm_rates[1:] = ((np_pop[1:] - (1 - mort_rates[:-1]) * np_pop[:-1]) 
-                    / np_pop[1:])
+    mort_rates, infmort_rate = get_mort(
+        totpers,
+        min_yr,
+        max_yr,
+        beg_yr=base_yr,
+        end_yr=base_yr,
+        download=False,
+        save_data=False,
+        graph=False,
+    )
 
-    if graph:
-        plt.title("Immigration rates (unsmoothed) by age per person")
-        plt.plot(imm_rates)
-        plt.show()
+    # Estimate 3 years of immigration rates for all other-aged
+    # individuals
+    pop16mat = np.vstack(
+        # (pop_2016_EpS[:-1], pop_2017_EpS[:-1], pop_2018_EpS[:-1])
+        (np_pop_prev[:-1, 0], np_pop_prev[:-1, 1], np_pop_prev[:-1, 2])
+    )
+    pop17mat = np.vstack(
+        # (pop_2016_EpS[1:], pop_2017_EpS[1:], pop_2018_EpS[1:])
+        (np_pop_prev[1:, 2], np_pop_prev[1:, 1], np_pop_prev[1:, 0])
+    )
+    pop18mat = np.vstack(
+        # (pop_2017_EpS[1:], pop_2018_EpS[1:], pop_2019_EpS[1:])
+        (np_pop_prev[1:, 1], np_pop_prev[1:, 0], np_pop[1:])
+    )
 
-    # smooth values using 3-year moving average (because data very spiky)
-    imm_rates_orig = imm_rates
-    S = len(imm_rates)
-    imm_rates_smooth = np.zeros(S)
-    for i in range(S):
-        if (i == 0) or (i == (S - 1)):
+    mort_mat = np.tile(mort_rates[:-1], (3, 1))
+    imm_mat[:, 1:] = (pop18mat - (1 - mort_mat) * pop16mat) / pop17mat
+    # Final estimated immigration rates are the averages over 3 years
+    imm_rates = imm_mat.mean(axis=0)
+
+    # imm_rates for older ages clearly unreliable (small sample, not reconciled)
+    # replace ages 90+ with average value for ages 80-89
+    imm_rates_80s = imm_rates[80: 89].sum() / 10
+    imm_rates[90:] = imm_rates_80s
+
+    # take moving averages to smooth
+    imm_rates_smooth = np.zeros(totpers)
+    for i in range(totpers):
+        if (i == 0) or (i == (totpers - 1)):
             imm_rates_smooth[i] = imm_rates[i]
         else:
-            imm_rates_smooth[i] = ((
-                imm_rates[i-1] + imm_rates[i] + imm_rates[i+1]) / 3)
-    #overwrite with smoothed data
+            imm_rates_smooth[i] = (imm_rates[i - 1] + imm_rates[i] + imm_rates[i + 1]) / 3
     imm_rates = imm_rates_smooth
-    
+
     if graph:
-        plt.title("Immigration rates (smoothed) by age per person")
+        plt.title("imm_rates by age per pers. (new born recalc & 90s=ave80s & smoothed")
         plt.plot(imm_rates)
-        plt.show()
+        plt.show()  
 
     return imm_rates
 
@@ -649,8 +701,16 @@ def get_pop_objs(E, S, T, min_yr, max_yr, base_yr, GraphDiag=False):
 
     # age_per = np.linspace(min_yr, max_yr, E+S)
     fert_rates = get_fert(E + S, base_yr, graph=False)
-    mort_rates, infmort_rate = get_mort(E + S, min_yr, max_yr, beg_yr=2018,
-                end_yr=2018, download=False, save_data=False, graph=False)
+    mort_rates, infmort_rate = get_mort(
+        E + S,
+        min_yr,
+        max_yr,
+        beg_yr=2018,
+        end_yr=2018,
+        download=False,
+        save_data=False,
+        graph=False,
+    )
     mort_rates_S = mort_rates[-S:]
     imm_rates_orig = get_imm_resid(E + S, min_yr, max_yr, base_yr, graph=False)
 
@@ -661,8 +721,8 @@ def get_pop_objs(E, S, T, min_yr, max_yr, base_yr, GraphDiag=False):
     OMEGA_orig[1:, :-1] += np.diag(1 - mort_rates[:-1])
     OMEGA_orig[1:, 1:] += np.diag(imm_rates_orig[1:])
 
-    print('OMEGA_orig: ', OMEGA_orig)
-    print('OMEGA_orig[0, 9:62] fert: ', OMEGA_orig[0, 9:62])
+    print("OMEGA_orig: ", OMEGA_orig)
+    print("OMEGA_orig[0, 9:62] fert: ", OMEGA_orig[0, 9:62])
 
     # workbook = xlsxwriter.Workbook('OMEGA_orig.xlsx')
     # worksheet1 = workbook.add_worksheet('OMEGA_orig')
@@ -680,7 +740,6 @@ def get_pop_objs(E, S, T, min_yr, max_yr, base_yr, GraphDiag=False):
     ].real
     omega_SS_orig = eigvec_raw / eigvec_raw.sum()
 
-
     # TO DO: download multiple years from Eurostat for population
 
     ##### download previous year population - START ############
@@ -691,9 +750,14 @@ def get_pop_objs(E, S, T, min_yr, max_yr, base_yr, GraphDiag=False):
 
     filter_pars = {"GEO": [Country]}
     df_pop = eurostat.get_sdmx_data_df(
-        "demo_pjan", StartPeriod, EndPeriod, filter_pars, flags=True, verbose=True
+        "demo_pjan",
+        StartPeriod,
+        EndPeriod,
+        filter_pars,
+        flags=True,
+        verbose=True,
     )
-    print('df_pop: ', df_pop)
+    print("df_pop: ", df_pop)
 
     # Remove totals and other unused rows
     indexNames = df_pop[
@@ -717,13 +781,15 @@ def get_pop_objs(E, S, T, min_yr, max_yr, base_yr, GraphDiag=False):
     # Name of 1 column includes the year - create column name before dropping
     Obs_status_col = str(Year) + "_OBS_STATUS"
     # Drop columns except: Age, Frequency
-    df_pop = df_pop.drop(columns=["UNIT", "SEX", "GEO", "FREQ", Obs_status_col])
+    df_pop = df_pop.drop(
+        columns=["UNIT", "SEX", "GEO", "FREQ", Obs_status_col]
+    )
 
     if StartPeriod != Year:
         num_yr = Year - StartPeriod
         for n in range(1, num_yr + 1):
-            print('n: ', n)
-            Obs_status_col_SP = str(Year-n) + "_OBS_STATUS"
+            print("n: ", n)
+            Obs_status_col_SP = str(Year - n) + "_OBS_STATUS"
             df_pop = df_pop.drop(columns=[Obs_status_col_SP])
 
     # convert strings to float
@@ -735,7 +801,7 @@ def get_pop_objs(E, S, T, min_yr, max_yr, base_yr, GraphDiag=False):
 
     np_pop = df_pop[Year].to_numpy().astype(float)
     print("np_pop[-20:]: ", np_pop[-20:])
-    print('np_pop.shape: ', np_pop.shape)
+    print("np_pop.shape: ", np_pop.shape)
 
     if StartPeriod != Year:
         num_yr = Year - StartPeriod
@@ -743,7 +809,7 @@ def get_pop_objs(E, S, T, min_yr, max_yr, base_yr, GraphDiag=False):
         for n in range(1, num_yr + 1):
             np_pop_prev[:, n - 1] = df_pop[Year - n].to_numpy().astype(float)
             print("np_pop_prev[-20:]: ", np_pop_prev[-20:, n - 1])
-            print('np_pop_prev.shape: ', np_pop_prev.shape)
+            print("np_pop_prev.shape: ", np_pop_prev.shape)
     ##### download previous year population - END ############
 
     # Generate time path of the nonstationary population distribution
@@ -866,6 +932,8 @@ def get_pop_objs(E, S, T, min_yr, max_yr, base_yr, GraphDiag=False):
         "omega_S_preTP": omega_S_preTP,
     }
 
-    print('pop_dict: ', pop_dict)
+    print("pop_dict: ", pop_dict)
+
+    # if graph:
 
     return pop_dict
