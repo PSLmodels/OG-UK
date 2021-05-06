@@ -548,7 +548,7 @@ def get_imm_resid(totpers, min_yr, max_yr, base_yr, graph=False):
     # fert_rates = get_fert(totpers, base_yr, False)
     # newbornvec = np.dot(fert_rates, np_pop_prev)
 
-    #download total new borns in 2015,2016,2017
+    # download total new borns in 2015,2016,2017
     Country = "UK"
     Year = base_yr
     StartPeriod = 2015
@@ -565,11 +565,19 @@ def get_imm_resid(totpers, min_yr, max_yr, base_yr, graph=False):
         verbose=True,
     )
 
-    newbornvec = (np.vstack((
-        df_fert_total[2017].loc[df_fert_total["AGE"] == "TOTAL"].values.astype(float),
-        df_fert_total[2016].loc[df_fert_total["AGE"] == "TOTAL"].values.astype(float),
-        df_fert_total[2015].loc[df_fert_total["AGE"] == "TOTAL"].values.astype(float)
-    )).T)
+    newbornvec = np.vstack(
+        (
+            df_fert_total[2017]
+            .loc[df_fert_total["AGE"] == "TOTAL"]
+            .values.astype(float),
+            df_fert_total[2016]
+            .loc[df_fert_total["AGE"] == "TOTAL"]
+            .values.astype(float),
+            df_fert_total[2015]
+            .loc[df_fert_total["AGE"] == "TOTAL"]
+            .values.astype(float),
+        )
+    ).T
     imm_mat[:, 0] = (pop21vec - newbornvec) / pop11vec
 
     mort_rates, infmort_rate = get_mort(
@@ -605,7 +613,7 @@ def get_imm_resid(totpers, min_yr, max_yr, base_yr, graph=False):
 
     # imm_rates for older ages clearly unreliable (small sample, not reconciled)
     # replace ages 90+ with average value for ages 80-89
-    imm_rates_80s = imm_rates[80: 89].sum() / 10
+    imm_rates_80s = imm_rates[80:89].sum() / 10
     imm_rates[90:] = imm_rates_80s
 
     # take moving averages to smooth
@@ -614,13 +622,17 @@ def get_imm_resid(totpers, min_yr, max_yr, base_yr, graph=False):
         if (i == 0) or (i == (totpers - 1)):
             imm_rates_smooth[i] = imm_rates[i]
         else:
-            imm_rates_smooth[i] = (imm_rates[i - 1] + imm_rates[i] + imm_rates[i + 1]) / 3
+            imm_rates_smooth[i] = (
+                imm_rates[i - 1] + imm_rates[i] + imm_rates[i + 1]
+            ) / 3
     imm_rates = imm_rates_smooth
 
     if graph:
-        plt.title("imm_rates by age per pers. (new born recalc & 90s=ave80s & smoothed")
+        plt.title(
+        "imm_rates by age per pers. (new born recalc & 90s=ave80s & smoothed"
+        )
         plt.plot(imm_rates)
-        plt.show()  
+        plt.show()
 
     return imm_rates
 
