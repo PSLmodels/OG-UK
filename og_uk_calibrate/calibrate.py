@@ -16,7 +16,7 @@ CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
 
 
 class Calibration:
-    """ OG-UK calibration class """
+    """OG-UK calibration class"""
 
     def __init__(
         self,
