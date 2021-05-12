@@ -1,12 +1,4 @@
-from oguk_calibrate import (
-    estimate_beta_j,
-    bequest_transmission,
-    demographics,
-    macro_params,
-    transfer_distribution,
-    income,
-    txfunc,
-)
+from og_uk_calibrate import txfunc
 import os
 import numpy as np
 from ogusa.utils import safe_read_pickle, mkdirs
@@ -46,29 +38,29 @@ class Calibration:
                 run_micro=True,
                 tax_func_path=tax_func_path,
             )
-        if estimate_beta:
-            self.beta_j = estimate_beta_j.beta_estimate(self)
-        # if estimate_chi_n:
-        #     chi_n = self.get_chi_n()
+        # if estimate_beta:
+        #     self.beta_j = estimate_beta_j.beta_estimate(self)
+        # # if estimate_chi_n:
+        # #     chi_n = self.get_chi_n()
 
-        # Macro estimation
-        self.macro_params = macro_params.get_macro_params()
+        # # Macro estimation
+        # self.macro_params = macro_params.get_macro_params()
 
-        # eta estimation
-        self.eta = transfer_distribution.get_transfer_matrix()
+        # # eta estimation
+        # self.eta = transfer_distribution.get_transfer_matrix()
 
-        # zeta estimation
-        self.zeta = bequest_transmission.get_bequest_matrix()
+        # # zeta estimation
+        # self.zeta = bequest_transmission.get_bequest_matrix()
 
-        # earnings profiles
-        self.e = income.get_e_interp(
-            p.S, p.omega_SS, p.omega_SS_80, p.lambdas, plot=False
-        )
+        # # earnings profiles
+        # self.e = income.get_e_interp(
+        #     p.S, p.omega_SS, p.omega_SS_80, p.lambdas, plot=False
+        # )
 
-        # demographics
-        self.demographic_params = demographics.get_pop_objs(
-            p.E, p.S, p.T, 1, 100, p.start_year
-        )
+        # # demographics
+        # self.demographic_params = demographics.get_pop_objs(
+        #     p.E, p.S, p.T, 1, 100, p.start_year
+        # )
 
     # Tax Functions
     def get_tax_function_parameters(
@@ -85,14 +77,17 @@ class Calibration:
         """
         Reads pickle file of tax function parameters or estimates the
         parameters from microsimulation model output.
+
         Args:
             client (Dask client object): client
             run_micro (bool): whether to estimate parameters from
                 microsimulation model
             tax_func_path (string): path where find or save tax
                 function parameter estimates
+
         Returns:
             None
+
         """
         # set paths if none given
         if tax_func_path is None:
@@ -220,13 +215,16 @@ class Calibration:
         """
         This function reads in tax function parameters from pickle
         files.
+
         Args:
             tax_func_path (str): path to pickle with tax function
                 parameter estimates
+
         Returns:
             dict_params (dict): dictionary containing arrays of tax
                 function parameters
             run_micro (bool): whether to estimate tax function parameters
+
         """
         flag = 0
         if os.path.exists(tax_func_path):
