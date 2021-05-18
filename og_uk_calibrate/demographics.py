@@ -9,6 +9,7 @@ import sys
 import numpy as np
 import pandas as pd
 import eurostat
+
 # from og_uk_calibrate import parameter_plots as pp
 from scipy.optimize import curve_fit
 import scipy.optimize as opt
@@ -624,7 +625,7 @@ def get_imm_resid(totpers, min_yr, max_yr, base_yr, graph=False):
 
     if graph:
         plt.title(
-        "imm_rates by age per pers. (new born recalc & 90s=ave80s & smoothed"
+            "imm_rates by age per pers. (new born recalc & 90s=ave80s & smoothed"
         )
         plt.plot(imm_rates)
         plt.show()
