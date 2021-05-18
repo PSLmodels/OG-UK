@@ -1,17 +1,19 @@
 import numpy as np
 import eurostat
 import sys
+
 sys.path.append("../")
 import demographics
 
 
 def test_get_fert():
-    '''
+    """
     Test of function to get fertility rates from data
-    '''
+    """
     S = 100
     fert_rates = demographics.get_fert(100, 2018, graph=False)
-    assert (fert_rates.shape[0] == S)
+    assert fert_rates.shape[0] == S
+
 
 def test_get_pop_objs():
     """
@@ -23,46 +25,45 @@ def test_get_pop_objs():
     T = int(round(4.0 * S))
     base_yr = 2018
 
-    pop_dict = demographics.get_pop_objs(
-        E, S, T, 1, 100, base_yr, False)
+    pop_dict = demographics.get_pop_objs(E, S, T, 1, 100, base_yr, False)
 
-    # assert (np.allclose(0, 1))
-
-    assert (np.allclose(pop_dict['omega_SS'], pop_dict['omega'][-1, :]))
-
-
-# # def test_pop_smooth():
-# #     """
-# #     Test that population growth rates evolve smoothly.
-# #     """
-# #     E = 20
-# #     S = 80
-# #     T = int(round(4.0 * S))
-# #     start_year = 2019
-
-# #     pop_dict = demographics.get_pop_objs(
-# #         E, S, T, 1, 100, start_year, False)
-
-# #     assert (np.any(np.absolute(pop_dict['omega'][:-1, :] -
-# #                                pop_dict['omega'][1:, :]) < 0.0001))
-# #     assert (np.any(np.absolute(pop_dict['g_n'][:-1] -
-# #                                pop_dict['g_n'][1:]) < 0.0001))
+    # assert np.allclose(0,1)
+    assert np.allclose(pop_dict["omega_SS"], pop_dict["omega"][-1, :])
+    assert np.allclose(pop_dict["g_n_SS"], pop_dict["g_n"][-1])
 
 
-# # def test_imm_smooth():
-# #     """
-# #     Test that population growth rates evolve smoothly.
-# #     """
-# #     E = 20
-# #     S = 80
-# #     T = int(round(4.0 * S))
-# #     start_year = 2019
+# def test_pop_smooth():
+#     """
+#     Test that population growth rates evolve smoothly.
+#     """
+#     E = 20
+#     S = 80
+#     T = int(round(4.0 * S))
+#     start_year = 2019
 
-# #     pop_dict = demographics.get_pop_objs(
-# #         E, S, T, 1, 100, start_year, False)
+#     pop_dict = demographics.get_pop_objs(
+#         E, S, T, 1, 100, start_year, False)
 
-# #     assert (np.any(np.absolute(pop_dict['imm_rates'][:-1, :] -
-# #                                pop_dict['imm_rates'][1:, :]) < 0.0001))
+#     assert (np.any(np.absolute(pop_dict['omega'][:-1, :] -
+#                                pop_dict['omega'][1:, :]) < 0.0001))
+#     assert (np.any(np.absolute(pop_dict['g_n'][:-1] -
+#                                pop_dict['g_n'][1:]) < 0.0001))
+
+
+# def test_imm_smooth():
+#     """
+#     Test that population growth rates evolve smoothly.
+#     """
+#     E = 20
+#     S = 80
+#     T = int(round(4.0 * S))
+#     start_year = 2019
+
+#     pop_dict = demographics.get_pop_objs(
+#         E, S, T, 1, 100, start_year, False)
+
+#     assert (np.any(np.absolute(pop_dict['imm_rates'][:-1, :] -
+#                                pop_dict['imm_rates'][1:, :]) < 0.0001))
 
 
 def test_get_mort():
@@ -221,14 +222,16 @@ def test_get_mort():
     assert infmort_rate_3 == 0.003507
     assert np.allclose(mort_rates_3, mort_rates_11)
 
+
 def test_get_imm_resid():
-    '''
+    """
     Test of function to download and process immigration rates
-    '''
+    """
     E = 20
     S = 80
     imm_rates = demographics.get_imm_resid(E + S, 0, 100, 2018, graph=False)
-    assert (imm_rates.shape[0] == E + S)
+    assert imm_rates.shape[0] == E + S
+
 
 # # def test_pop_rebin():
 # #     '''
@@ -238,5 +241,3 @@ def test_get_imm_resid():
 # #     totpers_new = 5
 # #     rebinned_data = demographics.pop_rebin(curr_pop_dist, totpers_new)
 # #     assert (rebinned_data.shape[0] == totpers_new)
-
-

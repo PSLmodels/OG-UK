@@ -9,7 +9,7 @@ import sys
 import numpy as np
 import pandas as pd
 import eurostat
-from og_uk_calibrate import parameter_plots as pp
+# from og_uk_calibrate import parameter_plots as pp
 from scipy.optimize import curve_fit
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
@@ -75,9 +75,6 @@ def get_fert(totpers, base_yr, graph=False):
         verbose=True,
     )
     ############## Download Eurostat Data - END ##################
-
-    # TO DO: Decide how to load population
-    #        probably don't want to load separately in get_fert
 
     ############## Process Population Data - START ##################
     # Remove totals and other unused rows
@@ -436,16 +433,16 @@ def get_mort(
     if graph:
         mort_rates_yr = df_mort["mort_rate_yr_data"].to_numpy()
         ages_yr = np.arange(0, 100)
-        pp.plot_mort_rates_data(
-            totpers,
-            min_age_yr,
-            max_age_yr,
-            mort_rates_yr,
-            ages_yr,
-            mort_rates,
-            infmort_rate,
-            output_dir=FIG_DIR,
-        )
+        # pp.plot_mort_rates_data(
+        #     totpers,
+        #     min_age_yr,
+        #     max_age_yr,
+        #     mort_rates_yr,
+        #     ages_yr,
+        #     mort_rates,
+        #     infmort_rate,
+        #     output_dir=FIG_DIR,
+        # )
 
     return mort_rates, infmort_rate
 
@@ -503,9 +500,7 @@ def get_imm_resid(totpers, min_yr, max_yr, base_yr, graph=False):
     # Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
     df_pop["AGE"] = df_pop["AGE"].str[1:]
 
-    # Keep gender specific population, to calculate fertility per person
-    df_pop_m = df_pop[(df_pop["SEX"] == "M")]
-    df_pop_f = df_pop[(df_pop["SEX"] == "F")]
+    # Use total population, to calculate fertility per person
     df_pop = df_pop[(df_pop["SEX"] == "T")]
 
     # Name of 1 column includes the year - create column name before dropping
@@ -548,7 +543,7 @@ def get_imm_resid(totpers, min_yr, max_yr, base_yr, graph=False):
     # fert_rates = get_fert(totpers, base_yr, False)
     # newbornvec = np.dot(fert_rates, np_pop_prev)
 
-    #download total new borns in 2015,2016,2017
+    # download total new borns in 2015,2016,2017
     Country = "UK"
     Year = base_yr
     StartPeriod = 2015
@@ -565,11 +560,19 @@ def get_imm_resid(totpers, min_yr, max_yr, base_yr, graph=False):
         verbose=True,
     )
 
-    newbornvec = (np.vstack((
-        df_fert_total[2017].loc[df_fert_total["AGE"] == "TOTAL"].values.astype(float),
-        df_fert_total[2016].loc[df_fert_total["AGE"] == "TOTAL"].values.astype(float),
-        df_fert_total[2015].loc[df_fert_total["AGE"] == "TOTAL"].values.astype(float)
-    )).T)
+    newbornvec = np.vstack(
+        (
+            df_fert_total[2017]
+            .loc[df_fert_total["AGE"] == "TOTAL"]
+            .values.astype(float),
+            df_fert_total[2016]
+            .loc[df_fert_total["AGE"] == "TOTAL"]
+            .values.astype(float),
+            df_fert_total[2015]
+            .loc[df_fert_total["AGE"] == "TOTAL"]
+            .values.astype(float),
+        )
+    ).T
     imm_mat[:, 0] = (pop21vec - newbornvec) / pop11vec
 
     mort_rates, infmort_rate = get_mort(
@@ -605,7 +608,7 @@ def get_imm_resid(totpers, min_yr, max_yr, base_yr, graph=False):
 
     # imm_rates for older ages clearly unreliable (small sample, not reconciled)
     # replace ages 90+ with average value for ages 80-89
-    imm_rates_80s = imm_rates[80: 89].sum() / 10
+    imm_rates_80s = imm_rates[80:89].sum() / 10
     imm_rates[90:] = imm_rates_80s
 
     # take moving averages to smooth
@@ -614,13 +617,17 @@ def get_imm_resid(totpers, min_yr, max_yr, base_yr, graph=False):
         if (i == 0) or (i == (totpers - 1)):
             imm_rates_smooth[i] = imm_rates[i]
         else:
-            imm_rates_smooth[i] = (imm_rates[i - 1] + imm_rates[i] + imm_rates[i + 1]) / 3
+            imm_rates_smooth[i] = (
+                imm_rates[i - 1] + imm_rates[i] + imm_rates[i + 1]
+            ) / 3
     imm_rates = imm_rates_smooth
 
     if graph:
-        plt.title("imm_rates by age per pers. (new born recalc & 90s=ave80s & smoothed")
+        plt.title(
+        "imm_rates by age per pers. (new born recalc & 90s=ave80s & smoothed"
+        )
         plt.plot(imm_rates)
-        plt.show()  
+        plt.show()
 
     return imm_rates
 
@@ -773,9 +780,7 @@ def get_pop_objs(E, S, T, min_yr, max_yr, base_yr, GraphDiag=False):
     # Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
     df_pop["AGE"] = df_pop["AGE"].str[1:]
 
-    # Keep gender specific population, to calculate fertility per person
-    df_pop_m = df_pop[(df_pop["SEX"] == "M")]
-    df_pop_f = df_pop[(df_pop["SEX"] == "F")]
+    # Use total population, to calculate fertility per person
     df_pop = df_pop[(df_pop["SEX"] == "T")]
 
     # Name of 1 column includes the year - create column name before dropping
@@ -852,7 +857,7 @@ def get_pop_objs(E, S, T, min_yr, max_yr, base_yr, GraphDiag=False):
     # pop_curr = pop_2019_EpS.copy()
     pop_curr = np_pop
     data_year = 2018
-    curr_year = 2019
+    curr_year = 2018
     pop_next = np.dot(OMEGA_orig, pop_curr)
     g_n_curr = (pop_next[-S:].sum() - pop_curr[-S:].sum()) / pop_curr[
         -S:
@@ -933,7 +938,5 @@ def get_pop_objs(E, S, T, min_yr, max_yr, base_yr, GraphDiag=False):
     }
 
     print("pop_dict: ", pop_dict)
-
-    # if graph:
 
     return pop_dict
