@@ -87,7 +87,10 @@ def get_macro_params():
     ########### r_gov_shift & r_gov_scale - START ############################
     # collect data on UK government bond yields
     gbond = data.DataReader(
-        "irt_lt_mcby_d", start="1986-1-1", end="2020-12-31", data_source="eurostat"
+        "irt_lt_mcby_d",
+        start="1986-1-1",
+        end="2020-12-31",
+        data_source="eurostat",
     )
     # note column format:
     gbond_UK = gbond.loc[
@@ -109,7 +112,9 @@ def get_macro_params():
     # convert panda Series to panda Dataframe
     gbond_UK_df = gbond_UK.to_frame()
     # Transform three-level column for UKbonds in to single-level column
-    gbond_UK_df.columns = ["".join(col).strip() for col in gbond_UK_df.columns.values]
+    gbond_UK_df.columns = [
+        "".join(col).strip() for col in gbond_UK_df.columns.values
+    ]
     # Rename UKbonds column
     gbond_UK_df = gbond_UK_df.rename(
         columns={
@@ -142,8 +147,8 @@ def get_macro_params():
     # # initialize a dictionary of parameters
     macro_parameters = {}
     macro_parameters["initial_debt_ratio"] = initial_debt_ratio
-    macro_parameters['alpha_T'] = alpha_T
-    macro_parameters['alpha_G'] = alpha_G
+    macro_parameters["alpha_T"] = alpha_T
+    macro_parameters["alpha_G"] = alpha_G
     macro_parameters["gamma"] = gamma
     macro_parameters["g_y"] = g_y
     macro_parameters["r_gov_shift"] = r_gov_shift
