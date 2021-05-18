@@ -34,7 +34,7 @@ def test_frs():
 
     # create a parametric reform
     def lower_pa(parameters):
-        parameters.taxes.income_tax.allowances.personal_allowance.amount.update(
+        parameters.tax.income_tax.allowances.personal_allowance.amount.update(
             period="2020", value=10000
         )
         return parameters
