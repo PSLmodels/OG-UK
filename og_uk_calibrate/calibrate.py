@@ -17,7 +17,7 @@ class Calibration:
         estimate_beta=False,
         estimate_chi_n=False,
         tax_func_path=None,
-        iit_reform={},
+        iit_reform=None,
         guid="",
         data="cps",
         client=None,
@@ -66,7 +66,7 @@ class Calibration:
     def get_tax_function_parameters(
         self,
         p,
-        iit_reform={},
+        iit_reform=None,
         guid="",
         data="",
         client=None,
@@ -302,14 +302,14 @@ class Calibration:
         dict = {}
         if self.estimate_tax_functions:
             dict.update(self.tax_function_params)
-        if self.estimate_beta:
-            dict["beta_annual"] = self.beta
-        if self.estimate_chi_n:
-            dict["chi_n"] = self.chi_n
-        dict["eta"] = self.eta
-        dict["zeta"] = self.zeta
-        dict.update(self.macro_params)
-        dict["e"] = self.e
-        dict.update(self.demographic_params)
+        # if self.estimate_beta:
+        #     dict["beta_annual"] = self.beta
+        # if self.estimate_chi_n:
+        #     dict["chi_n"] = self.chi_n
+        # dict["eta"] = self.eta
+        # dict["zeta"] = self.zeta
+        # dict.update(self.macro_params)
+        # dict["e"] = self.e
+        # dict.update(self.demographic_params)
 
         return dict
