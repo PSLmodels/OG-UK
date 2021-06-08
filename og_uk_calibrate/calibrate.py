@@ -93,11 +93,11 @@ class Calibration:
         if tax_func_path is None:
             if p.baseline:
                 pckl = "TxFuncEst_baseline{}.pkl".format(guid)
-                tax_func_path = os.path.join(CUR_PATH, pckl)
+                tax_func_path = os.path.join(p.output_base, pckl)
                 print("Using baseline tax parameters from ", tax_func_path)
             else:
                 pckl = "TxFuncEst_policy{}.pkl".format(guid)
-                tax_func_path = os.path.join(CUR_PATH, pckl)
+                tax_func_path = os.path.join(p.output_base, pckl)
                 print(
                     "Using reform policy tax parameters from ", tax_func_path
                 )
