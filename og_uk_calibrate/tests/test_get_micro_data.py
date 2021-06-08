@@ -52,17 +52,6 @@ def test_frs():
     assert calc_out["age"].sum() > 0
 
 
-iit_reform_1 = {
-    "II_rt1": {2017: 0.09},
-    "II_rt2": {2017: 0.135},
-    "II_rt3": {2017: 0.225},
-    "II_rt4": {2017: 0.252},
-    "II_rt5": {2017: 0.297},
-    "II_rt6": {2017: 0.315},
-    "II_rt7": {2017: 0.3564},
-}
-
-
 def test_get_calculator_exception():
     with pytest.raises(Exception):
         assert get_micro_data.get_calculator_output(
