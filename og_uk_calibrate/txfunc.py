@@ -1303,7 +1303,7 @@ def tax_func_estimate(
     start_time = time.time()
     output_dir = path
 
-    # call tax caculator and get microdata
+    # call OpenFisca-UK and get microdata
     micro_data, taxcalc_version = get_micro_data.get_data(
         baseline=baseline,
         start_year=start_year,

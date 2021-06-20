@@ -16,7 +16,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
-DATA_LAST_YEAR = 2030  # this is the last year data are extrapolated for
+DATA_LAST_YEAR = 2021  # this is the last year data are extrapolated for
 
 
 def get_calculator_output(baseline, year, reform=None, data=None):
@@ -40,7 +40,10 @@ def get_calculator_output(baseline, year, reform=None, data=None):
     """
     # create a simulation
     if data is None or "frs":
-        sim = Microsimulation(*(reform,), year=year)
+        if reform is None:
+            sim = Microsimulation(year=year)
+        else:
+            sim = Microsimulation(*(reform,), year=year)
     else:
         # pass PopulationSim a data argument
         pass
@@ -54,14 +57,14 @@ def get_calculator_output(baseline, year, reform=None, data=None):
         raise RuntimeError("Start year is beyond data extrapolation.")
 
     # define market income - taking expanded_income and excluding gov't
-    # transfer benefits found in the Tax-Calculator expanded income
+    # transfer benefits
     market_income = sim.calc("gross_income").values
 
     # Compute marginal tax rates (can only do on earned income now)
     mtr = sim.mtr().values
 
     # Put MTRs, income, tax liability, and other variables in dict
-    length = len(sim.df(["benunit_weight"]))
+    length = len(sim.df(["person_weight"]))
     tax_dict = {
         "mtr_labinc": mtr,
         "mtr_capinc": mtr,
@@ -71,9 +74,7 @@ def get_calculator_output(baseline, year, reform=None, data=None):
         - sim.df(["earned_income"]).values.squeeze(),
         "market_income": market_income,
         "total_tax_liab": sim.calc("income_tax").values,
-        "payroll_tax_liab": sim.calc(
-            "national_insurance"
-        ).values,  # is this in OpenFisca-UK?
+        "payroll_tax_liab": sim.calc("national_insurance").values,
         "etr": sim.calc("tax").values / market_income,
         "year": year * np.ones(length),
         "weight": sim.calc("person_weight").values,
@@ -89,7 +90,7 @@ def get_data(
     baseline=False,
     start_year=2021,
     reform=None,
-    data=None,
+    data="frs",
     path=CUR_PATH,
     client=None,
     num_workers=1,
