@@ -4,9 +4,10 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: [3.7, 3.8]
 
     steps:
@@ -26,9 +27,9 @@ jobs:
       - name: Build
         shell: bash -l {0}
         run: |
-          pip install -e .
-          pip install pytest-cov
-          pip install pytest-pycodestyle
+          pip install -e . --user
+          pip install pytest-cov --user
+          pip install pytest-pycodestyle --user
       - name: Test
         shell: bash -l {0}
         working-directory: ./
