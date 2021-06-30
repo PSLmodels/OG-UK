@@ -1,4 +1,4 @@
-name: oguk-calibrate-dev
+name: oguk-dev
 channels:
 - conda-forge
 dependencies:
