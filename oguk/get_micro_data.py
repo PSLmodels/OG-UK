@@ -16,7 +16,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
-DATA_LAST_YEAR = 2021  # this is the last year data are extrapolated for
+DATA_LAST_YEAR = 2020  # this is the last year data are extrapolated for
 
 
 def get_calculator_output(baseline, year, reform=None, data=None):

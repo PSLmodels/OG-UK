@@ -14,7 +14,7 @@ from ogusa.utils import safe_read_pickle
 # Set start year and last year -- note that OpenFisca-UK can only do one year
 # It does not have data like TaxData produced nor logic for future policy
 # like Tax-Calculator does
-START_YEAR = 2018
+START_YEAR = 2020
 ogusa.parameters.TC_LAST_YEAR = START_YEAR
 from ogusa.parameters import Specifications
 
