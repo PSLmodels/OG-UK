@@ -1,14 +1,14 @@
 import multiprocessing
 from distributed import Client
-import pickle
-import cloudpickle
+import json
+import time
 import os
 from openfisca_core.model_api import Reform
-from og_uk_calibrate.calibrate import Calibration
+from oguk.calibrate import Calibration
 import ogusa
 from ogusa import output_tables as ot
 from ogusa import output_plots as op
-from ogusa import SS, TPI, utils
+from ogusa.execute import runner
 from ogusa.utils import safe_read_pickle
 
 # Set start year and last year -- note that OpenFisca-UK can only do one year
@@ -30,11 +30,6 @@ def main():
     base_dir = os.path.join(CUR_DIR, "OG-UK-Example", "OUTPUT_BASELINE")
     reform_dir = os.path.join(CUR_DIR, "OG-UK-Example", "OUTPUT_REFORM")
 
-    # For now, just call SS and TPI functions, bypassing ogusa.execute.py
-    # Note that updates in progress to OG-Core will make the code below
-    # more streamlined
-    # and will use a modified execute.py with just one call to the
-    # execute.runner
     """
     ------------------------------------------------------------------------
     Run baseline policy
@@ -48,6 +43,12 @@ def main():
         baseline_dir=base_dir,
         output_base=base_dir,
     )
+    # Update parameters for baseline from default json file
+    p.update_specifications(
+        json.load(
+            open(os.path.join("..", "oguk", "oguk_default_parameters.json"))
+        )
+    )
     # specify tax function form and start year
     p.update_specifications(
         {
@@ -59,33 +60,19 @@ def main():
     # Estimate baseline tax functions from OpenFisca-UK
     c = Calibration(p, estimate_tax_functions=True)
     # update tax function parameters in Specifications Object
-    # Note that updates in progress to OG-Core will make the code below
-    # more streamlined
-    p.etr_params = c.tax_function_params["etr_params"]
-    p.mtrx_params = c.tax_function_params["mtrx_params"]
-    p.mtry_params = c.tax_function_params["mtry_params"]
-    p.mean_income_data = c.tax_function_params["mean_income_data"]
-    p.frac_tax_payroll = c.tax_function_params["frac_tax_payroll"]
-    # Solve SS
-    p.initial_guess_r_SS = 0.07
-    ss_outputs = SS.run_SS(p, client=client)
-    # Save SS results
-    utils.mkdirs(os.path.join(base_dir, "SS"))
-    ss_file = os.path.join(base_dir, "SS", "SS_vars.pkl")
-    with open(ss_file, "wb") as f:
-        pickle.dump(ss_outputs, f)
-    # Save parameters
-    param_file = os.path.join(base_dir, "model_params.pkl")
-    with open(param_file, "wb") as f:
-        cloudpickle.dump((p), f)
-    # Run TPI
-    tpi_output = TPI.run_TPI(p, client=client)
-    # Save TPI results
-    tpi_dir = os.path.join(base_dir, "TPI")
-    utils.mkdirs(tpi_dir)
-    tpi_file = os.path.join(tpi_dir, "TPI_vars.pkl")
-    with open(tpi_file, "wb") as f:
-        pickle.dump(tpi_output, f)
+    d = c.get_dict()
+    updated_params = {
+        "etr_params": d["etr_params"],
+        "mtrx_params": d["mtrx_params"],
+        "mtry_params": d["mtry_params"],
+        "mean_income_data": d["mean_income_data"],
+        "frac_tax_payroll": d["frac_tax_payroll"],
+    }
+    p.update_specifications(updated_params)
+    # Run model
+    start_time = time.time()
+    runner(p, time_path=True, client=client)
+    print("run time = ", time.time() - start_time)
 
     """
     ------------------------------------------------------------------------
@@ -113,6 +100,12 @@ def main():
         baseline_dir=base_dir,
         output_base=reform_dir,
     )
+    # Update parameters for baseline from default json file
+    p2.update_specifications(
+        json.load(
+            open(os.path.join("..", "oguk", "oguk_default_parameters.json"))
+        )
+    )
     # specify tax function form and start year
     p2.update_specifications(
         {
@@ -125,33 +118,19 @@ def main():
     # class object
     c2 = Calibration(p2, iit_reform=reform, estimate_tax_functions=True)
     # update tax function parameters in Specifications Object
-    # Note that updates in progress to OG-Core will make the code below
-    # more streamlined
-    p2.etr_params = c2.tax_function_params["etr_params"]
-    p2.mtrx_params = c2.tax_function_params["mtrx_params"]
-    p2.mtry_params = c2.tax_function_params["mtry_params"]
-    p2.mean_income_data = c2.tax_function_params["mean_income_data"]
-    p2.frac_tax_payroll = c2.tax_function_params["frac_tax_payroll"]
-
-    # Solve SS
-    ss_outputs2 = SS.run_SS(p2, client=client)
-    # Save SS results
-    utils.mkdirs(os.path.join(reform_dir, "SS"))
-    ss_file = os.path.join(reform_dir, "SS", "SS_vars.pkl")
-    with open(ss_file, "wb") as f:
-        pickle.dump(ss_outputs2, f)
-    # Save parameters
-    param_file = os.path.join(reform_dir, "model_params.pkl")
-    with open(param_file, "wb") as f:
-        cloudpickle.dump((p2), f)
-    # Run TPI
-    tpi_output2 = TPI.run_TPI(p2, client=client)
-    # Save TPI results
-    tpi_dir = os.path.join(reform_dir, "TPI")
-    utils.mkdirs(tpi_dir)
-    tpi_file = os.path.join(tpi_dir, "TPI_vars.pkl")
-    with open(tpi_file, "wb") as f:
-        pickle.dump(tpi_output2, f)
+    d2 = c2.get_dict()
+    updated_params2 = {
+        "etr_params": d2["etr_params"],
+        "mtrx_params": d2["mtrx_params"],
+        "mtry_params": d2["mtry_params"],
+        "mean_income_data": d2["mean_income_data"],
+        "frac_tax_payroll": d2["frac_tax_payroll"],
+    }
+    p2.update_specifications(updated_params2)
+    # Run model
+    start_time = time.time()
+    runner(p2, time_path=True, client=client)
+    print("run time = ", time.time() - start_time)
 
     """
     ------------------------------------------------------------------------
@@ -184,7 +163,7 @@ def main():
 
     print("Percentage changes in aggregates:", ans)
     # save percentage change output to csv file
-    ans.to_csv("ogusa_example_output.csv")
+    ans.to_csv("oguk_example_output.csv")
     client.close()
 
 

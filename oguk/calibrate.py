@@ -1,4 +1,5 @@
-from og_uk_calibrate import txfunc
+from ogusa import txfunc
+from oguk import get_micro_data
 import os
 import numpy as np
 from ogusa.utils import safe_read_pickle, mkdirs
@@ -108,7 +109,17 @@ class Calibration:
         if not run_micro:
             dict_params, run_micro = self.read_tax_func_estimate(tax_func_path)
         if run_micro:
-            txfunc.get_tax_func_estimate(  # pragma: no cover
+            micro_data, taxcalc_version = get_micro_data.get_data(
+                baseline=p.baseline,
+                start_year=p.start_year,
+                reform=iit_reform,
+                data=data,
+                path=p.output_base,
+                client=client,
+                num_workers=num_workers,
+            )
+            dict_params = txfunc.tax_func_estimate(  # pragma: no cover
+                micro_data,
                 p.BW,
                 p.S,
                 p.starting_age,
@@ -125,20 +136,12 @@ class Calibration:
                 client,
                 num_workers,
             )
-            dict_params, _ = self.read_tax_func_estimate(p, tax_func_path)
         mean_income_data = dict_params["tfunc_avginc"][0]
-        try:
-            frac_tax_payroll = np.append(
-                dict_params["tfunc_frac_tax_payroll"],
-                np.ones(p.T + p.S - p.BW)
-                * dict_params["tfunc_frac_tax_payroll"][-1],
-            )
-        except KeyError:
-            pass
-        try:
-            taxcalc_version = dict_params["taxcalc_version"]
-        except KeyError:
-            taxcalc_version = "No version recorded"
+        frac_tax_payroll = np.append(
+            dict_params["tfunc_frac_tax_payroll"],
+            np.ones(p.T + p.S - p.BW)
+            * dict_params["tfunc_frac_tax_payroll"][-1],
+        )
 
         # Reorder indices of tax function and tile for all years after
         # budget window ends

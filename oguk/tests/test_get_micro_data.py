@@ -1,12 +1,10 @@
 import multiprocessing
 from distributed import Client, LocalCluster
 import pytest
-from pandas.testing import assert_frame_equal
 import os
-from og_uk_calibrate import get_micro_data
-from og_uk_calibrate.get_micro_data import DATA_LAST_YEAR
-from openfisca_core.model_api import *
-from ogusa.utils import safe_read_pickle
+from oguk import get_micro_data
+from oguk.get_micro_data import DATA_LAST_YEAR
+from openfisca_core.model_api import Reform
 
 
 NUM_WORKERS = min(multiprocessing.cpu_count(), 7)
