@@ -75,7 +75,7 @@ def get_calculator_output(baseline, year, reform=None, data=None):
         "market_income": market_income,
         "total_tax_liab": sim.calc("income_tax").values,
         "payroll_tax_liab": sim.calc("national_insurance").values,
-        "etr": sim.calc("net_income").values / market_income,
+        "etr": 1 - sim.calc("net_income").values / market_income,
         "year": year * np.ones(length),
         "weight": sim.calc("person_weight").values,
     }
