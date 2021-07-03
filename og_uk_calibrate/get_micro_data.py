@@ -58,10 +58,9 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     # define market income - taking expanded_income and excluding gov't
     # transfer benefits
-    market_income = sim.calc("gross_income").values
+    market_income = sim.calc("gross_income").values - sim.calc("benefits").values
 
     # Compute marginal tax rates (can only do on earned income now)
-    mtr = sim.mtr().values
 
     # Put MTRs, income, tax liability, and other variables in dict
     length = len(sim.df(["person_weight"]))
