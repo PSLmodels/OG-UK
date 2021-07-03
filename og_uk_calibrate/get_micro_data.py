@@ -66,8 +66,8 @@ def get_calculator_output(baseline, year, reform=None, data=None):
     # Put MTRs, income, tax liability, and other variables in dict
     length = len(sim.df(["person_weight"]))
     tax_dict = {
-        "mtr_labinc": mtr,
-        "mtr_capinc": mtr,
+        "mtr_labinc": 1 - sim.deriv("household_net_income", wrt="employment_income").fillna(1).values,
+        "mtr_capinc": 1 - sim.deriv("household_net_income", wrt="savings_interest_income").fillna(1).values,
         "age": sim.calc("age").values,
         "total_labinc": sim.calc("earned_income").values,
         "total_capinc": market_income
@@ -75,7 +75,7 @@ def get_calculator_output(baseline, year, reform=None, data=None):
         "market_income": market_income,
         "total_tax_liab": sim.calc("income_tax").values,
         "payroll_tax_liab": sim.calc("national_insurance").values,
-        "etr": sim.calc("tax").values / market_income,
+        "etr": sim.calc("net_income").values / market_income,
         "year": year * np.ones(length),
         "weight": sim.calc("person_weight").values,
     }
