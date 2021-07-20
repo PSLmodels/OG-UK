@@ -20,7 +20,7 @@ The model is currently under developement.  PLEASE DO NOT USE OR CITE THE MODEL'
 * Then, `conda activate oguk-calibrate-dev`
 * Then install by `pip install -e .`
 * Navigate to `./examples`
-* Run the model with an example reform from terminal/command prompt by typing `python run_og_uk.py`
+* Run the model with an example reform from terminal/command prompt by typing `python run_og_uk.py examples.small_ubi_reform.ubi_reform`
 * You can adjust the `./run_examples/run_og_uk.py` by adjusting the individual income tax reform (using an OpenFisca `Reform` object) or other model parameters specified in a dictionary and passed to the `Specifications.update_specification()` method.
 * Model outputs will be saved in the following files:
   * `./examples/OG-UK_example_plots`

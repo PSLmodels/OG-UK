@@ -12,11 +12,43 @@ import pickle
 from openfisca_uk import Microsimulation
 import pandas as pd
 import warnings
+from openfisca_uk.api import *
+from openfisca_uk_data import FRS
 
 warnings.filterwarnings("ignore")
 
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
 DATA_LAST_YEAR = 2021  # this is the last year data are extrapolated for
+
+def get_mtrs_employment_income(reform, **kwargs):
+    baseline = Microsimulation(reform, **kwargs)
+    baseline_earnings = baseline.calc("employment_income")
+    bonus = baseline.calc("is_adult") * 1
+    reformed = Microsimulation(reform, **kwargs)
+    reformed.simulation.set_input("employment_income", 2018, baseline_earnings + bonus)
+
+    household_bonus = reformed.calc("employment_income", map_to="household") - baseline.calc("employment_income", map_to="household")
+    household_net_change = reformed.calc("household_net_income") - baseline.calc("household_net_income")
+    print("Computed labour MTR")
+    mtr = (household_bonus - household_net_change) / household_bonus
+    mtr.replace([np.inf, -np.inf], np.nan, inplace=True)
+    mtr.fillna(0, inplace=True)
+    return mtr
+
+def get_mtrs_savings_income(reform, **kwargs):
+    baseline = Microsimulation(reform, **kwargs)
+    reformed = Microsimulation(reform, **kwargs)
+    baseline_earnings = baseline.calc("employment_income")
+    bonus = baseline.calc("is_adult") * 1
+    reformed.simulation.set_input("savings_interest_income", 2018, baseline_earnings + bonus)
+
+    household_bonus = reformed.calc("savings_interest_income", map_to="household") - baseline.calc("savings_interest_income", map_to="household")
+    household_net_change = reformed.calc("household_net_income") - baseline.calc("household_net_income")
+    print("Computed capital MTR")
+    mtr = (household_bonus - household_net_change) / household_bonus
+    mtr.replace([np.inf, -np.inf], np.nan, inplace=True)
+    mtr.fillna(0, inplace=True)
+    return mtr
 
 
 def get_calculator_output(baseline, year, reform=None, data=None):
@@ -41,9 +73,9 @@ def get_calculator_output(baseline, year, reform=None, data=None):
     # create a simulation
     if data is None or "frs":
         if reform is None:
-            sim = Microsimulation(year=year)
+            sim = Microsimulation()
         else:
-            sim = Microsimulation(*(reform,), year=year)
+            sim = Microsimulation(reform)
     else:
         # pass PopulationSim a data argument
         pass
@@ -58,34 +90,33 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     # define market income - taking expanded_income and excluding gov't
     # transfer benefits
-    market_income = (
-        sim.calc("gross_income").values - sim.calc("benefits").values
+    market_income = np.maximum(
+        sim.calc("gross_income", map_to="household").values - sim.calc("benefits", map_to="household").values, 1
     )
+
+    benefits = sim.calc("benefits", map_to="household").values
 
     # Compute marginal tax rates (can only do on earned income now)
 
     # Put MTRs, income, tax liability, and other variables in dict
-    length = len(sim.df(["person_weight"]))
+    length = sim.calc("household_weight").size
     tax_dict = {
-        "mtr_labinc": 1
-        - sim.deriv("household_net_income", wrt="employment_income")
-        .fillna(1)
-        .values,
-        "mtr_capinc": 1
-        - sim.deriv("household_net_income", wrt="savings_interest_income")
-        .fillna(1)
-        .values,
-        "age": sim.calc("age").values,
-        "total_labinc": sim.calc("earned_income").values,
+        "mtr_labinc": get_mtrs_employment_income(reform or ()).values,
+        "mtr_capinc": get_mtrs_savings_income(reform or ()).values
+        ,
+        "age": sim.calc("age", map_to="household", how="max").values,
+        "total_labinc": sim.calc("earned_income", map_to="household").values,
         "total_capinc": market_income
-        - sim.df(["earned_income"]).values.squeeze(),
+        - sim.calc("earned_income", map_to="household"),
         "market_income": market_income,
-        "total_tax_liab": sim.calc("income_tax").values,
-        "payroll_tax_liab": sim.calc("national_insurance").values,
-        "etr": 1 - sim.calc("net_income").values / market_income,
+        "total_tax_liab": sim.calc("income_tax", map_to="household").values,
+        "payroll_tax_liab": sim.calc("national_insurance", map_to="household").values,
+        "etr": (1 - (sim.calc("net_income", map_to="household").values) / market_income).clip(-10, 1.5),
         "year": year * np.ones(length),
-        "weight": sim.calc("person_weight").values,
+        "weight": sim.calc("household_weight").values,
     }
+
+    pd.DataFrame(tax_dict).to_csv("tax_dict.csv")
 
     # garbage collection
     del sim

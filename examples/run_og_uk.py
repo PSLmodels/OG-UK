@@ -10,7 +10,10 @@ from ogusa import output_tables as ot
 from ogusa import output_plots as op
 from ogusa import SS, TPI, utils
 from ogusa.utils import safe_read_pickle
+import time
+from argparse import ArgumentParser
 
+start_time = time.time()
 # Set start year and last year -- note that OpenFisca-UK can only do one year
 # It does not have data like TaxData produced nor logic for future policy
 # like Tax-Calculator does
@@ -19,7 +22,7 @@ ogusa.parameters.TC_LAST_YEAR = START_YEAR
 from ogusa.parameters import Specifications
 
 
-def main():
+def main(reform):
     # Define parameters to use for multiprocessing
     client = Client()
     num_workers = min(multiprocessing.cpu_count(), 7)
@@ -51,9 +54,10 @@ def main():
     # specify tax function form and start year
     p.update_specifications(
         {
-            "tax_func_type": "linear",
+            "tax_func_type": "DEP",
             "age_specific": False,
             "start_year": START_YEAR,
+            "alpha_T": [5e-3], "alpha_G": [5e-3]
         }
     )
     # Estimate baseline tax functions from OpenFisca-UK
@@ -67,7 +71,39 @@ def main():
     p.mean_income_data = c.tax_function_params["mean_income_data"]
     p.frac_tax_payroll = c.tax_function_params["frac_tax_payroll"]
     # Solve SS
-    p.initial_guess_r_SS = 0.07
+    p.initial_guess_r_SS = 0.02
+
+     # create new Specifications object for reform simulation
+    p2 = Specifications(
+        baseline=False,
+        client=client,
+        num_workers=num_workers,
+        baseline_dir=base_dir,
+        output_base=reform_dir,
+    )
+    # specify tax function form and start year
+    p2.update_specifications(
+        {
+            "tax_func_type": "DEP",
+            "age_specific": False,
+            "start_year": START_YEAR,
+            "alpha_T": [5e-3], 
+            "alpha_G": [5e-3]
+        }
+    )
+    # Estimate reform tax functions from OpenFisca-UK, passing Reform
+    # class object
+    c2 = Calibration(p2, iit_reform=reform, estimate_tax_functions=True)
+    # update tax function parameters in Specifications Object
+    # Note that updates in progress to OG-Core will make the code below
+    # more streamlined
+    p2.etr_params = c2.tax_function_params["etr_params"]
+    p2.mtrx_params = c2.tax_function_params["mtrx_params"]
+    p2.mtry_params = c2.tax_function_params["mtry_params"]
+    p2.mean_income_data = c2.tax_function_params["mean_income_data"]
+    p2.frac_tax_payroll = c2.tax_function_params["frac_tax_payroll"]
+
+
     ss_outputs = SS.run_SS(p, client=client)
     # Save SS results
     utils.mkdirs(os.path.join(base_dir, "SS"))
@@ -86,52 +122,13 @@ def main():
     tpi_file = os.path.join(tpi_dir, "TPI_vars.pkl")
     with open(tpi_file, "wb") as f:
         pickle.dump(tpi_output, f)
-
     """
     ------------------------------------------------------------------------
     Run reform policy
     ------------------------------------------------------------------------
     """
-    # Create a parametric reform for OpenFisca-UK
-    def lower_pa(parameters):
-        parameters.tax.income_tax.allowances.personal_allowance.amount.update(
-            period="2020", value=10000
-        )
-        return parameters
 
-    class lower_personal_tax_allowance(Reform):
-        def apply(self):
-            self.modify_parameters(modifier_function=lower_pa)
-
-    reform = lower_personal_tax_allowance
-
-    # create new Specifications object for reform simulation
-    p2 = Specifications(
-        baseline=False,
-        client=client,
-        num_workers=num_workers,
-        baseline_dir=base_dir,
-        output_base=reform_dir,
-    )
-    # specify tax function form and start year
-    p2.update_specifications(
-        {
-            "tax_func_type": "linear",
-            "age_specific": False,
-            "start_year": START_YEAR,
-        }
-    )
-    # Estimate reform tax functions from OpenFisca-UK, passing Reform
-    # class object
-    c2 = Calibration(p2, iit_reform=reform, estimate_tax_functions=True)
-    # update tax function parameters in Specifications Object
-    # Note that updates in progress to OG-Core will make the code below
-    # more streamlined
-    p2.etr_params = c2.tax_function_params["etr_params"]
-    p2.mtrx_params = c2.tax_function_params["mtrx_params"]
-    p2.mtry_params = c2.tax_function_params["mtry_params"]
-    p2.mean_income_data = c2.tax_function_params["mean_income_data"]
-    p2.frac_tax_payroll = c2.tax_function_params["frac_tax_payroll"]
+   
 
     # Solve SS
     ss_outputs2 = SS.run_SS(p2, client=client)
@@ -152,7 +149,6 @@ def main():
     tpi_file = os.path.join(tpi_dir, "TPI_vars.pkl")
     with open(tpi_file, "wb") as f:
         pickle.dump(tpi_output2, f)
-
     """
     ------------------------------------------------------------------------
     Save some results of simulations
@@ -185,9 +181,18 @@ def main():
     print("Percentage changes in aggregates:", ans)
     # save percentage change output to csv file
     ans.to_csv("ogusa_example_output.csv")
+    print(f"Completed in {time.time() - start_time}s")
     client.close()
 
 
 if __name__ == "__main__":
     # execute only if run as a script
-    main()
+
+    parser = ArgumentParser(description="A script to run the main OG-UK routine on a reform.")
+    parser.add_argument("reform", help="The Python reform object to use as a reform (if `reform` is defined in `reform_file.py`, then use `reform_file.reform`)")
+    args = parser.parse_args()
+
+    reform_path = args.reform.split(".")
+    python_module, object_name = ".".join(reform_path[:-1]), reform_path[-1]
+    reform = getattr(__import__(python_module), object_name)
+    main(reform)
