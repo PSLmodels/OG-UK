@@ -191,6 +191,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "reform",
+        default="small_ubi_reform.ubi_reform",
         help="The Python reform object to use as a reform (if `reform` is defined in `reform_file.py`, then use `reform_file.reform`)",
     )
     args = parser.parse_args()
