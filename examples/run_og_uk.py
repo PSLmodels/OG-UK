@@ -57,7 +57,8 @@ def main(reform):
             "tax_func_type": "DEP",
             "age_specific": False,
             "start_year": START_YEAR,
-            "alpha_T": [5e-3], "alpha_G": [5e-3]
+            "alpha_T": [5e-3],
+            "alpha_G": [5e-3],
         }
     )
     # Estimate baseline tax functions from OpenFisca-UK
@@ -73,7 +74,7 @@ def main(reform):
     # Solve SS
     p.initial_guess_r_SS = 0.02
 
-     # create new Specifications object for reform simulation
+    # create new Specifications object for reform simulation
     p2 = Specifications(
         baseline=False,
         client=client,
@@ -87,8 +88,8 @@ def main(reform):
             "tax_func_type": "DEP",
             "age_specific": False,
             "start_year": START_YEAR,
-            "alpha_T": [5e-3], 
-            "alpha_G": [5e-3]
+            "alpha_T": [5e-3],
+            "alpha_G": [5e-3],
         }
     )
     # Estimate reform tax functions from OpenFisca-UK, passing Reform
@@ -102,7 +103,6 @@ def main(reform):
     p2.mtry_params = c2.tax_function_params["mtry_params"]
     p2.mean_income_data = c2.tax_function_params["mean_income_data"]
     p2.frac_tax_payroll = c2.tax_function_params["frac_tax_payroll"]
-
 
     ss_outputs = SS.run_SS(p, client=client)
     # Save SS results
@@ -127,8 +127,6 @@ def main(reform):
     Run reform policy
     ------------------------------------------------------------------------
     """
-
-   
 
     # Solve SS
     ss_outputs2 = SS.run_SS(p2, client=client)
@@ -188,8 +186,13 @@ def main(reform):
 if __name__ == "__main__":
     # execute only if run as a script
 
-    parser = ArgumentParser(description="A script to run the main OG-UK routine on a reform.")
-    parser.add_argument("reform", help="The Python reform object to use as a reform (if `reform` is defined in `reform_file.py`, then use `reform_file.reform`)")
+    parser = ArgumentParser(
+        description="A script to run the main OG-UK routine on a reform."
+    )
+    parser.add_argument(
+        "reform",
+        help="The Python reform object to use as a reform (if `reform` is defined in `reform_file.py`, then use `reform_file.reform`)",
+    )
     args = parser.parse_args()
 
     reform_path = args.reform.split(".")
