@@ -21,10 +21,8 @@ START_YEAR = 2018
 ogusa.parameters.TC_LAST_YEAR = START_YEAR
 from ogusa.parameters import Specifications
 
-reform = "small_ubi_reform.ubi_reform"
 
-
-def main(reform):
+def main(reform="small_ubi_reform.ubi_reform"):
     # Define parameters to use for multiprocessing
     client = Client()
     num_workers = min(multiprocessing.cpu_count(), 7)
