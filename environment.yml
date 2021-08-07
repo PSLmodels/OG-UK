@@ -31,4 +31,5 @@ dependencies:
   - jupyter-book>=0.8.0
   - git+https://github.com/PSLmodels/OG-USA@v0.6.4
   - git+https://github.com/PSLmodels/openfisca-uk
+  - git+https://github.com/ubicenter/openfisca-data
   - git+https://github.com/PSLmodels/microdf
