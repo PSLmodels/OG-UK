@@ -13,8 +13,14 @@ from openfisca_uk import Microsimulation
 import pandas as pd
 import warnings
 from openfisca_uk.api import *
-from openfisca_uk_data import FRS
+from openfisca_data import FRS, SynthFRS
 
+if len(FRS.years) == 0:
+    print("Using synthetic dataset.")
+    SynthFRS.save("https://github.com/nikhilwoodruff/openfisca-uk-data/releases/download/synth-frs/synth_frs_2018.h5", 2018)
+    dataset = SynthFRS
+else:
+    dataset = FRS
 warnings.filterwarnings("ignore")
 
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
@@ -22,10 +28,10 @@ DATA_LAST_YEAR = 2021  # this is the last year data are extrapolated for
 
 
 def get_mtrs_employment_income(reform, **kwargs):
-    baseline = Microsimulation(reform, **kwargs)
+    baseline = Microsimulation(reform, dataset=dataset, **kwargs)
     baseline_earnings = baseline.calc("employment_income")
     bonus = baseline.calc("is_adult") * 1
-    reformed = Microsimulation(reform, **kwargs)
+    reformed = Microsimulation(reform, dataset=dataset, **kwargs)
     reformed.simulation.set_input(
         "employment_income", 2018, baseline_earnings + bonus
     )
@@ -44,8 +50,8 @@ def get_mtrs_employment_income(reform, **kwargs):
 
 
 def get_mtrs_savings_income(reform, **kwargs):
-    baseline = Microsimulation(reform, **kwargs)
-    reformed = Microsimulation(reform, **kwargs)
+    baseline = Microsimulation(reform, dataset=dataset, **kwargs)
+    reformed = Microsimulation(reform, dataset=dataset, **kwargs)
     baseline_earnings = baseline.calc("employment_income")
     bonus = baseline.calc("is_adult") * 1
     reformed.simulation.set_input(
@@ -87,9 +93,9 @@ def get_calculator_output(baseline, year, reform=None, data=None):
     # create a simulation
     if data is None or "frs":
         if reform is None:
-            sim = Microsimulation()
+            sim = Microsimulation(dataset=dataset)
         else:
-            sim = Microsimulation(reform)
+            sim = Microsimulation(reform, dataset=dataset)
     else:
         # pass PopulationSim a data argument
         pass
