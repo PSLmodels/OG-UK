@@ -21,6 +21,7 @@ START_YEAR = 2018
 ogusa.parameters.TC_LAST_YEAR = START_YEAR
 from ogusa.parameters import Specifications
 
+reform = "small_ubi_reform.ubi_reform"
 
 def main(reform):
     # Define parameters to use for multiprocessing
