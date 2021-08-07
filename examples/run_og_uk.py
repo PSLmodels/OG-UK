@@ -19,7 +19,8 @@ from openfisca_uk.api import *
 
 
 def get_default_reform():
-    from openfisca_uk.api import *
+    from openfisca_uk.api import YEAR, Person, BASELINE_VARIABLES, reforms
+
     # Costs £68.8bn in year 1
     UBI_AMOUNT = 20 * 52
 
