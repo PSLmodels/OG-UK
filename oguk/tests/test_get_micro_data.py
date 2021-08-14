@@ -28,7 +28,7 @@ def test_frs():
     Check that setting `data` to 'frs' uses cps data
     """
     baseline = False
-    start_year = 2016
+    start_year = 2018
 
     # create a parametric reform
     def lower_pa(parameters):
