@@ -1,8 +1,8 @@
-from ogusa import txfunc
+from ogcore import txfunc
 from oguk import get_micro_data
 import os
 import numpy as np
-from ogusa.utils import safe_read_pickle, mkdirs
+from ogcore.utils import safe_read_pickle, mkdirs
 import pkg_resources
 
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
