@@ -6,17 +6,16 @@ import os
 from openfisca_core.model_api import Reform
 from oguk.calibrate import Calibration
 import ogusa
-from ogusa import output_tables as ot
-from ogusa import output_plots as op
-from ogusa.execute import runner
-from ogusa.utils import safe_read_pickle
+from ogcore import output_tables as ot
+from ogcore import output_plots as op
+from ogcore.execute import runner
+from ogcore.utils import safe_read_pickle
 
 # Set start year and last year -- note that OpenFisca-UK can only do one year
 # It does not have data like TaxData produced nor logic for future policy
 # like Tax-Calculator does
 START_YEAR = 2020
-ogusa.parameters.TC_LAST_YEAR = START_YEAR
-from ogusa.parameters import Specifications
+from ogcore.parameters import Specifications
 
 
 def main():
@@ -38,7 +37,6 @@ def main():
     # Set up baseline parameterization
     p = Specifications(
         baseline=True,
-        client=client,
         num_workers=num_workers,
         baseline_dir=base_dir,
         output_base=base_dir,
@@ -58,7 +56,7 @@ def main():
         }
     )
     # Estimate baseline tax functions from OpenFisca-UK
-    c = Calibration(p, estimate_tax_functions=True)
+    c = Calibration(p, estimate_tax_functions=True, client=client)
     # update tax function parameters in Specifications Object
     d = c.get_dict()
     updated_params = {
@@ -95,7 +93,6 @@ def main():
     # create new Specifications object for reform simulation
     p2 = Specifications(
         baseline=False,
-        client=client,
         num_workers=num_workers,
         baseline_dir=base_dir,
         output_base=reform_dir,
@@ -116,7 +113,9 @@ def main():
     )
     # Estimate reform tax functions from OpenFisca-UK, passing Reform
     # class object
-    c2 = Calibration(p2, iit_reform=reform, estimate_tax_functions=True)
+    c2 = Calibration(
+        p2, iit_reform=reform, estimate_tax_functions=True, client=client
+    )
     # update tax function parameters in Specifications Object
     d2 = c2.get_dict()
     updated_params2 = {
