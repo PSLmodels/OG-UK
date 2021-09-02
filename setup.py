@@ -9,15 +9,15 @@ with open("README.md") as f:
 version = "0.0.0"
 
 config = {
-    "description": "UK Calibration for OG-MOD",
+    "description": "OG-UK",
     "long_description": longdesc,
-    "url": "https://github.com/PSLmodels/OG-UK-Calibration/",
-    "download_url": "https://github.com/PLSmodels/OG-UK-Calibration/",
+    "url": "https://github.com/PSLmodels/OG-UK/",
+    "download_url": "https://github.com/PLSmodels/OG-UK/",
     "version": version,
     "license": "CC0 1.0 Universal public domain dedication",
-    "packages": ["og_uk_calibrate"],
+    "packages": ["oguk"],
     "include_package_data": True,
-    "name": "og_uk_calibrate",
+    "name": "oguk",
     "install_requires": [],
     "package_data": {"oguk": ["data/*"]},
     "classifiers": [
