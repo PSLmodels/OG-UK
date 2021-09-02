@@ -24,6 +24,7 @@ def call_run_oguk():
     roe_module.main()
 
 
+@pytest.mark.full_run
 def test_run_oguk(f=call_run_oguk):
     p = multiprocessing.Process(target=f, name="run_oguk", args=())
     p.start()

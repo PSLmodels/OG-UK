@@ -5,15 +5,12 @@ import time
 import os
 from openfisca_core.model_api import Reform
 from oguk.calibrate import Calibration
-import ogusa
 from ogcore import output_tables as ot
 from ogcore import output_plots as op
 from ogcore.execute import runner
 from ogcore.utils import safe_read_pickle
 
-# Set start year and last year -- note that OpenFisca-UK can only do one year
-# It does not have data like TaxData produced nor logic for future policy
-# like Tax-Calculator does
+# Set start year and last year
 START_YEAR = 2020
 from ogcore.parameters import Specifications
 
@@ -44,7 +41,11 @@ def main():
     # Update parameters for baseline from default json file
     p.update_specifications(
         json.load(
-            open(os.path.join("..", "oguk", "oguk_default_parameters.json"))
+            open(
+                os.path.join(
+                    CUR_DIR, "..", "oguk", "oguk_default_parameters.json"
+                )
+            )
         )
     )
     # specify tax function form and start year
@@ -100,7 +101,11 @@ def main():
     # Update parameters for baseline from default json file
     p2.update_specifications(
         json.load(
-            open(os.path.join("..", "oguk", "oguk_default_parameters.json"))
+            open(
+                os.path.join(
+                    CUR_DIR, "..", "oguk", "oguk_default_parameters.json"
+                )
+            )
         )
     )
     # specify tax function form and start year
