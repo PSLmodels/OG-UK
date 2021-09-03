@@ -2,7 +2,7 @@ name: oguk-dev
 channels:
 - conda-forge
 dependencies:
-- python>=3.7.7
+- python<=3.7.11
 - dask==2.30.0
 - dask-core==2.30.0
 - distributed==2.30.1
