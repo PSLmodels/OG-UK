@@ -11,7 +11,7 @@ from ogcore.execute import runner
 from ogcore.utils import safe_read_pickle
 
 # Set start year and last year
-START_YEAR = 2020
+START_YEAR = 2018
 from ogcore.parameters import Specifications
 
 
@@ -81,7 +81,7 @@ def main():
     # Create a parametric reform for OpenFisca-UK
     def lower_pa(parameters):
         parameters.tax.income_tax.allowances.personal_allowance.amount.update(
-            period="2020", value=10000
+            period="2018", value=10000
         )
         return parameters
 
