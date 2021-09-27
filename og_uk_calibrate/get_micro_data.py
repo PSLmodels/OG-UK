@@ -13,7 +13,7 @@ from openfisca_uk import Microsimulation
 import pandas as pd
 import warnings
 from openfisca_uk.api import *
-from openfisca_data import FRS, SynthFRS
+from openfisca_uk_data import FRS, SynthFRS
 
 if len(FRS.years) == 0:
     print("Using synthetic dataset.")
