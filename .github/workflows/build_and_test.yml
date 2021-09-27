@@ -1,13 +1,14 @@
-name: Build and test [Python 3.7, 3.8]
+name: Build and test [Python 3.7]
 
 on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [3.7, 3.8]
+        os: [ubuntu-latest, windows-latest]
+        python-version: [3.7]
 
     steps:
       - name: Checkout
@@ -18,7 +19,7 @@ jobs:
       - name: Setup Miniconda using Python ${{ matrix.python-version }}
         uses: conda-incubator/setup-miniconda@v2
         with:
-          activate-environment: oguk-calibrate-dev
+          activate-environment: oguk-dev
           environment-file: environment.yml
           python-version: ${{ matrix.python-version }}
           auto-activate-base: false
@@ -26,9 +27,9 @@ jobs:
       - name: Build
         shell: bash -l {0}
         run: |
-          pip install -e .
-          pip install pytest-cov
-          pip install pytest-pycodestyle
+          pip install -e . --user
+          pip install pytest-cov --user
+          pip install pytest-pycodestyle --user
       - name: Test
         shell: bash -l {0}
         working-directory: ./

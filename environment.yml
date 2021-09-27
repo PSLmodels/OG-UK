@@ -1,21 +1,12 @@
-name: oguk-calibrate-dev
+name: oguk-dev
 channels:
 - conda-forge
 dependencies:
-- python>=3.7.7,<3.9
-- ipython
-- setuptools
-- mkl>=2020.2
-- psutil
-- scipy>=1.5.0
-- pandas>=1.0.5
-- matplotlib
+- python<=3.7.11
 - dask==2.30.0
 - dask-core==2.30.0
 - distributed==2.30.1
 - paramtools>=0.15.0
-- openpyxl
-- sphinx>=3.1.2
 - pip
 - pytest>=6.0
 - pytest-pep8
@@ -26,8 +17,7 @@ dependencies:
 - requests
 - black
 - pre-commit
-- taxcalc
 - pip:
   - jupyter-book>=0.8.0
-  - git+https://github.com/PSLmodels/OG-USA@v0.6.4
-  - openfisca-uk>=0.4.4
+  - git+https://github.com/PSLmodels/OG-Core.git
+  - openfisca-uk
