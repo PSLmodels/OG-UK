@@ -17,10 +17,6 @@ from openfisca_uk_data import FRS, SynthFRS
 
 if len(FRS.years) == 0:
     print("Using synthetic dataset.")
-    SynthFRS.save(
-        "https://github.com/nikhilwoodruff/openfisca-uk-data/releases/download/synth-frs/synth_frs_2018.h5",
-        2018,
-    )
     dataset = SynthFRS
 else:
     dataset = FRS
@@ -94,14 +90,10 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     """
     # create a simulation
-    if data is None or "frs":
-        if reform is None:
-            sim = Microsimulation(dataset=dataset)
-        else:
-            sim = Microsimulation(reform, dataset=dataset)
+    if reform is None:
+        sim = Microsimulation()
     else:
-        # pass PopulationSim a data argument
-        pass
+        sim = Microsimulation(reform)
     if baseline:
         print("Running current law policy baseline")
     else:
