@@ -9,13 +9,47 @@ from ogcore import output_tables as ot
 from ogcore import output_plots as op
 from ogcore.execute import runner
 from ogcore.utils import safe_read_pickle
+import time
+from argparse import ArgumentParser
 
+# default reform
+
+from openfisca_uk.api import *
+
+
+def get_default_reform():
+    from openfisca_uk.api import YEAR, Person, BASELINE_VARIABLES, reforms
+
+    # Costs £68.8bn in year 1
+    UBI_AMOUNT = 20 * 52
+
+    class UBI(Variable):
+        value_type = float
+        entity = Person
+        definition_period = YEAR
+
+        def formula(person, period, parameters):
+            return 20 * 52
+
+    class tax(BASELINE_VARIABLES.tax):
+        def formula(person, period, parameters):
+            return BASELINE_VARIABLES.tax.formula(
+                person, period, parameters
+            ) - person("UBI", period)
+
+    ubi_reform = reforms.structural.new_variable(
+        UBI
+    ), reforms.structural.restructure(tax)
+    return ubi_reform
+
+
+start_time = time.time()
 # Set start year and last year
 START_YEAR = 2018
 from ogcore.parameters import Specifications
 
 
-def main():
+def main(reform=get_default_reform()):
     # Define parameters to use for multiprocessing
     client = Client()
     num_workers = min(multiprocessing.cpu_count(), 7)
@@ -51,9 +85,11 @@ def main():
     # specify tax function form and start year
     p.update_specifications(
         {
-            "tax_func_type": "linear",
+            "tax_func_type": "DEP",
             "age_specific": False,
             "start_year": START_YEAR,
+            "alpha_T": [5e-3],
+            "alpha_G": [5e-3],
         }
     )
     # Estimate baseline tax functions from OpenFisca-UK
@@ -111,9 +147,11 @@ def main():
     # specify tax function form and start year
     p2.update_specifications(
         {
-            "tax_func_type": "linear",
+            "tax_func_type": "DEP",
             "age_specific": False,
             "start_year": START_YEAR,
+            "alpha_T": [5e-3],
+            "alpha_G": [5e-3],
         }
     )
     # Estimate reform tax functions from OpenFisca-UK, passing Reform
@@ -173,4 +211,18 @@ def main():
 
 if __name__ == "__main__":
     # execute only if run as a script
-    main()
+
+    parser = ArgumentParser(
+        description="A script to run the main OG-UK routine on a reform."
+    )
+    parser.add_argument(
+        "reform",
+        default="small_ubi_reform.ubi_reform",
+        help="The Python reform object to use as a reform (if `reform` is defined in `reform_file.py`, then use `reform_file.reform`)",
+    )
+    args = parser.parse_args()
+
+    reform_path = args.reform.split(".")
+    python_module, object_name = ".".join(reform_path[:-1]), reform_path[-1]
+    reform = getattr(__import__(python_module), object_name)
+    main(reform)
