@@ -20,4 +20,4 @@ dependencies:
 - pip:
   - jupyter-book>=0.8.0
   - git+https://github.com/PSLmodels/OG-Core.git
-  - git+https://github.com/PSLmodels/openfisca-uk
+  - openfisca-uk
