@@ -4,13 +4,7 @@ import os
 import numpy as np
 from ogcore.utils import safe_read_pickle, mkdirs
 import pkg_resources
-import matplotlib.pyplot as plt
 
-style_file = os.path.join(
-    "https://raw.githubusercontent.com/PSLmodels/OG-Core/master/ogcore"
-    + "/OGcorePlots.mplstyle"
-)
-plt.style.use(style_file)
 
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
 
