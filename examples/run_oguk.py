@@ -18,29 +18,11 @@ from openfisca_uk.api import *
 
 
 def get_default_reform():
-    from openfisca_uk.api import YEAR, Person, BASELINE_VARIABLES, reforms
+    from openfisca_tools.reforms import set_parameter
 
-    # Costs £68.8bn in year 1
-    UBI_AMOUNT = 20 * 52
-
-    class UBI(Variable):
-        value_type = float
-        entity = Person
-        definition_period = YEAR
-
-        def formula(person, period, parameters):
-            return 20 * 52
-
-    class tax(BASELINE_VARIABLES.tax):
-        def formula(person, period, parameters):
-            return BASELINE_VARIABLES.tax.formula(
-                person, period, parameters
-            ) - person("UBI", period)
-
-    ubi_reform = reforms.structural.new_variable(
-        UBI
-    ), reforms.structural.restructure(tax)
-    return ubi_reform
+    return set_parameter(
+        "tax.income_tax.rates.uk[0].rate", 0.3, "year:2018:10"
+    )
 
 
 start_time = time.time()
@@ -49,7 +31,9 @@ START_YEAR = 2018
 from ogcore.parameters import Specifications
 
 
-def main(reform=get_default_reform()):
+def main(reform=None):
+    if reform is None:
+        reform = get_default_reform()
     # Define parameters to use for multiprocessing
     client = Client()
     num_workers = min(multiprocessing.cpu_count(), 7)
@@ -114,18 +98,6 @@ def main(reform=get_default_reform()):
     Run reform policy
     ------------------------------------------------------------------------
     """
-    # Create a parametric reform for OpenFisca-UK
-    def lower_pa(parameters):
-        parameters.tax.income_tax.allowances.personal_allowance.amount.update(
-            period="2018", value=10000
-        )
-        return parameters
-
-    class lower_personal_tax_allowance(Reform):
-        def apply(self):
-            self.modify_parameters(modifier_function=lower_pa)
-
-    reform = lower_personal_tax_allowance
 
     # create new Specifications object for reform simulation
     p2 = Specifications(
@@ -216,13 +188,16 @@ if __name__ == "__main__":
         description="A script to run the main OG-UK routine on a reform."
     )
     parser.add_argument(
-        "reform",
-        default="small_ubi_reform.ubi_reform",
+        "--reform",
         help="The Python reform object to use as a reform (if `reform` is defined in `reform_file.py`, then use `reform_file.reform`)",
     )
     args = parser.parse_args()
-
-    reform_path = args.reform.split(".")
-    python_module, object_name = ".".join(reform_path[:-1]), reform_path[-1]
-    reform = getattr(__import__(python_module), object_name)
-    main(reform)
+    reform = args.reform
+    if reform is not None:
+        reform_path = reform.split(".")
+        python_module, object_name = (
+            ".".join(reform_path[:-1]),
+            reform_path[-1],
+        )
+        reform = getattr(__import__(python_module), object_name)
+    main(reform=reform)
