@@ -55,3 +55,28 @@ def test_get_calculator_exception():
         assert get_micro_data.get_calculator_output(
             baseline=False, year=DATA_LAST_YEAR + 1, reform=None, data=None
         )
+
+
+def test_household_mtr_calculation():
+    """Test that the household MTR function works as expected"""
+    mtr_x = get_micro_data.get_household_mtrs(
+        (),
+        "employment_income",
+        2018,
+        dataset=get_micro_data.dataset,
+        year=2018,
+    )
+    assert mtr_x.isna().sum() == 0
+    assert mtr_x.min() >= 0
+    assert mtr_x.max() <= 1
+
+    mtr_y = get_micro_data.get_household_mtrs(
+        (),
+        "savings_interest_income",
+        2018,
+        dataset=get_micro_data.dataset,
+        year=2018,
+    )
+    assert mtr_y.isna().sum() == 0
+    assert mtr_y.min() >= 0
+    assert mtr_y.max() <= 1
