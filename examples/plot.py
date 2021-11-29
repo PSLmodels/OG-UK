@@ -1,31 +1,74 @@
-from ogusa.utils import safe_read_pickle
-from ogusa.parameter_plots import plot_2D_taxfunc
-from ogusa import txfunc
-from matplotlib import pyplot as plt
+from ogcore.utils import safe_read_pickle
+from ogcore import txfunc
 import numpy as np
 import pandas as pd
+from argparse import ArgumentParser
+import plotly.express as px
 
-# read in tax function parameters from pickle
-tax_funcs_base = safe_read_pickle(
-    "./examples/OG-UK-Example/OUTPUT_BASELINE/TxFuncEst_baseline.pkl"
-)
-tax_funcs_reform = safe_read_pickle(
-    "./examples/OG-UK-Example/OUTPUT_REFORM/TxFuncEst_policy.pkl"
-)
 
-# read in micro data from pickle
-micro_data = safe_read_pickle(
-    "./examples/OG-UK-Example/OUTPUT_BASELINE/micro_data_baseline.pkl"
-)
+def main(year: int = 2018):
+    year = str(year)
+    # read in tax function parameters from pickle
+    tax_funcs_base = safe_read_pickle(
+        "./examples/OG-UK-Example/OUTPUT_BASELINE/TxFuncEst_baseline.pkl"
+    )
+    try:
+        tax_funcs_reform = safe_read_pickle(
+            "./examples/OG-UK-Example/OUTPUT_REFORM/TxFuncEst_policy.pkl"
+        )
+    except:
+        tax_funcs_reform = tax_funcs_base
 
-# create plot
+    # read in micro data from pickle
+    micro_data = safe_read_pickle(
+        "./examples/OG-UK-Example/OUTPUT_BASELINE/micro_data_baseline.pkl"
+    )
 
-"""for rate_type in ("etr", "mtrx", "mtry"):
-    for labinc_val in (True, False):
-        fig = plot_2D_taxfunc(
-            )
+    for ftype, name in zip(
+        ("etr", "mtrx", "mtry"), ("etr", "mtr_labinc", "mtr_capinc")
+    ):
+        tax = get_tax_fn(
+            year,
+            year,
+            [tax_funcs_base, tax_funcs_reform],
+            age=None,
+            tax_func_type=["DEP"],
+            rate_type=ftype,
+            over_labinc=True,
+            other_inc_val=1000,
+            max_inc_amt=100000,
+            data_list=[micro_data],
+            labels=["Baseline", "Reform"],
+            title=f"Rate type: DEP, over labour income",
+            path=None,
+        )
 
-        plt.show()"""
+        df = pd.DataFrame(
+            {
+                "Labour income": micro_data[year]["total_labinc"],
+                "Capital income": micro_data[year]["total_capinc"],
+                name: micro_data[year][name],
+                "Type": "Actual",
+            }
+        )
+        second_df = df.copy()
+
+        second_df[name] = tax(df["Labour income"], df["Capital income"])
+        second_df["Type"] = "Fitted"
+
+        df = pd.concat([df, second_df])
+
+        px.scatter_3d(
+            df,
+            x="Labour income",
+            y="Capital income",
+            z=name,
+            opacity=0.1,
+            color="Type",
+        ).update_layout(
+            title=f"{name} function in {year}",
+            template="plotly_white",
+        ).show()
 
 
 def get_tax_fn(
@@ -44,8 +87,7 @@ def get_tax_fn(
     path=None,
 ):
     # Check that inputs are valid
-    assert isinstance(start_year, int)
-    assert isinstance(year, int)
+    year, start_year = int(year), int(start_year)
     assert year >= start_year
     # if list of tax function types less than list of params, assume
     # all the same functional form
@@ -104,49 +146,8 @@ def get_tax_fn(
     )
 
 
-tax = get_tax_fn(
-    2018,
-    2018,
-    [tax_funcs_base, tax_funcs_reform],
-    age=None,
-    tax_func_type=["DEP"],
-    rate_type="etr",
-    over_labinc=True,
-    other_inc_val=1000,
-    max_inc_amt=100000,
-    data_list=[micro_data],
-    labels=["Baseline", "Reform"],
-    title=f"Rate type: DEP, over labour income",
-    path=None,
-)
-
-results = tax(
-    micro_data["2018"]["total_labinc"], micro_data["2018"]["total_capinc"]
-)
-
-import plotly.express as px
-import plotly.graph_objects as go
-
-df = pd.DataFrame(
-    {
-        "Labour income": micro_data["2018"]["total_labinc"],
-        "Capital income": micro_data["2018"]["total_capinc"],
-        "ETR": micro_data["2018"]["etr"],
-        "Type": "Actual",
-    }
-)
-second_df = df.copy()
-
-second_df["Fitted ETR"] = tax(df["Labour income"], df["Capital income"])
-second_df["Type"] = "Fitted"
-
-df = pd.concat([df, second_df])
-
-px.scatter_3d(
-    df,
-    x="Labour income",
-    y="Capital income",
-    z="ETR",
-    opacity=0.1,
-    color="Type",
-).show()
+if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument("--year", type=int, default=2018)
+    args = parser.parse_args()
+    main(args.year)
