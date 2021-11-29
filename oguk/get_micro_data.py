@@ -18,7 +18,7 @@ from openfisca_uk_data import FRS, SynthFRS
 if len(FRS.years) == 0:
     print("Using synthetic dataset.")
     dataset = SynthFRS
-    if len(SynthFRS.years == 0):
+    if len(SynthFRS.years) == 0:
         SynthFRS.save(year=2018)
 else:
     dataset = FRS
