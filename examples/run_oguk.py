@@ -189,12 +189,15 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--reform",
-        default="small_ubi_reform.ubi_reform",
         help="The Python reform object to use as a reform (if `reform` is defined in `reform_file.py`, then use `reform_file.reform`)",
     )
     args = parser.parse_args()
-
-    reform_path = args.reform.split(".")
-    python_module, object_name = ".".join(reform_path[:-1]), reform_path[-1]
-    reform = getattr(__import__(python_module), object_name)
+    reform = args.reform
+    if reform is not None:
+        reform_path = reform.split(".")
+        python_module, object_name = (
+            ".".join(reform_path[:-1]),
+            reform_path[-1],
+        )
+        reform = getattr(__import__(python_module), object_name)
     main(reform=reform)
