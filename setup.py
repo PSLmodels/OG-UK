@@ -6,7 +6,7 @@ except ImportError:
 with open("README.md") as f:
     longdesc = f.read()
 
-version = "0.0.0"
+version = "0.1.0"
 
 config = {
     "description": "OG-UK",
