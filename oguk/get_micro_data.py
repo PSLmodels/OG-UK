@@ -13,15 +13,10 @@ from openfisca_uk import Microsimulation
 import pandas as pd
 import warnings
 from openfisca_uk.api import *
-from openfisca_uk_data import FRS, SynthFRS
+from openfisca_uk_data import FRSEnhanced, SynthFRS
 
-if len(FRS.years) == 0:
-    print("Using synthetic dataset.")
-    dataset = SynthFRS
-    if len(SynthFRS.years) == 0:
-        SynthFRS.save(year=2018)
-else:
-    dataset = FRS
+DATASET = SynthFRS  # Change to FRSEnhanced if running locally
+DATASET.download(2019)
 
 warnings.filterwarnings("ignore")
 
