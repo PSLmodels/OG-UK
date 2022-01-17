@@ -15,8 +15,8 @@ import warnings
 from openfisca_uk.api import *
 from openfisca_uk_data import FRSEnhanced, SynthFRS
 
-DATASET = SynthFRS  # Change to FRSEnhanced if running locally
-DATASET.download(2019)
+dataset = SynthFRS  # Change to FRSEnhanced if running locally
+dataset.download(2019)
 
 warnings.filterwarnings("ignore")
 
