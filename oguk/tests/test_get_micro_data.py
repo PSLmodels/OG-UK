@@ -28,7 +28,7 @@ def test_frs():
     Check that setting `data` to 'frs' uses cps data
     """
     baseline = False
-    start_year = 2018
+    start_year = 2019
 
     # create a parametric reform
     def lower_pa(parameters):
@@ -62,9 +62,9 @@ def test_household_mtr_calculation():
     mtr_x = get_micro_data.get_household_mtrs(
         (),
         "employment_income",
-        2018,
+        2019,
         dataset=get_micro_data.dataset,
-        year=2018,
+        year=2019,
     )
     assert mtr_x.isna().sum() == 0
     assert mtr_x.min() >= 0
@@ -73,9 +73,9 @@ def test_household_mtr_calculation():
     mtr_y = get_micro_data.get_household_mtrs(
         (),
         "savings_interest_income",
-        2018,
+        2019,
         dataset=get_micro_data.dataset,
-        year=2018,
+        year=2019,
     )
     assert mtr_y.isna().sum() == 0
     assert mtr_y.min() >= 0

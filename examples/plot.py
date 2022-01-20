@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 import plotly.express as px
 
 
-def main(year: int = 2018):
+def main(year: int = 2019):
     year = str(year)
     # read in tax function parameters from pickle
     tax_funcs_base = safe_read_pickle(
@@ -148,6 +148,6 @@ def get_tax_fn(
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--year", type=int, default=2018)
+    parser.add_argument("--year", type=int, default=2019)
     args = parser.parse_args()
     main(args.year)
