@@ -13,15 +13,10 @@ from openfisca_uk import Microsimulation
 import pandas as pd
 import warnings
 from openfisca_uk.api import *
-from openfisca_uk_data import FRS, SynthFRS
+from openfisca_uk_data import FRSEnhanced, SynthFRS
 
-if len(FRS.years) == 0:
-    print("Using synthetic dataset.")
-    dataset = SynthFRS
-    if len(SynthFRS.years) == 0:
-        SynthFRS.save(year=2018)
-else:
-    dataset = FRS
+dataset = SynthFRS  # Change to FRSEnhanced if running locally
+dataset.download(2019)
 
 warnings.filterwarnings("ignore")
 
@@ -84,7 +79,7 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     """
     # create a simulation
-    sim_kwargs = dict(dataset=dataset, year=2018)
+    sim_kwargs = dict(dataset=dataset, year=2019)
     if reform is None:
         sim = Microsimulation(**sim_kwargs)
         reform = ()
