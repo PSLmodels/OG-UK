@@ -30,7 +30,7 @@ else:
     """
     )
     dataset = SynthFRS  # Change to FRSEnhanced if running locally
-    logging.warn("Using synthetic FRS microdata data.")
+    logging.warn("Using synthetic FRS microdata.")
     if 2019 not in dataset.years:
         logging.info("Downloading 2019 synthetic FRS microdata.")
         dataset.download(2019)
