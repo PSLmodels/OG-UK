@@ -16,7 +16,8 @@ from openfisca_uk.api import *
 from openfisca_uk_data import FRSEnhanced, SynthFRS
 
 dataset = SynthFRS  # Change to FRSEnhanced if running locally
-dataset.download(2019)
+if 2019 not in dataset.years:
+    dataset.download(2019)
 
 warnings.filterwarnings("ignore")
 
