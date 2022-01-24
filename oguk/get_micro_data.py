@@ -14,9 +14,26 @@ import pandas as pd
 import warnings
 from openfisca_uk.api import *
 from openfisca_uk_data import FRSEnhanced, SynthFRS
+import logging
 
-dataset = SynthFRS  # Change to FRSEnhanced if running locally
-dataset.download(2019)
+logging.basicConfig(level=logging.INFO)
+
+if 2019 in FRSEnhanced.years:
+    dataset = FRSEnhanced
+    logging.info("Using enhanced FRS microdata data.")
+else:
+    logging.warn(
+        """
+    Could not locate FRS microdata. If you have access to the data, try running:
+
+    openfisca-uk-data frs_enhanced download 2019
+    """
+    )
+    dataset = SynthFRS  # Change to FRSEnhanced if running locally
+    logging.warn("Using synthetic FRS microdata.")
+    if 2019 not in dataset.years:
+        logging.info("Downloading 2019 synthetic FRS microdata.")
+        dataset.download(2019)
 
 warnings.filterwarnings("ignore")
 
