@@ -609,11 +609,6 @@ def get_imm_resid(
     pop21vec = np.zeros(3)
     pop21vec = np.vstack((np_pop[0], np_pop_prev[0, 0], np_pop_prev[0, 1])).T
 
-    # # fert_rates2018 massively underestimates new borns in 2015-2017
-    # # use different methodology below
-    # fert_rates = get_fert(totpers, base_yr, False)
-    # newbornvec = np.dot(fert_rates, np_pop_prev)
-
     # download total new borns in 2015,2016,2017
     Country = "UK"
     Year = base_yr
@@ -809,15 +804,6 @@ def get_pop_objs(
     )
     OMEGA_orig[1:, :-1] += np.diag(1 - mort_rates[:-1])
     OMEGA_orig[1:, 1:] += np.diag(imm_rates_orig[1:])
-
-    print("OMEGA_orig: ", OMEGA_orig)
-    print("OMEGA_orig[0, 9:62] fert: ", OMEGA_orig[0, 9:62])
-
-    # workbook = xlsxwriter.Workbook('OMEGA_orig.xlsx')
-    # worksheet1 = workbook.add_worksheet('OMEGA_orig')
-    # row = 0
-    # for col, data in enumerate(OMEGA_orig):
-    #     worksheet1.write_column(row, col, data)
 
     # Solve for steady-state population growth rate and steady-state
     # population distribution by age using eigenvalue and eigenvector
