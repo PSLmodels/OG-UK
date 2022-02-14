@@ -21,3 +21,4 @@ dependencies:
   - jupyter-book>=0.8.0
   - git+https://github.com/PSLmodels/OG-Core.git
   - openfisca-uk>=0.10.5
+  - eurostat>=0.2.3
