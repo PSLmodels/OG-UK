@@ -38,7 +38,7 @@ else:
 warnings.filterwarnings("ignore")
 
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
-DATA_LAST_YEAR = 2023  # this is the last year data are extrapolated for
+DATA_LAST_YEAR = 2022  # this is the last year data are extrapolated for
 
 
 def get_household_mtrs(
@@ -106,6 +106,8 @@ def get_calculator_output(baseline, year, reform=None, data=None):
         print("Running current law policy baseline")
     else:
         print("Baseline policy is: ", reform)
+    
+    sim.year = 2022
 
     # Check that start_year is appropriate
     if year > DATA_LAST_YEAR:
@@ -113,16 +115,12 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     # define market income - taking expanded_income and excluding gov't
     # transfer benefits
-    market_income = np.maximum(
-        sim.calc("gross_income", map_to="household", period=year).values
-        - sim.calc("benefits", map_to="household", period=year).values,
-        1,
-    )
+    market_income = sim.calc("household_market_income", period=year)
 
     # Compute marginal tax rates (can only do on earned income now)
 
     # Put MTRs, income, tax liability, and other variables in dict
-    length = sim.calc("household_weight").size
+    length = sim.calc("household_weight", period=year).size
     tax_dict = {
         "mtr_labinc": get_household_mtrs(
             reform,
@@ -142,18 +140,17 @@ def get_calculator_output(baseline, year, reform=None, data=None):
         "total_labinc": sim.calc(
             "earned_income", map_to="household", period=year
         ),
-        "total_capinc": market_income
-        - sim.calc("earned_income", map_to="household", period=year),
+        "total_capinc": sim.calc("capital_income", map_to="household", period=year),
         "market_income": market_income,
         "total_tax_liab": sim.calc(
-            "income_tax", map_to="household", period=year
+            "household_tax", period=year
         ),
         "payroll_tax_liab": sim.calc(
             "national_insurance", map_to="household", period=year
         ),
         "etr": (
             1
-            - (sim.calc("net_income", map_to="household", period=year))
+            - (sim.calc("household_net_income", map_to="household", period=year))
             / market_income
         ).clip(-10, 1.5),
         "year": year * np.ones(length),
