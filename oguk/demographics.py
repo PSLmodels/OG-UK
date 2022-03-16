@@ -175,7 +175,8 @@ def get_fert(totpers, base_yr, download=False, save_data=True, graph=False):
     ############## Add tails for under 15 and over 50 - START ######
     # data contains single values for ages 10-14 & over 50
     # spread data from ages 10-14 and 50-60
-    # using expontial function, based on shape of adjacent data
+    # using expontial function, 
+    # based on shape of adjacent data
 
     # Top tail estimation:
     # select final 6 single-age values (ages 44-49)
