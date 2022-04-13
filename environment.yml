@@ -18,7 +18,7 @@ dependencies:
 - black
 - pre-commit
 - pip:
-  - jupyter-book>=0.8.0
-  - git+https://github.com/PSLmodels/OG-Core.git
+  - jupyter-book>=0.9.1
   - openfisca-uk>=0.10.5
   - eurostat>=0.2.3
+  - ogcore
