@@ -1,4 +1,5 @@
 from ogcore import txfunc
+from oguk import demographics
 from oguk import get_micro_data
 import os
 import numpy as np
@@ -59,10 +60,10 @@ class Calibration:
         #     p.S, p.omega_SS, p.omega_SS_80, p.lambdas, plot=False
         # )
 
-        # # demographics
-        # self.demographic_params = demographics.get_pop_objs(
-        #     p.E, p.S, p.T, 1, 100, p.start_year
-        # )
+        # demographics
+        self.demographic_params = demographics.get_pop_objs(
+            p.E, p.S, p.T, 1, 100, p.pop_base_yr, p.start_year
+        )
 
     # Tax Functions
     def get_tax_function_parameters(
