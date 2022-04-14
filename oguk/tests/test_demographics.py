@@ -7,7 +7,7 @@ import sys, os
 # import os
 # os.chdir('../..')
 sys.path.append('../..')
-from oguk import demographics
+from oguk import demographics as dmg
 
 
 def test_get_pop_objs():
@@ -20,7 +20,7 @@ def test_get_pop_objs():
     T = int(round(4.0 * S))
     start_year = 2018
 
-    pop_dict = demographics.get_pop_objs(
+    pop_dict = dmg.get_pop_objs(
         E, S, T, 1, 100, start_year, False)
 
     assert (np.allclose(pop_dict['omega_SS'], pop_dict['omega'][-1, :]))
@@ -35,7 +35,7 @@ def test_pop_smooth():
     T = int(round(4.0 * S))
     start_year = 2018
 
-    pop_dict = demographics.get_pop_objs(
+    pop_dict = dmg.get_pop_objs(
         E, S, T, 1, 100, start_year, False)
 
     assert (np.any(np.absolute(pop_dict['omega'][:-1, :] -
@@ -53,7 +53,7 @@ def test_imm_smooth():
     T = int(round(4.0 * S))
     start_year = 2018
 
-    pop_dict = demographics.get_pop_objs(
+    pop_dict = dmg.get_pop_objs(
         E, S, T, 1, 100, start_year, False)
 
     assert (np.any(np.absolute(pop_dict['imm_rates'][:-1, :] -
@@ -66,7 +66,7 @@ def test_get_fert():
     '''
     E = 20
     S = 80
-    fert_rates = demographics.get_fert(100, 2018, graph=False)
+    fert_rates = dmg.get_fert(E + S, 2018, graph=False)
     assert (fert_rates.shape[0] == E + S)
 
 
@@ -200,7 +200,7 @@ def test_get_mort():
 
     # Test that we get the right mort_rates and infmort_rate when reading data
     # from local hard drive path
-    mort_rates_1, infmort_rate_1 = demographics.get_mort(
+    mort_rates_1, infmort_rate_1 = dmg.get_mort(
         totpers, 0, 100, graph=False
     )
     assert mort_rates_1.shape[0] == totpers
@@ -209,7 +209,7 @@ def test_get_mort():
 
     # Test that we get the right mort_rates and infmort_rate when downloading
     # data from the internet
-    mort_rates_2, infmort_rate_2 = demographics.get_mort(
+    mort_rates_2, infmort_rate_2 = dmg.get_mort(
         totpers, 0, 100, download=True, graph=False
     )
     assert mort_rates_2.shape[0] == totpers
@@ -219,7 +219,7 @@ def test_get_mort():
     # Test that we get the right mort_rates and infmort_rate when we use a
     # a smaller number of total model periods
     totpers_small = 11
-    mort_rates_3, infmort_rate_3 = demographics.get_mort(
+    mort_rates_3, infmort_rate_3 = dmg.get_mort(
         totpers_small, 0, 100, download=False, graph=False
     )
     assert mort_rates_3.shape[0] == totpers_small
@@ -234,5 +234,5 @@ def test_get_imm_resid():
     E = 20
     S = 80
     totpers = E + S
-    imm_rates = demographics.get_imm_resid(totpers, 0, 100, 2018)
+    imm_rates = dmg.get_imm_resid(totpers, 0, 100, 2018)
     assert (imm_rates.shape[0] == E + S)

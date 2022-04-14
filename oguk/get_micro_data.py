@@ -13,15 +13,27 @@ from openfisca_uk import Microsimulation
 import pandas as pd
 import warnings
 from openfisca_uk.api import *
-from openfisca_uk_data import FRS, SynthFRS
+from openfisca_uk_data import FRSEnhanced, SynthFRS
+import logging
 
-if len(FRS.years) == 0:
-    print("Using synthetic dataset.")
-    dataset = SynthFRS
-    if len(SynthFRS.years) == 0:
-        SynthFRS.save(year=2018)
+logging.basicConfig(level=logging.INFO)
+
+if 2019 in FRSEnhanced.years:
+    dataset = FRSEnhanced
+    logging.info("Using enhanced FRS microdata data.")
 else:
-    dataset = FRS
+    logging.warn(
+        """
+    Could not locate FRS microdata. If you have access to the data, try running:
+
+    openfisca-uk-data frs_enhanced download 2019
+    """
+    )
+    dataset = SynthFRS  # Change to FRSEnhanced if running locally
+    logging.warn("Using synthetic FRS microdata.")
+    if 2019 not in dataset.years:
+        logging.info("Downloading 2019 synthetic FRS microdata.")
+        dataset.download(2019)
 
 warnings.filterwarnings("ignore")
 
@@ -84,7 +96,7 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     """
     # create a simulation
-    sim_kwargs = dict(dataset=dataset, year=2018)
+    sim_kwargs = dict(dataset=dataset, year=2019)
     if reform is None:
         sim = Microsimulation(**sim_kwargs)
         reform = ()

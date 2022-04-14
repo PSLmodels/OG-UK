@@ -21,13 +21,13 @@ def get_default_reform():
     from openfisca_tools.reforms import set_parameter
 
     return set_parameter(
-        "tax.income_tax.rates.uk[0].rate", 0.3, "year:2018:10"
+        "tax.income_tax.rates.uk[0].rate", 0.3, "year:2019:10"
     )
 
 
 start_time = time.time()
 # Set start year and last year
-START_YEAR = 2018
+START_YEAR = 2019
 from ogcore.parameters import Specifications
 
 

@@ -16,7 +16,7 @@ import pickle
 from scipy.optimize import curve_fit
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
-import xlsxwriter
+# import xlsxwriter
 
 # Create current directory path object
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
@@ -55,6 +55,10 @@ def get_fert(totpers, base_yr, download=False, save_data=True, graph=False):
     """
     Country = "UK"
     Year = base_yr
+    if base_yr > 2017:
+        err_msg = ('Demographics.py ERROR: base_yr must be less-than-or ' +
+                   'equal-to 2017.')
+        ValueError(err_msg)
 
     if download:
         ############## Download Eurostat Data - START ##################
