@@ -16,6 +16,7 @@ import pickle
 from scipy.optimize import curve_fit
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
+
 # import xlsxwriter
 
 # Create current directory path object
@@ -32,13 +33,21 @@ if os.access(FIG_DIR, os.F_OK) is False:
     os.makedirs(FIG_DIR)
 
 """
-------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 Define functions
-------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 """
 
 
-def get_fert(totpers, base_yr, download=False, save_data=True, graph=False):
+def get_fert(
+    totpers,
+    base_yr,
+    min_yr,
+    max_yr,
+    download=False,
+    save_data=False,
+    graph=False,
+):
     """
     This function generates a vector of fertility rates by model period
     age that corresponds to the fertility rate data by age in years
@@ -46,7 +55,14 @@ def get_fert(totpers, base_yr, download=False, save_data=True, graph=False):
 
     Args:
         totpers (int): total number of agent life periods (E+S), >= 3
-        base_yr: base year
+        base_yr (int): year of data downloaded from Eurostat
+        min_yr (int): age in years at which agents are born, >= 0
+        max_yr (int): age in years at which agents die with certainty,
+            >= 4
+        download (bool): =True if want to download the data from Eurostat,
+            otherwise load from saved data file
+        save_data (bool): =True if want to save data used, should only be true
+            if download=True
         graph (bool): =True if want graphical output
 
     Returns:
@@ -54,14 +70,24 @@ def get_fert(totpers, base_yr, download=False, save_data=True, graph=False):
             of life
     """
     Country = "UK"
-    Year = base_yr
-    if base_yr > 2017:
-        err_msg = ('Demographics.py ERROR: base_yr must be less-than-or ' +
-                   'equal-to 2017.')
+    if base_yr > 2018:
+        err_msg = (
+            "Demographics.py ERROR: base_yr must be less-than-or "
+            + "equal-to 2018."
+        )
         ValueError(err_msg)
+    if download and save_data:
+        # If download=True and save_data=True, change save_data=False
+        save_date = False
+        print('WARNING demographics.py: Changed save_data=False in ' +
+              'get_fert() because download=True.')
+    Year = base_yr
+
+    pop_age_data_path = os.path.join(DATA_DIR, "pop_age_data.csv")
+    births_age_data_path = os.path.join(DATA_DIR, "births_age_data.csv")
 
     if download:
-        ############## Download Eurostat Data - START ##################
+        # Download Eurostat Data - START
         StartPeriod = Year
         EndPeriod = Year
 
@@ -82,9 +108,9 @@ def get_fert(totpers, base_yr, download=False, save_data=True, graph=False):
             flags=True,
             verbose=True,
         )
-        ############## Download Eurostat Data - END ##################
+        # Download Eurostat Data - END
 
-        ############## Process Population Data - START ##################
+        # Process Population Data - START
         # Remove totals and other unused rows
         indexNames = df_pop[
             (df_pop["AGE"] == "TOTAL")
@@ -114,12 +140,13 @@ def get_fert(totpers, base_yr, download=False, save_data=True, graph=False):
 
         # sort values by AGE
         df_pop = df_pop.sort_values(by=["AGE"])
+        # rename population total series "POP" instead of the year
+        df_pop.rename(columns={Year: "POP"}, inplace=True)
         if save_data:
-            pop_data_csv_path = os.path.join(DATA_DIR, "pop_data.csv")
-            df_pop.to_csv(pop_data_csv_path, index=False)
-        ############## Process Population Data - END ##################
+            df_pop.to_csv(pop_age_data_path, index=False)
+        # Process Population Data - END
 
-        ############## Select Fertility Data - START ##################
+        # Select Fertility Data - START
         # Select Sex = T (meaning "Total" of boys and girls born); drop others
         df_fert = df_fert[(df_fert["SEX"] == "T")]
 
@@ -127,6 +154,8 @@ def get_fert(totpers, base_yr, download=False, save_data=True, graph=False):
         df_fert = df_fert.drop(
             columns=["UNIT", "SEX", "GEO", "FREQ", Obs_status_col]
         )
+         # rename total births series "BIRTHS" instead of the year
+        df_fert.rename(columns={Year: "BIRTHS"}, inplace=True)
 
         # Remove remaining total and subtotals
         indexNames = df_fert[
@@ -141,23 +170,46 @@ def get_fert(totpers, base_yr, download=False, save_data=True, graph=False):
             | (df_fert["AGE"] == "Y45-49")
         ].index
         df_fert.drop(indexNames, inplace=True)
-        # Change Year to numeric floats
-        df_fert[Year] = df_fert[Year].astype(np.float64)
+
+        # Rename Y10-14 to its midpoint and temporarility rename Y_GE50 to Y50
+        df_fert.AGE[df_fert.AGE == "Y10-14"] = "Y12"
+        df_fert.AGE[df_fert.AGE == "Y_GE50"] = "Y50"
+
+        #  Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
+        df_fert["AGE"] = df_fert["AGE"].str[1:]
+        # Convert all variable values to floats
+        df_fert = df_fert.astype(float)
+
+        # Rename Y_GE50 to Y50, then spread the births that were in Y_GE50
+        # among ages 50 through 57 (births=0 for age >=58) using a negative
+        # exponential function of the following form with the following
+        # properties
+        # BIRTHS_AGE = a * (AGE ** b) + c for AGE = 50, 51, ... 57
+        # such that sum_{AGE=50}^{57}(a * (AGE ** b) +c) =
+        #           df_fert['BIRTHS'][df_fert['AGE']=='Y_GE50'],
+        #   and     a * b * 49 = df_fert['BIRTHS'][df_fert['AGE']=='Y49'] -
+        #                        df_fert['BIRTHS'][df_fert['AGE']=='Y48'],
+        #   and     a * (58 ** b) + c = 0
+        #solve for b: sum_{AGE=50}^{57}(AGE ** b) + 8 * (58 ** b) - births_50 * (49 * b) / (births_49 - births_48) = 0
+        a = (births_49 - births_48) / (49 * b)
+        c = -a * (58 ** b)
+        # populate births_50,...births_57 with estimated values
+
+
+
+
+        # sort values by AGE
+        df_fert = df_fert.sort_values(by=["AGE"])
         if save_data:
-            fert_data_csv_path = os.path.join(DATA_DIR, "fert_rate_data.csv")
-            df_fert.to_csv(fert_data_csv_path, index=False)
+            df_fert.to_csv(births_age_data_path, index=False)
 
     else:
-        print("using csv saved fert_rates values")
-        # Make sure the fert_rate_data.csv file is accessible in DATA_DIR
-        fert_data_csv_path = os.path.join(DATA_DIR, "fert_rate_data.csv")
-        assert os.access(fert_data_csv_path, os.F_OK)
-        df_fert = pd.read_csv(fert_data_csv_path, sep=",")
-        pop_data_csv_path = os.path.join(DATA_DIR, "pop_data.csv")
-        assert os.access(pop_data_csv_path, os.F_OK)
-        df_pop = pd.read_csv(pop_data_csv_path, sep=",")
-        # Year only works for recovered df column heading if string
-        Year = str(Year)
+        print("using csv saved population and births data by age")
+        # Make sure the data files are accessible in DATA_DIR
+        assert os.access(pop_age_data_path, os.F_OK)
+        df_pop = pd.read_csv(pop_age_data_path, sep=",")
+        assert os.access(births_age_data_path, os.F_OK)
+        df_fert = pd.read_csv(births_age_data_path, sep=",")
 
     # Record values for 10-14 year old and over 50 year old for tail estimation
     under15total = (
@@ -179,8 +231,7 @@ def get_fert(totpers, base_yr, download=False, save_data=True, graph=False):
     ############## Add tails for under 15 and over 50 - START ######
     # data contains single values for ages 10-14 & over 50
     # spread data from ages 10-14 and 50-60
-    # using expontial function, 
-    # based on shape of adjacent data
+    # using expontial function, based on shape of adjacent data
 
     # Top tail estimation:
     # select final 6 single-age values (ages 44-49)
@@ -755,13 +806,14 @@ def get_pop_objs(
     min_yr,
     max_yr,
     base_yr,
+    curr_year,
     download=True,
     save_data=True,
     GraphDiag=False,
 ):
     """
     This function produces the demographics objects to be used in the
-    OG-USA model package.
+    OG-UK model package.
 
     Args:
         E (int): number of model periods in which agent is not
@@ -772,6 +824,7 @@ def get_pop_objs(
         min_yr (int): age in years at which agents are born, >= 0
         max_yr (int): age in years at which agents die with certainty,
             >= 4
+        base_yr (int): year of demographic data to be used or downloaded
         curr_year (int): current year for which analysis will begin,
             >= 2016
         GraphDiag (bool): =True if want graphical output and printed
@@ -793,12 +846,16 @@ def get_pop_objs(
                 path, length T + S
 
     """
-    # assert curr_year >= 2019
+    assert curr_year >= 2019
 
-    # age_per = np.linspace(min_yr, max_yr, E+S)
-    fert_rates = get_fert(E + S, base_yr, graph=False)
+    fert_rates = get_fert(E + S, base_yr, min_yr, max_yr, graph=False)
     mort_rates, infmort_rate = get_mort(
-        E + S, min_yr, max_yr, beg_yr=2018, end_yr=2018, graph=False,
+        E + S,
+        min_yr,
+        max_yr,
+        beg_yr=2018,
+        end_yr=2018,
+        graph=False,
     )
     mort_rates_S = mort_rates[-S:]
     imm_rates_orig = get_imm_resid(E + S, min_yr, max_yr, base_yr, graph=False)
