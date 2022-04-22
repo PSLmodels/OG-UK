@@ -39,45 +39,6 @@ Define functions
 """
 
 
-def neg_exp_b_zerofunc(b, *args):
-    """
-    This is the zero function for the negative exponential as a function of
-    parameter b that solves the following specification:
-
-    BIRTHS_AGE = a * (AGE ** b) + c for AGE = Tp1_age, ... t_age_lastpos
-    such that sum_{AGE=Tp1_age}^{t_age_lastpos}(a * (AGE ** b) +c) =
-              births_last_bin,                                  [sum condition]
-    and       a * b * T_age = T_births - Tm1_births,          [slope condition]
-    and       a * ((T_age) ** b) + c = T_births             [connect condition]
-
-    Args:
-        b (scalar): exponent shape parameter
-        args (tuple): arguments for zero function
-
-    Returns:
-        error_val (scalar): error value of zero function for given b
-    """
-    (
-        T_age,
-        Tm1_age,
-        T_births,
-        Tm1_births,
-        Tp1_age,
-        t_age_lastpos,
-        births_last_bin,
-    ) = args
-    a = (T_births - Tm1_births) / ((T_age - Tm1_age) * (T_age * b))
-    c = T_births - a * (T_age ** b)
-    sum_age_exp_b = 0
-    for age in range(Tp1_age, t_age_lastpos + 1):
-        sum_age_exp_b += age ** b
-    error_val = (
-        a * sum_age_exp_b + (t_age_lastpos - Tp1_age + 1) * c - births_last_bin
-    )
-
-    return error_val
-
-
 def get_fert(
     totpers,
     base_yr,
@@ -153,7 +114,8 @@ def get_fert(
         # Drop gender specific population, keep only total
         df_pop = df_pop[(df_pop["SEX"] == "T")]
 
-        # Name of 1 column includes the year - create column name before dropping
+        # Name of 1 column includes the year - create column name before
+        # dropping
         Obs_status_col = str(Year) + "_OBS_STATUS"
         # Drop columns except: Age, Frequency
         df_pop = df_pop.drop(
@@ -197,21 +159,21 @@ def get_fert(
 
         # Remove remaining total and subtotals
         indexNames = df_births[
-            (df_births["AGE"] == "TOTAL") |
-            (df_births["AGE"] == "UNK") |
-            (df_births["AGE"] == "Y15-19") |
-            (df_births["AGE"] == "Y20-24") |
-            (df_births["AGE"] == "Y25-29") |
-            (df_births["AGE"] == "Y30-34") |
-            (df_births["AGE"] == "Y35-39") |
-            (df_births["AGE"] == "Y40-44") |
-            (df_births["AGE"] == "Y45-49")
+            (df_births["AGE"] == "TOTAL")
+            | (df_births["AGE"] == "UNK")
+            | (df_births["AGE"] == "Y15-19")
+            | (df_births["AGE"] == "Y20-24")
+            | (df_births["AGE"] == "Y25-29")
+            | (df_births["AGE"] == "Y30-34")
+            | (df_births["AGE"] == "Y35-39")
+            | (df_births["AGE"] == "Y40-44")
+            | (df_births["AGE"] == "Y45-49")
         ].index
         df_births.drop(indexNames, inplace=True)
 
         # Rename Y10-14 to Y14 and rename Y_GE50 to Y50
-        df_births['AGE'].replace("Y10-14", "Y14", inplace=True)
-        df_births['AGE'].replace("Y_GE50", "Y50", inplace=True)
+        df_births["AGE"].replace("Y10-14", "Y14", inplace=True)
+        df_births["AGE"].replace("Y_GE50", "Y50", inplace=True)
 
         #  Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
         df_births["AGE"] = df_births["AGE"].str[1:]
@@ -223,27 +185,78 @@ def get_fert(
         # 57 (births=0 for age >=58) using a negative exponential function of
         # the form BIRTHS_AGE = a * (AGE ** b) + c for AGE = 50, 51, ... 57
         age_Tup = 49
-        births_Tup = \
-            df_births.loc[df_births["AGE"] == age_Tup,
-                          "BIRTHS"].values.astype(float)[0]
+        births_Tup = df_births.loc[
+            df_births["AGE"] == age_Tup, "BIRTHS"
+        ].values.astype(float)[0]
         age_lastpos_up = 57
         age_max_up = 65
-        births_lastbin_up = \
-            df_births.loc[df_births['AGE'] == age_Tup + 1,
-                          "BIRTHS"].values.astype(float)[0]
-        bdup_args = (age_Tup, age_lastpos_up, age_max_up, births_Tup,
-                     births_lastbin_up)
-        age_vec_up, births_vec_up, abc_vec_up, age_lastpos_up = \
-            distribute_bin(bdup_args)
+        births_lastbin_up = df_births.loc[
+            df_births["AGE"] == age_Tup + 1, "BIRTHS"
+        ].values.astype(float)[0]
+        bdup_args = (
+            age_Tup,
+            age_lastpos_up,
+            age_max_up,
+            births_Tup,
+            births_lastbin_up
+        )
+        age_vec_up, births_vec_up, abc_vec_up, age_lastpos_up = distribute_bin(
+            bdup_args
+        )
+        df_births_up = pd.DataFrame(
+            np.hstack(
+                (
+                    age_vec_up.reshape(len(age_vec_up), 1),
+                    births_vec_up.reshape(len(births_vec_up), 1),
+                )
+            ),
+            columns=["AGE", "BIRTHS"],
+        )
+        df_births = pd.concat(
+            [df_births[df_births["AGE"] <= age_Tup], df_births_up],
+            ignore_index=True
+        )
 
-        # populate births_50,...births_57 with estimated values
-        for age in range(Tp1_age, t_age_lastpos + 1):
-            df_fert['BIRTHS'][df_fert['AGE'] == age] = a * (age ** b) + c
+        # Spread the births that were in Y10-14 (now Y14) among ages 10 through
+        # 14 (births=0 for age <=9) using an exponential function of the form
+        # BIRTHS_AGE = a * (AGE ** b) + c for AGE = 10, 11, ... 15
+        age_Tdn = 15
+        births_Tdn = df_births.loc[
+            df_births["AGE"] == age_Tdn, "BIRTHS"
+        ].values.astype(float)[0]
+        age_lastpos_dn = 10
+        age_min_dn = 8
+        births_lastbin_dn = df_births.loc[
+            df_births["AGE"] == age_Tdn - 1, "BIRTHS"
+        ].values.astype(float)[0]
+        bddn_args = (
+            age_Tdn,
+            age_lastpos_dn,
+            age_min_dn,
+            births_Tdn,
+            births_lastbin_dn
+        )
+        age_vec_dn, births_vec_dn, abc_vec_dn, age_lastpos_dn = distribute_bin(
+            bddn_args
+        )
+        df_births_dn = pd.DataFrame(
+            np.hstack(
+                (
+                    age_vec_dn.reshape(len(age_vec_dn), 1),
+                    births_vec_dn.reshape(len(births_vec_dn), 1),
+                )
+            ),
+            columns=["AGE", "BIRTHS"],
+        )
+        df_births = pd.concat(
+            [df_births_dn, df_births[df_births["AGE"] >= age_Tdn]],
+            ignore_index=True,
+        )
 
         # sort values by AGE
-        df_fert = df_fert.sort_values(by=["AGE"])
+        df_births = df_births.sort_values(by=["AGE"])
         if save_data:
-            df_fert.to_csv(births_age_data_path, index=False)
+            df_births.to_csv(births_age_data_path, index=False)
 
     else:
         print("using csv saved population and births data by age")
@@ -251,53 +264,7 @@ def get_fert(
         assert os.access(pop_age_data_path, os.F_OK)
         df_pop = pd.read_csv(pop_age_data_path, sep=",")
         assert os.access(births_age_data_path, os.F_OK)
-        df_fert = pd.read_csv(births_age_data_path, sep=",")
-
-    # Record values for 10-14 year old and over 50 year old for tail estimation
-    under15total = (
-        df_fert[Year].loc[df_fert["AGE"] == "Y10-14"].values.astype(float)
-    )
-    over50total = (
-        df_fert[Year].loc[df_fert["AGE"] == "Y_GE50"].values.astype(float)
-    )
-    # Remove values for 10-14 year old and over 50 year old from main data
-    indexNames = df_fert[
-        (df_fert["AGE"] == "Y10-14") | (df_fert["AGE"] == "Y_GE50")
-    ].index
-    df_fert.drop(indexNames, inplace=True)
-
-    # convert to numpy array, keeping only fertility values
-    np_fert = df_fert[Year].to_numpy().astype(float)
-    np_pop = df_pop[Year].to_numpy().astype(float)
-
-    ############## Add tails for under 15 and over 50 - START ######
-    # data contains single values for ages 10-14 & over 50
-    # spread data from ages 10-14 and 50-60
-    # using expontial function, based on shape of adjacent data
-
-    # Top tail estimation:
-    # select final 6 single-age values (ages 44-49)
-    Y_44_49 = np_fert[-7:-1]
-    x_44_49 = np.linspace(1, len(Y_44_49), len(Y_44_49))
-
-    # define negative exponential curve
-    def expon(x, a, b):
-        return a * np.exp(-b * x)
-
-    # estimate the best fit
-    popt_top, pcov = curve_fit(expon, x_44_49, Y_44_49)
-
-    # num_over50 is the number of years beyond age 49, e.g. 11 --> 50 to 60
-    num_over50 = 11
-    x_over50 = np.linspace(
-        len(Y_44_49) + 1, len(Y_44_49) + num_over50, num_over50
-    )
-
-    # predict over 50 values based on estimated curve
-    over50pred_unscaled = expon(x_over50, *popt_top)
-
-    # scale predicted values to match the total over 50 births
-    over50pred = over50pred_unscaled * over50total / over50pred_unscaled.sum()
+        df_births = pd.read_csv(births_age_data_path, sep=",")
 
     if graph:
         x_44_over50 = np.linspace(
@@ -1121,12 +1088,7 @@ def exp_b_zerofunc(b, *args):
         error_val (scalar): Error of zero function associated with solution for
             b
     """
-    (
-        x0,
-        xN,
-        y0,
-        y_lastbin
-    ) = args
+    (x0, xN, y0, y_lastbin) = args
     if xN > x0:
         distribute_up = True
         step = 1
@@ -1134,7 +1096,7 @@ def exp_b_zerofunc(b, *args):
         distribute_up = False
         step = -1
     elif xN == x0:
-        err_message = ('ERROR exp_b_zerofunc(): xN equals x0.')
+        err_message = "ERROR exp_b_zerofunc(): xN equals x0."
         raise ValueError(err_message)
     x1 = x0 + step
     a = (y0 - 1) / ((x0 ** b) - (xN ** b))
@@ -1178,34 +1140,34 @@ def distribute_bin(args):
         abc_vec (array_like): array of estimated values for (a, b, c)
         xN_new (int): updated value for xN
     """
-    (
-        x0,
-        xN,
-        xmax,
-        y0,
-        y_lastbin
-    ) = args
+    (x0, xN, xmax, y0, y_lastbin) = args
     if xN > x0:
         distribute_up = True
         if xmax < xN:
-            err_message = ('Error distribute_bin(): xmax < xN for ' +
-                           'distribute_up=True.')
+            err_message = (
+                "Error distribute_bin(): xmax < xN for "
+                + "distribute_up=True."
+            )
             raise ValueError(err_message)
         step = 1
     elif xN < x0:
         distribute_up = False
         if xmax > xN:
-            err_message = ('Error distribute_bin(): xmax > xN for ' +
-                           'distribute_up=False.')
+            err_message = (
+                "Error distribute_bin(): xmax > xN for "
+                + "distribute_up=False."
+            )
             raise ValueError(err_message)
         step = -1
     elif xN == x0:
-        err_message = ('ERROR distribute_bin(): xN equals x0.')
+        err_message = "ERROR distribute_bin(): xN equals x0."
         raise ValueError(err_message)
     else:
-        err_message('ERROR distribute_bin(): xN is neither greater-than, ' +
-                    'less-than, or equal to x0 in absolute value.')
-        print('xN=', xN, ', x0=', x0, ', xN-x0=', xN - x0)
+        err_message(
+            "ERROR distribute_bin(): xN is neither greater-than, "
+            + "less-than, or equal to x0 in absolute value."
+        )
+        print("xN=", xN, ", x0=", x0, ", xN-x0=", xN - x0)
         raise ValueError(err_message)
     x1 = x0 + step
     # Check if a line a * x + c from x0, y0 to xN, 1 sums up to something
@@ -1219,16 +1181,16 @@ def distribute_bin(args):
         for x in range(x1, xN_new + step, step):
             sum_y_lin0 += (a_lin0 * x) + c_lin0
         lin0 = sum_y_lin0 >= y_lastbin
-        print('Sum of lin0 model =', sum_y_lin0, 'for xN=', xN_new)
-        print('Sum of lin0 model >=', y_lastbin, '=', lin0)
+        print("Sum of lin0 model =", sum_y_lin0, "for xN=", xN_new)
+        print("Sum of lin0 model >=", y_lastbin, "=", lin0)
         if not lin0:
             xN_new += step
 
     if step * xN_new > step * xN:
         if distribute_up:
-            print('NOTE (distribute_bin()): xN value was increased.')
+            print("NOTE (distribute_bin()): xN value was increased.")
         else:
-            print('NOTE (distribute_bin()): xN value was decreased.')
+            print("NOTE (distribute_bin()): xN value was decreased.")
 
     if step * xN_new > step * xmax:
         xN_new += -step
@@ -1237,9 +1199,9 @@ def distribute_bin(args):
         # Distribute final bin as a line from (x0, y0) to xmax and the ymax
         # value that makes the sum equal to y_lastbin
         b = 1.0
-        a = ((y_lastbin - (step * (xmax - x0) * y0)) /
-             (np.arange(x1, xmax + step, step).sum() -
-              (step * (xmax - x0) * x0)))
+        a = (y_lastbin - (step * (xmax - x0) * y0)) / (
+            np.arange(x1, xmax + step, step).sum() - (step * (xmax - x0) * x0)
+        )
         c = y0 - a * x0
 
     elif lin0 and sum_y_lin0 == y_lastbin:
@@ -1254,11 +1216,11 @@ def distribute_bin(args):
         # such that a * (xN_new ** b) + c = 1,
         # a * (x0 ** b) + c = y0, and
         # sum_{x=x1}^xN_new (a * (x ** b) + c) = y_lastbin
-        print('distribute_bin(): Fitting three-parameter function.')
+        print("distribute_bin(): Fitting three-parameter function.")
         b_args = (x0, xN_new, y0, y_lastbin)
         b_sol = opt.root(exp_b_zerofunc, x0=1.0, args=b_args)
         b = b_sol.x[0]
-        print('b_sol.success=', b_sol.success)
+        print("b_sol.success=", b_sol.success)
         a = (y0 - 1) / ((x0 ** b) - (xN_new ** b))
         c = 1 - (a * (xN_new ** b))
 
