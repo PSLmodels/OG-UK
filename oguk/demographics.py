@@ -198,7 +198,7 @@ def get_fert(
             age_lastpos_up,
             age_max_up,
             births_Tup,
-            births_lastbin_up
+            births_lastbin_up,
         )
         age_vec_up, births_vec_up, abc_vec_up, age_lastpos_up = distribute_bin(
             bdup_args
@@ -214,7 +214,7 @@ def get_fert(
         )
         df_births = pd.concat(
             [df_births[df_births["AGE"] <= age_Tup], df_births_up],
-            ignore_index=True
+            ignore_index=True,
         )
 
         # Spread the births that were in Y10-14 (now Y14) among ages 10 through
@@ -234,7 +234,7 @@ def get_fert(
             age_lastpos_dn,
             age_min_dn,
             births_Tdn,
-            births_lastbin_dn
+            births_lastbin_dn,
         )
         age_vec_dn, births_vec_dn, abc_vec_dn, age_lastpos_dn = distribute_bin(
             bddn_args
@@ -251,6 +251,32 @@ def get_fert(
         df_births = pd.concat(
             [df_births_dn, df_births[df_births["AGE"] >= age_Tdn]],
             ignore_index=True,
+        )
+
+        # Concatenate missing years with zero births at beginning and end of
+        # df_births dataframe
+        df_zeros_a = pd.DataFrame(
+            np.hstack(
+                (
+                    np.arange(age_lastpos_dn).reshape(age_lastpos_dn, 1),
+                    np.zeros(age_lastpos_dn, 1),
+                )
+            ),
+            columns=["AGE", "BIRTHS"],
+        )
+        df_zeros_z = pd.DataFrame(
+            np.hstack(
+                (
+                    np.arange(age_lastpos_up + 1, max_yr + 1).reshape(
+                        max_yr - age_lastpos_dn + 1, 1
+                    ),
+                    np.zeros(max_yr - age_lastpos_dn + 1, 1),
+                )
+            ),
+            columns=["AGE", "BIRTHS"],
+        )
+        df_births = pd.concat(
+            [df_zeros_a, df_births, df_zeros_z], ignore_index=True
         )
 
         # sort values by AGE
