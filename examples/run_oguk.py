@@ -27,7 +27,7 @@ def get_default_reform():
 
 start_time = time.time()
 # Set start year and last year
-START_YEAR = 2019
+START_YEAR = 2022
 from ogcore.parameters import Specifications
 
 
@@ -69,11 +69,9 @@ def main(reform=None):
     # specify tax function form and start year
     p.update_specifications(
         {
-            "tax_func_type": "DEP",
+            "tax_func_type": "linear",
             "age_specific": False,
             "start_year": START_YEAR,
-            "alpha_T": [5e-3],
-            "alpha_G": [5e-3],
         }
     )
     # Estimate baseline tax functions from OpenFisca-UK
@@ -119,11 +117,9 @@ def main(reform=None):
     # specify tax function form and start year
     p2.update_specifications(
         {
-            "tax_func_type": "DEP",
+            "tax_func_type": "linear",
             "age_specific": False,
             "start_year": START_YEAR,
-            "alpha_T": [5e-3],
-            "alpha_G": [5e-3],
         }
     )
     # Estimate reform tax functions from OpenFisca-UK, passing Reform
