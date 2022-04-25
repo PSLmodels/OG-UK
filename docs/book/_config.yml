@@ -2,7 +2,7 @@
 # Book settings
 title                    : OG-UK-Calibration
 author                   : Jason DeBacker and Richard W. Evans and Jonathan Pycroft
-copyright                : '2021'
+copyright                : '2022'
 logo                     : '..//OG-UK_logo.png'
 
 ####################################################
@@ -40,7 +40,7 @@ launch_buttons:
 ####################################################
 # Information about where the book exists on the web
 repository:
-  url                    : https://github.com/PSLmodels/OG-UK-Calibration
+  url                    : https://github.com/PSLmodels/OG-UK
   path_to_book           : 'book'
 
 #######################################################################################
@@ -57,5 +57,6 @@ latex:
   latex_engine           : 'xelatex'
   latex_documents:
     targetname           : book.tex
-# bibtex_bibfiles:
-#    - OGUK_references.bib
+bibtex_bibfiles:
+  - OGUK_references.bib
+  - citations.bib
