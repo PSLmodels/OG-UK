@@ -107,8 +107,6 @@ def get_calculator_output(baseline, year, reform=None, data=None):
     else:
         print("Baseline policy is: ", reform)
 
-    sim.year = 2022
-
     # Check that start_year is appropriate
     if year > DATA_LAST_YEAR:
         raise RuntimeError("Start year is beyond data extrapolation.")
