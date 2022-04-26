@@ -18,7 +18,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-if 2019 in FRSEnhanced.years:
+if 2022 in FRSEnhanced.years:
     dataset = FRSEnhanced
     logging.info("Using enhanced FRS microdata data.")
 else:
@@ -26,19 +26,19 @@ else:
         """
     Could not locate FRS microdata. If you have access to the data, try running:
 
-    openfisca-uk-data frs_enhanced download 2019
+    openfisca-uk-data enhanced_frs download 2022
     """
     )
     dataset = SynthFRS  # Change to FRSEnhanced if running locally
     logging.warn("Using synthetic FRS microdata.")
-    if 2019 not in dataset.years:
-        logging.info("Downloading 2019 synthetic FRS microdata.")
-        dataset.download(2019)
+    if 2022 not in dataset.years:
+        logging.info("Downloading 2022 synthetic FRS microdata.")
+        dataset.download(2022)
 
 warnings.filterwarnings("ignore")
 
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
-DATA_LAST_YEAR = 2022  # this is the last year data are extrapolated for
+DATA_LAST_YEAR = 2027  # this is the last year data are extrapolated for
 
 
 def get_household_mtrs(
@@ -96,7 +96,7 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     """
     # create a simulation
-    sim_kwargs = dict(dataset=dataset, year=2019)
+    sim_kwargs = dict(dataset=dataset, year=2022)
     if reform is None:
         sim = Microsimulation(**sim_kwargs)
         reform = ()

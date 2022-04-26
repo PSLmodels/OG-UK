@@ -21,7 +21,7 @@ def get_default_reform():
     from openfisca_tools.reforms import set_parameter
 
     return set_parameter(
-        "tax.income_tax.rates.uk[0].rate", 0.3, "year:2019:10"
+        "tax.income_tax.rates.uk[0].rate", 0.3, "year:2022:10"
     )
 
 
