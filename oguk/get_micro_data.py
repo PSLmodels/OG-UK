@@ -13,13 +13,13 @@ from openfisca_uk import Microsimulation
 import pandas as pd
 import warnings
 from openfisca_uk.api import *
-from openfisca_uk_data import FRSEnhanced, SynthFRS
+from openfisca_uk.data import EnhancedFRS, SynthFRS
 import logging
 
 logging.basicConfig(level=logging.INFO)
 
-if 2022 in FRSEnhanced.years:
-    dataset = FRSEnhanced
+if 2022 in EnhancedFRS.years:
+    dataset = EnhancedFRS
     logging.info("Using enhanced FRS microdata data.")
 else:
     logging.warn(
@@ -29,7 +29,7 @@ else:
     openfisca-uk-data enhanced_frs download 2022
     """
     )
-    dataset = SynthFRS  # Change to FRSEnhanced if running locally
+    dataset = SynthFRS  # Change to EnhancedFRS if running locally
     logging.warn("Using synthetic FRS microdata.")
     if 2022 not in dataset.years:
         logging.info("Downloading 2022 synthetic FRS microdata.")
