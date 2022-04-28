@@ -1,10 +1,10 @@
 format: jb-book
 root: content/intro/intro
 parts:
-- caption: Contributing to OG-UK-Calibration
+- caption: Contributing to OG-UK
   chapters:
   - file: content/contributing/contributor_guide
-- caption: OG-UK-Calibration API
+- caption: OG-UK API
   chapters:
   - file: content/api/public_api
     sections:
