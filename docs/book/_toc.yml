@@ -14,6 +14,9 @@ parts:
 - caption: Calibration
   chapters:
   - file: content/calibration/tax_functions
+- caption: References
+  chapters:
+  - file: content/OGUK_references
 - caption: Citations of OG-UK
   chapters:
   - file: content/citations
