@@ -25,4 +25,4 @@ The model is continuously under development. Users will be notified through [clo
 (Sec_CitingOGUK)=
 ## Citing OG-UK
 
-`OG-UK-Calibration` (Version #.#.#)[Source code], https://github.com/PSLmodels/OG-UK
+`OG-UK` (Version #.#.#)[Source code], https://github.com/PSLmodels/OG-UK
