@@ -1,4 +1,4 @@
-# Citations and use cases of OG-Core
+# Citations and use cases of OG-UK
 
 ```{bibliography} ../citations.bib
 :all :
