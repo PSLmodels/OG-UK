@@ -90,27 +90,27 @@ situations, in which case other contributors are here to help.
    make sure you have the latest version of the central `OG-UK`
    repository by executing the following **four** Git commands:
 
-   a. Tell Git to switch to the master branch in your local repo.
+   a. Tell Git to switch to the main branch in your local repo.
       Navigate to your local `OG-UK` directory and enter the
       following text at the command line:
 
     ```
-        OG-UK$ git checkout master
+        OG-UK$ git checkout main
     ```
 
    b. Download all of the content from the central `OG-UK` repo:
     ```
         OG-UK$ git fetch upstream
     ```
-   c. Update your local master branch to contain the latest content of
-      the central master branch using [merge](https://help.github.com/articles/github-glossary/#merge). This step ensures that
+   c. Update your local main branch to contain the latest content of
+      the central main branch using [merge](https://help.github.com/articles/github-glossary/#merge). This step ensures that
       you are working with the latest version of `OG-UK`:
     ```
-        OG-UK$ git merge upstream/master
+        OG-UK$ git merge upstream/main
     ```
-   d. Push the updated master branch in your local repo to your GitHub repo:
+   d. Push the updated main branch in your local repo to your GitHub repo:
     ```
-        OG-UK$ git push origin master
+        OG-UK$ git push origin main
     ```
 2. Create a new [branch](https://help.github.com/articles/github-glossary/#branch) on your local machine. Think of your branches as a way to organize your projects. If you want to work on this documentation, for example, create a separate branch for that work. If you want to change an element of the `OG-UK` package, create a different branch for that project:
     ```
@@ -130,10 +130,10 @@ situations, in which case other contributors are here to help.
      OG-UK$ git commit -m "[description-of-your-commit]"
     ```
 
-5. Periodically, make sure that the branch you created in step 2 is in sync with the changes other contributors are making to the central master branch by fetching upstream and merging upstream/master into your branch:
+5. Periodically, make sure that the branch you created in step 2 is in sync with the changes other contributors are making to the central main branch by fetching upstream and merging upstream/main into your branch:
     ```
       OG-UK$ git fetch upstream
-      OG-UK$ git merge upstream/master
+      OG-UK$ git merge upstream/main
     ```
    You may need to resolve conflicts that arise when another contributor changed the same section of code that you are changing. Feel free to ask other contributors for guidance if this happens to you. If you do need to fix a merge conflict, re-run the test suite afterwards (step 4.)
 
@@ -143,7 +143,7 @@ situations, in which case other contributors are here to help.
     ```
 7. From the GitHub.com user interface, [open a pull request](https://help.github.com/articles/creating-a-pull-request/#creating-the-pull-request).
 
-8. When you open a GitHub pull request, a code coverage report will be automatically generated. If your branch adds new code that is not tested, the code coverage percent will decline and the number of untested statements ("misses" in the report) will increase. If this happens, you need to add to your branch one or more tests of your newly added code. Add tests so that the number of untested statements is the same as it is on the master branch.
+8. When you open a GitHub pull request, a code coverage report will be automatically generated. If your branch adds new code that is not tested, the code coverage percent will decline and the number of untested statements ("misses" in the report) will increase. If this happens, you need to add to your branch one or more tests of your newly added code. Add tests so that the number of untested statements is the same as it is on the main branch.
 
 
 (Sec_SimpleUsage)=
