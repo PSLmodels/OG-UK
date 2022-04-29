@@ -3,12 +3,12 @@
 Main Calibration Functions
 ==========================
 
-**Main Calibration Functions**
+**calibrate.py classes, methods, and modules**
 
-og_uk_calibrate.calibrate
+oguk.calibrate
 -------------------------
 
-.. currentmodule:: og_uk_calibrate.calibrate
+.. currentmodule:: oguk.calibrate
 
 .. autoclass:: Calibration
   :members: get_tax_function_parameters, read_tax_func_estimate, get_dict
