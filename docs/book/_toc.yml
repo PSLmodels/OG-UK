@@ -1,22 +1,18 @@
 format: jb-book
 root: content/intro/intro
 parts:
-- caption: Contributing to OG-UK
-  chapters:
-  - file: content/contributing/contributor_guide
-- caption: OG-UK API
-  chapters:
-  - file: content/api/public_api
-    sections:
-    - file: content/api/calibrate
-    - file: content/api/get_micro_data
-    - file: content/api/txfunc
-- caption: Calibration
-  chapters:
-  - file: content/calibration/tax_functions
-- caption: References
-  chapters:
-  - file: content/OGUK_references
-- caption: Citations of OG-UK
-  chapters:
-  - file: content/citations
+  - caption: Contributing to OG-UK
+    chapters:
+    - file: content/contributing/contributor_guide
+  - caption: OG-UK API
+    chapters:
+    - file: content/api/public_api
+  - caption: Calibration
+    chapters:
+    - file: content/calibration/tax_functions
+  - caption: References
+    chapters:
+    - file: content/OGUK_references
+  - caption: Citations of OG-UK
+    chapters:
+    - file: content/citations
