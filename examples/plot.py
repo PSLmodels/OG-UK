@@ -7,7 +7,8 @@ import plotly.express as px
 
 
 def main(
-    year: int = 2022, function_type: str = "DEP",
+    year: int = 2022,
+    function_type: str = "DEP",
 ):
     year = str(year)
     # read in tax function parameters from pickle
@@ -68,7 +69,8 @@ def main(
             opacity=0.1,
             color="Type",
         ).update_layout(
-            title=f"{name} function in {year}", template="plotly_white",
+            title=f"{name} function in {year}",
+            template="plotly_white",
         ).show()
 
 
