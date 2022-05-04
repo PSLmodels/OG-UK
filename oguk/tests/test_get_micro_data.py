@@ -23,31 +23,31 @@ def dask_client():
     cluster.close()
 
 
-def test_frs():
-    """
-    Check that setting `data` to 'frs' uses cps data
-    """
-    baseline = False
-    start_year = 2019
+# def test_frs():
+#     """
+#     Check that setting `data` to 'frs' uses cps data
+#     """
+#     baseline = False
+#     start_year = 2019
 
-    # create a parametric reform
-    def lower_pa(parameters):
-        parameters.tax.income_tax.allowances.personal_allowance.amount.update(
-            period="2020", value=10000
-        )
-        return parameters
+#     # create a parametric reform
+#     def lower_pa(parameters):
+#         parameters.tax.income_tax.allowances.personal_allowance.amount.update(
+#             period="2020", value=10000
+#         )
+#         return parameters
 
-    class lower_personal_tax_allowance(Reform):
-        def apply(self):
-            self.modify_parameters(modifier_function=lower_pa)
+#     class lower_personal_tax_allowance(Reform):
+#         def apply(self):
+#             self.modify_parameters(modifier_function=lower_pa)
 
-    reform = lower_personal_tax_allowance
+#     reform = lower_personal_tax_allowance
 
-    calc_out = get_micro_data.get_calculator_output(
-        baseline, start_year, reform=reform, data="frs"
-    )
-    # check some trivial variable
-    assert calc_out["age"].sum() > 0
+#     calc_out = get_micro_data.get_calculator_output(
+#         baseline, start_year, reform=reform, data="frs"
+#     )
+#     # check some trivial variable
+#     assert calc_out["age"].sum() > 0
 
 
 def test_get_calculator_exception():
