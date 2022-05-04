@@ -6,7 +6,6 @@ on:
 jobs:
   build-and-deploy:
     if: github.repository == 'PSLmodels/OG-UK'
-    name: Build and deploy docs
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
