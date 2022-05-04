@@ -106,7 +106,7 @@ def get_calculator_output(baseline, year, reform=None, data=None):
         print("Running current law policy baseline")
     else:
         print("Baseline policy is: ", reform)
-    
+
     sim.year = 2022
 
     # Check that start_year is appropriate
@@ -140,17 +140,21 @@ def get_calculator_output(baseline, year, reform=None, data=None):
         "total_labinc": sim.calc(
             "earned_income", map_to="household", period=year
         ),
-        "total_capinc": sim.calc("capital_income", map_to="household", period=year),
-        "market_income": market_income,
-        "total_tax_liab": sim.calc(
-            "household_tax", period=year
+        "total_capinc": sim.calc(
+            "capital_income", map_to="household", period=year
         ),
+        "market_income": market_income,
+        "total_tax_liab": sim.calc("household_tax", period=year),
         "payroll_tax_liab": sim.calc(
             "national_insurance", map_to="household", period=year
         ),
         "etr": (
             1
-            - (sim.calc("household_net_income", map_to="household", period=year))
+            - (
+                sim.calc(
+                    "household_net_income", map_to="household", period=year
+                )
+            )
             / market_income
         ).clip(-10, 1.5),
         "year": year * np.ones(length),
