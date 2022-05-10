@@ -371,6 +371,8 @@ def get_fert(
     else:
         print("using csv saved fertility rates by age data")
         # Make sure the data files are accessible in DATA_DIR
+        if not save_data_path:
+            save_data_path = DATA_DIR
         file_path = os.path.join(save_data_path, "df_fert_maxyr.csv")
         assert os.access(file_path, os.F_OK)
         df_fert = pd.read_csv(file_path, sep=",")
