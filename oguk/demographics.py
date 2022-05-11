@@ -45,11 +45,7 @@ Define functions
 
 
 def get_pop_age(
-    country,
-    year,
-    max_yr,
-    save_data_path=None,
-    plot_data_path=None
+    country, year, max_yr, save_data_path=None, plot_data_path=None
 ):
     """
     This function downloads and cleans one year's population data by age
@@ -127,11 +123,11 @@ def get_pop_age(
         age_vec = np.arange(0, max_yr + 1)
         fig, ax = plt.subplots()
         plt.plot(age_vec, df_pop["POP"].to_numpy(dtype="float64"))
-        plt.xlabel(r'Age (years)')
-        plt.ylabel(r'Population')
+        plt.xlabel(r"Age (years)")
+        plt.ylabel(r"Population")
         vals = ax.get_yticks()
-        ax.set_yticklabels(['{:,.0%}'.format(x) for x in vals])
-        plt.title(country + ' Population by Age, ' + str(year))
+        ax.set_yticklabels(["{:,.0%}".format(x) for x in vals])
+        plt.title(country + " Population by Age, " + str(year))
 
         plt.savefig(plot_data_path)
 
@@ -139,11 +135,7 @@ def get_pop_age(
 
 
 def get_births_age(
-    country,
-    year,
-    max_yr,
-    save_data_path=None,
-    plot_data_path=None
+    country, year, max_yr, save_data_path=None, plot_data_path=None
 ):
     """
     This function downloads and cleans one year's birth data by age
@@ -319,11 +311,11 @@ def get_births_age(
         age_vec = np.arange(0, max_yr + 1)
         fig, ax = plt.subplots()
         plt.plot(age_vec, df_births["BIRTHS"].to_numpy(dtype="float64"))
-        plt.xlabel(r'Age (years)')
-        plt.ylabel(r'Births')
+        plt.xlabel(r"Age (years)")
+        plt.ylabel(r"Births")
         vals = ax.get_yticks()
-        ax.set_yticklabels(['{:,.0%}'.format(x) for x in vals])
-        plt.title(country + ' Births by Age, ' + str(year))
+        ax.set_yticklabels(["{:,.0%}".format(x) for x in vals])
+        plt.title(country + " Births by Age, " + str(year))
 
         plt.savefig(plot_data_path)
 
@@ -362,17 +354,21 @@ def get_fert(
     country = "UK"
     if base_yr > 2018:
         err_msg = (
-            "ERROR demographics.py: base_yr must be less-than-or-equal-to " +
-            "2018."
+            "ERROR demographics.py: base_yr must be less-than-or-equal-to "
+            + "2018."
         )
         ValueError(err_msg)
     if totpers > 100:
-        err_msg = ('ERROR demographics.py: totpers must be less-than-or-' +
-                   'equal-to 100.')
+        err_msg = (
+            "ERROR demographics.py: totpers must be less-than-or-"
+            + "equal-to 100."
+        )
         ValueError(err_msg)
     if totpers < 4:
-        err_msg = ('ERROR demographics.py: totpers must be greater-than-or-' +
-                   'equal-to 4.')
+        err_msg = (
+            "ERROR demographics.py: totpers must be greater-than-or-"
+            + "equal-to 4."
+        )
         ValueError(err_msg)
 
     if download:
@@ -383,10 +379,16 @@ def get_fert(
         df_births = get_births_age(country, base_yr, max_yr)
 
         # Create fertility rates DataFrame
-        df_fert = pd.DataFrame({"AGE": df_pop["AGE"], "POP": df_pop["POP"],
-                                "BIRTHS": df_births["BIRTHS"]})
-        df_fert["fert_rates"] = (df_fert["BIRTHS"].to_numpy(dtype="float64") /
-                                 df_fert["POP"].to_numpy(dtype="float64"))
+        df_fert = pd.DataFrame(
+            {
+                "AGE": df_pop["AGE"],
+                "POP": df_pop["POP"],
+                "BIRTHS": df_births["BIRTHS"],
+            }
+        )
+        df_fert["fert_rates"] = df_fert["BIRTHS"].to_numpy(
+            dtype="float64"
+        ) / df_fert["POP"].to_numpy(dtype="float64")
         fert_rates_maxyr = df_fert["fert_rates"].to_numpy(dtype="float64")
         if save_data_path:
             file_path = os.path.join(save_data_path, "df_fert_maxyr.csv")
@@ -413,12 +415,16 @@ def get_fert(
             min_bin_pct = 1 - (beg_bin_cut - int(beg_bin_cut))
             max_bin = int(end_bin_cut)
             max_bin_pct = beg_bin_cut - int(beg_bin_cut)
-            totpop = (min_bin_pct * df_fert["POP"].iloc[min_bin] +
-                        df_fert["POP"].iloc[min_bin + 1:max_bin].sum() +
-                        max_bin_pct * df_fert["POP"].iloc[max_bin])
-            totbirths = (min_bin_pct * df_fert["BIRTHS"].iloc[min_bin] +
-                            df_fert["BIRTHS"].iloc[min_bin + 1:max_bin].sum() +
-                            max_bin_pct * df_fert["BIRTHS"].iloc[max_bin])
+            totpop = (
+                min_bin_pct * df_fert["POP"].iloc[min_bin]
+                + df_fert["POP"].iloc[min_bin + 1 : max_bin].sum()
+                + max_bin_pct * df_fert["POP"].iloc[max_bin]
+            )
+            totbirths = (
+                min_bin_pct * df_fert["BIRTHS"].iloc[min_bin]
+                + df_fert["BIRTHS"].iloc[min_bin + 1 : max_bin].sum()
+                + max_bin_pct * df_fert["BIRTHS"].iloc[max_bin]
+            )
             fert_rates[i] = totbirths / totpop
             beg_bin_cut = end_bin_cut
     else:
@@ -428,11 +434,11 @@ def get_fert(
         age_vec = np.arange(totpers)
         fig, ax = plt.subplots()
         plt.plot(age_vec, fert_rates)
-        plt.xlabel(r'Age $s$ (model periods)')
-        plt.ylabel(r'Fertility rate ($f_s$)')
+        plt.xlabel(r"Age $s$ (model periods)")
+        plt.ylabel(r"Fertility rate ($f_s$)")
         # vals = ax.get_yticks()
         # ax.set_yticklabels(['{:,.0%}'.format(x) for x in vals])
-        plt.title(country + ' Fertility Rates by Age, ' + str(base_yr))
+        plt.title(country + " Fertility Rates by Age, " + str(base_yr))
 
         plt.savefig(plot_data_path)
 
@@ -955,12 +961,7 @@ def get_pop_objs(
 
     fert_rates = get_fert(E + S, base_yr, min_yr, max_yr, graph=False)
     mort_rates, infmort_rate = get_mort(
-        E + S,
-        min_yr,
-        max_yr,
-        beg_yr=2018,
-        end_yr=2018,
-        graph=False,
+        E + S, min_yr, max_yr, beg_yr=2018, end_yr=2018, graph=False,
     )
     mort_rates_S = mort_rates[-S:]
     imm_rates_orig = get_imm_resid(E + S, min_yr, max_yr, base_yr, graph=False)
