@@ -346,9 +346,17 @@ def get_fert(
     country = "UK"
     if base_yr > 2018:
         err_msg = (
-            "Demographics.py ERROR: base_yr must be less-than-or "
-            + "equal-to 2018."
+            "ERROR demographics.py: base_yr must be less-than-or-equal-to " +
+            "2018."
         )
+        ValueError(err_msg)
+    if totpers > 100:
+        err_msg = ('ERROR demographics.py: totpers must be less-than-or-' +
+                   'equal-to 100.')
+        ValueError(err_msg)
+    if totpers < 4:
+        err_msg = ('ERROR demographics.py: totpers must be greater-than-or-' +
+                   'equal-to 4.')
         ValueError(err_msg)
 
     if download:
@@ -378,11 +386,33 @@ def get_fert(
         df_fert = pd.read_csv(file_path, sep=",")
         fert_rates_maxyr = df_fert["fert_rates"].to_numpy(dtype="float64")
 
+    if totpers < 100:
+        # Calculate fertility rate if model periods are fewer than 100
+        fert_rates = np.zeros(totpers)
+        bin_length_yrs = 100 / totpers
+        beg_bin_cut = np.float64(0)
+        for i in range(totpers):
+            end_bin_cut = np.minimum(beg_bin_cut + bin_length_yrs, 99.9999999)
+            min_bin = int(beg_bin_cut)
+            min_bin_pct = 1 - (beg_bin_cut - int(beg_bin_cut))
+            max_bin = int(end_bin_cut)
+            max_bin_pct = beg_bin_cut - int(beg_bin_cut)
+            totpop = (min_bin_pct * df_fert["POP"].iloc[min_bin] +
+                        df_fert["POP"].iloc[min_bin + 1:max_bin].sum() +
+                        max_bin_pct * df_fert["POP"].iloc[max_bin])
+            totbirths = (min_bin_pct * df_fert["BIRTHS"].iloc[min_bin] +
+                            df_fert["BIRTHS"].iloc[min_bin + 1:max_bin].sum() +
+                            max_bin_pct * df_fert["BIRTHS"].iloc[max_bin])
+            fert_rates[i] = totbirths / totpop
+            beg_bin_cut = end_bin_cut
+    else:
+        fert_rates = fert_rates_maxyr
+
     if plot_data_path:
-        age_vec = np.arange(0, max_yr + 1)
+        age_vec = np.arange(totpers)
         fig, ax = plt.subplots()
-        plt.plot(age_vec, df_fert["fert_rates"].to_numpy(dtype="float64"))
-        plt.xlabel(r'Age (years)')
+        plt.plot(age_vec, fert_rates)
+        plt.xlabel(r'Age $s$ (model periods)')
         plt.ylabel(r'Fertility rate ($f_s$)')
         # vals = ax.get_yticks()
         # ax.set_yticklabels(['{:,.0%}'.format(x) for x in vals])
@@ -390,7 +420,7 @@ def get_fert(
 
         plt.savefig(plot_data_path)
 
-    return fert_rates_maxyr
+    return fert_rates
 
 
 def get_mort(
