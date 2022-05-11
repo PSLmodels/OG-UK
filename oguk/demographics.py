@@ -333,10 +333,9 @@ def get_births_age(
 def get_fert(
     totpers,
     base_yr,
-    min_yr,
     max_yr,
     download=False,
-    save_data_path=None,
+    save_data_dir=None,
     plot_data_path=None,
 ):
     """
@@ -347,18 +346,18 @@ def get_fert(
     Args:
         totpers (int): total number of agent life periods (E+S), >= 3
         base_yr (int): year of data downloaded from Eurostat
-        min_yr (int): age in years at which agents are born, >= 0
         max_yr (int): age in years at which agents die with certainty,
             >= 4
         download (bool): =True if want to download the data from Eurostat,
             otherwise load from saved data file
-        save_data (bool): =True if want to save data used, should only be true
-            if download=True
-        graph (bool): =True if want graphical output
+        save_data_dir (bool): =True if want to save data used, should only
+            =True if download=True, does not include [filename].csv
+        plot_data_path (None or str): path location to save plot of data,
+            including [filename].png
 
     Returns:
-        fert_rates (Numpy array): fertility rates for each model period
-            of life
+        fert_rates (array_like): (totpers,) length vector of fertility rates
+            for each model period of life
     """
     country = "UK"
     if base_yr > 2018:
