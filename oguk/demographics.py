@@ -45,7 +45,8 @@ Define functions
 
 
 def get_pop_age(
-    country, year, max_yr, save_data_path=None, plot_data_path=None
+    country, year, max_yr, download=False, save_data_dir=None,
+    plot_data_path=None
 ):
     """
     This function downloads and cleans one year's population data by age
@@ -55,69 +56,81 @@ def get_pop_age(
         country (str): country code string for EuroStat
         year (int): 4-digit integer for year
         max_yr (int): maximum age above which to drop data
-        save_data_path (None or str): path location to save downloaded data,
-            including [filename].csv
+        download (bool): =True if want to download the data from Eurostat,
+            otherwise load from saved data file
+        save_data_dir (None or str): directory location to save downloaded
+            data, not including [filename].csv
         plot_data_path (None or str): path location to save plot of data,
             including [filename].png
 
     Returns:
         df_pop (DataFrame): ([max_yr + 1] x 2) DataFrame of (AGE, POP)
     """
-    StartPeriod = year
-    EndPeriod = year
+    if download:
+        StartPeriod = year
+        EndPeriod = year
 
-    # Download population by age data
-    filter_pars = {"GEO": [country]}
-    df_pop = eurostat.get_sdmx_data_df(
-        "demo_pjan",
-        StartPeriod,
-        EndPeriod,
-        filter_pars,
-        flags=True,
-        verbose=True,
-    )
+        # Download population by age data
+        filter_pars = {"GEO": [country]}
+        df_pop = eurostat.get_sdmx_data_df(
+            "demo_pjan",
+            StartPeriod,
+            EndPeriod,
+            filter_pars,
+            flags=True,
+            verbose=True,
+        )
 
-    # Remove totals and other unused rows
-    indexNames = df_pop[
-        (df_pop["AGE"] == "TOTAL")
-        | (df_pop["AGE"] == "UNK")
-        | (df_pop["AGE"] == "Y_OPEN")
-    ].index
-    df_pop.drop(indexNames, inplace=True)
+        # Remove totals and other unused rows
+        indexNames = df_pop[
+            (df_pop["AGE"] == "TOTAL")
+            | (df_pop["AGE"] == "UNK")
+            | (df_pop["AGE"] == "Y_OPEN")
+        ].index
+        df_pop.drop(indexNames, inplace=True)
 
-    # Rename Y_LT1 to 0 (means 'less than one year')
-    df_pop.AGE[df_pop.AGE == "Y_LT1"] = "Y0"
+        # Rename Y_LT1 to 0 (means 'less than one year')
+        df_pop.AGE[df_pop.AGE == "Y_LT1"] = "Y0"
 
-    #  Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
-    df_pop["AGE"] = df_pop["AGE"].str[1:]
+        #  Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
+        df_pop["AGE"] = df_pop["AGE"].str[1:]
 
-    # Drop gender specific population, keep only total
-    df_pop = df_pop[(df_pop["SEX"] == "T")]
+        # Drop gender specific population, keep only total
+        df_pop = df_pop[(df_pop["SEX"] == "T")]
 
-    # Name of 1 column includes the year - create column name before
-    # dropping
-    Obs_status_col = str(year) + "_OBS_STATUS"
-    # Drop columns except: Age, Frequency
-    df_pop = df_pop.drop(
-        columns=["UNIT", "SEX", "GEO", "FREQ", Obs_status_col]
-    )
+        # Name of 1 column includes the year - create column name before
+        # dropping
+        Obs_status_col = str(year) + "_OBS_STATUS"
+        # Drop columns except: Age, Frequency
+        df_pop = df_pop.drop(
+            columns=["UNIT", "SEX", "GEO", "FREQ", Obs_status_col]
+        )
 
-    # rename population total series "POP" instead of the year
-    df_pop.rename(columns={year: "POP"}, inplace=True)
+        # rename population total series "POP" instead of the year
+        df_pop.rename(columns={year: "POP"}, inplace=True)
 
-    # convert AGE strings to int and Year strings to float
-    df_pop = df_pop.astype(float)
-    df_pop["AGE"] = df_pop["AGE"].astype(int)
+        # convert AGE strings to int and Year strings to float
+        df_pop = df_pop.astype(float)
+        df_pop["AGE"] = df_pop["AGE"].astype(int)
 
-    # sort values by AGE and reindex the DataFrame
-    df_pop = df_pop.sort_values(by=["AGE"])
-    df_pop.reset_index(drop=True, inplace=True)
+        # sort values by AGE and reindex the DataFrame
+        df_pop = df_pop.sort_values(by=["AGE"])
+        df_pop.reset_index(drop=True, inplace=True)
 
-    # Drop any ages greater than max_yr
-    df_pop = df_pop[(df_pop["AGE"] <= max_yr)]
+        # Drop any ages greater than max_yr
+        df_pop = df_pop[(df_pop["AGE"] <= max_yr)]
 
-    if save_data_path:
-        df_pop.to_csv(save_data_path, index=False)
+        if save_data_dir:
+            file_path = os.path.join(save_data_dir, "pop_age.csv")
+            df_pop.to_csv(file_path, index=False)
+    else:
+        print("using csv saved population by age data")
+        # Make sure the data files are accessible in DATA_DIR
+        if not save_data_dir:
+            save_data_dir = DATA_DIR
+        file_path = os.path.join(save_data_dir, "pop_age.csv")
+        assert os.access(file_path, os.F_OK)
+        df_pop = pd.read_csv(file_path, sep=",")
 
     if plot_data_path:
         age_vec = np.arange(0, max_yr + 1)
@@ -125,8 +138,8 @@ def get_pop_age(
         plt.plot(age_vec, df_pop["POP"].to_numpy(dtype="float64"))
         plt.xlabel(r"Age (years)")
         plt.ylabel(r"Population")
-        vals = ax.get_yticks()
-        ax.set_yticklabels(["{:,.0%}".format(x) for x in vals])
+        # vals = ax.get_yticks()
+        # ax.set_yticklabels(["{:,.0}".format(x) for x in vals])
         plt.title(country + " Population by Age, " + str(year))
 
         plt.savefig(plot_data_path)
