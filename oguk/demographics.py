@@ -1,6 +1,11 @@
 """
 -------------------------------------------------------------------------------
 Functions for generating demographic objects necessary for the OG-UK model
+
+This module includes the following function definitions:
+    get_pop_age()
+    get_births_age()
+    get_fert()
 -------------------------------------------------------------------------------
 """
 # Import packages
@@ -51,7 +56,13 @@ def get_pop_age(
     (0 - max_yr) from EuroStat service for EuroStat countries.
 
     Args:
-        asdf:
+        country (str): country code string for EuroStat
+        year (int): 4-digit integer for year
+        max_yr (int): maximum age above which to drop data
+        save_data_path (None or str): path location to save downloaded data,
+            including [filename].csv
+        plot_data_path (None or str): path location to save plot of data,
+            including [filename].png
 
     Returns:
         df_pop (DataFrame): ([max_yr + 1] x 2) DataFrame of (AGE, POP)
@@ -106,7 +117,7 @@ def get_pop_age(
     df_pop = df_pop.sort_values(by=["AGE"])
     df_pop.reset_index(drop=True, inplace=True)
 
-    # Drop any ages less than max_yr
+    # Drop any ages greater than max_yr
     df_pop = df_pop[(df_pop["AGE"] <= max_yr)]
 
     if save_data_path:
