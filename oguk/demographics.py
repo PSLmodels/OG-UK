@@ -149,8 +149,14 @@ def get_births_age(
     This function downloads and cleans one year's birth data by age
     (0 - max_yr) from EuroStat service for EuroStat countries.
 
-    Args:
-        asdf:
+     Args:
+        country (str): country code string for EuroStat
+        year (int): 4-digit integer for year
+        max_yr (int): maximum age above which to drop data
+        save_data_path (None or str): path location to save downloaded data,
+            including [filename].csv
+        plot_data_path (None or str): path location to save plot of data,
+            including [filename].png
 
     Returns:
         df_births (DataFrame): ([max_yr + 1] x 2) DataFrame of (AGE, BIRTHS)
