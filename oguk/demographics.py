@@ -6,6 +6,8 @@ This module includes the following function definitions:
     get_pop_age()
     get_births_age()
     get_fert()
+    ...
+    distribute_bin()
 -------------------------------------------------------------------------------
 """
 # Import packages
