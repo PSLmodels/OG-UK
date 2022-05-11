@@ -7,6 +7,7 @@ This module includes the following function definitions:
     get_births_age()
     get_fert()
     ...
+    exp_b_zerofunc()
     distribute_bin()
 -------------------------------------------------------------------------------
 """
@@ -19,7 +20,7 @@ import eurostat
 import cloudpickle
 import pickle
 
-# from og_uk_calibrate import parameter_plots as pp
+# from og_uk import parameter_plots as pp
 from scipy.optimize import curve_fit
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
@@ -150,7 +151,8 @@ def get_pop_age(
 
 
 def get_births_age(
-    country, year, max_yr, save_data_path=None, plot_data_path=None
+    country, year, max_yr, download=False, save_data_dir=None,
+    plot_data_path=None
 ):
     """
     This function downloads and cleans one year's birth data by age
@@ -160,7 +162,9 @@ def get_births_age(
         country (str): country code string for EuroStat
         year (int): 4-digit integer for year
         max_yr (int): maximum age above which to drop data
-        save_data_path (None or str): path location to save downloaded data,
+        download (bool): =True if want to download the data from Eurostat,
+            otherwise load from saved data file
+        save_data_dir (None or str): path location to save downloaded data, not
             including [filename].csv
         plot_data_path (None or str): path location to save plot of data,
             including [filename].png
@@ -168,159 +172,169 @@ def get_births_age(
     Returns:
         df_births (DataFrame): ([max_yr + 1] x 2) DataFrame of (AGE, BIRTHS)
     """
-    StartPeriod = year
-    EndPeriod = year
-    filter_pars = {"GEO": [country]}
+    if download:
+        StartPeriod = year
+        EndPeriod = year
+        filter_pars = {"GEO": [country]}
 
-    # Download births by age data
-    df_births = eurostat.get_sdmx_data_df(
-        "demo_fasec",
-        StartPeriod,
-        EndPeriod,
-        filter_pars,
-        flags=True,
-        verbose=True,
-    )
+        # Download births by age data
+        df_births = eurostat.get_sdmx_data_df(
+            "demo_fasec",
+            StartPeriod,
+            EndPeriod,
+            filter_pars,
+            flags=True,
+            verbose=True,
+        )
 
-    # Select Sex = T (meaning "Total" of boys and girls born); drop others
-    df_births = df_births[(df_births["SEX"] == "T")]
+        # Select Sex = T (meaning "Total" of boys and girls born); drop others
+        df_births = df_births[(df_births["SEX"] == "T")]
 
-    # Name of 1 column includes the year - create column name before dropping
-    Obs_status_col = str(year) + "_OBS_STATUS"
-    # Drop columns except: Age, Frequency
-    df_births = df_births.drop(
-        columns=["UNIT", "SEX", "GEO", "FREQ", Obs_status_col]
-    )
-    # rename total births series "BIRTHS" instead of the year
-    df_births.rename(columns={year: "BIRTHS"}, inplace=True)
+        # Name of 1 column includes the year - create column name before dropping
+        Obs_status_col = str(year) + "_OBS_STATUS"
+        # Drop columns except: Age, Frequency
+        df_births = df_births.drop(
+            columns=["UNIT", "SEX", "GEO", "FREQ", Obs_status_col]
+        )
+        # rename total births series "BIRTHS" instead of the year
+        df_births.rename(columns={year: "BIRTHS"}, inplace=True)
 
-    # Remove remaining total and subtotals
-    indexNames = df_births[
-        (df_births["AGE"] == "TOTAL")
-        | (df_births["AGE"] == "UNK")
-        | (df_births["AGE"] == "Y15-19")
-        | (df_births["AGE"] == "Y20-24")
-        | (df_births["AGE"] == "Y25-29")
-        | (df_births["AGE"] == "Y30-34")
-        | (df_births["AGE"] == "Y35-39")
-        | (df_births["AGE"] == "Y40-44")
-        | (df_births["AGE"] == "Y45-49")
-    ].index
-    df_births.drop(indexNames, inplace=True)
+        # Remove remaining total and subtotals
+        indexNames = df_births[
+            (df_births["AGE"] == "TOTAL")
+            | (df_births["AGE"] == "UNK")
+            | (df_births["AGE"] == "Y15-19")
+            | (df_births["AGE"] == "Y20-24")
+            | (df_births["AGE"] == "Y25-29")
+            | (df_births["AGE"] == "Y30-34")
+            | (df_births["AGE"] == "Y35-39")
+            | (df_births["AGE"] == "Y40-44")
+            | (df_births["AGE"] == "Y45-49")
+        ].index
+        df_births.drop(indexNames, inplace=True)
 
-    # Rename Y10-14 to Y14 and rename Y_GE50 to Y50
-    df_births["AGE"].replace("Y10-14", "Y14", inplace=True)
-    df_births["AGE"].replace("Y_GE50", "Y50", inplace=True)
+        # Rename Y10-14 to Y14 and rename Y_GE50 to Y50
+        df_births["AGE"].replace("Y10-14", "Y14", inplace=True)
+        df_births["AGE"].replace("Y_GE50", "Y50", inplace=True)
 
-    #  Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
-    df_births["AGE"] = df_births["AGE"].str[1:]
-    # Convert AGE variable to int and reset index
-    df_births["AGE"] = df_births["AGE"].astype(int)
-    df_births.reset_index(drop=True, inplace=True)
+        #  Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
+        df_births["AGE"] = df_births["AGE"].str[1:]
+        # Convert AGE variable to int and reset index
+        df_births["AGE"] = df_births["AGE"].astype(int)
+        df_births.reset_index(drop=True, inplace=True)
 
-    # Spread the births that were in Y_GE50 (now Y50) among ages 50 through
-    # 57 (births=0 for age >=58) using a negative exponential function of
-    # the form BIRTHS_AGE = a * (AGE ** b) + c for AGE = 50, 51, ... 57
-    age_Tup = 49
-    births_Tup = df_births.loc[
-        df_births["AGE"] == age_Tup, "BIRTHS"
-    ].values.astype(float)[0]
-    age_lastpos_up = 57
-    age_max_up = 65
-    births_lastbin_up = df_births.loc[
-        df_births["AGE"] == age_Tup + 1, "BIRTHS"
-    ].values.astype(float)[0]
-    bdup_args = (
-        age_Tup,
-        age_lastpos_up,
-        age_max_up,
-        births_Tup,
-        births_lastbin_up,
-    )
-    age_vec_up, births_vec_up, abc_vec_up, age_lastpos_up = distribute_bin(
-        bdup_args
-    )
-    df_births_up = pd.DataFrame(
-        np.hstack(
-            (
-                age_vec_up.reshape(len(age_vec_up), 1),
-                births_vec_up.reshape(len(births_vec_up), 1),
-            )
-        ),
-        columns=["AGE", "BIRTHS"],
-    )
-    df_births = pd.concat(
-        [df_births[df_births["AGE"] <= age_Tup], df_births_up],
-        ignore_index=True,
-    )
+        # Spread the births that were in Y_GE50 (now Y50) among ages 50 through
+        # 57 (births=0 for age >=58) using a negative exponential function of
+        # the form BIRTHS_AGE = a * (AGE ** b) + c for AGE = 50, 51, ... 57
+        age_Tup = 49
+        births_Tup = df_births.loc[
+            df_births["AGE"] == age_Tup, "BIRTHS"
+        ].values.astype(float)[0]
+        age_lastpos_up = 57
+        age_max_up = 65
+        births_lastbin_up = df_births.loc[
+            df_births["AGE"] == age_Tup + 1, "BIRTHS"
+        ].values.astype(float)[0]
+        bdup_args = (
+            age_Tup,
+            age_lastpos_up,
+            age_max_up,
+            births_Tup,
+            births_lastbin_up,
+        )
+        age_vec_up, births_vec_up, abc_vec_up, age_lastpos_up = distribute_bin(
+            bdup_args
+        )
+        df_births_up = pd.DataFrame(
+            np.hstack(
+                (
+                    age_vec_up.reshape(len(age_vec_up), 1),
+                    births_vec_up.reshape(len(births_vec_up), 1),
+                )
+            ),
+            columns=["AGE", "BIRTHS"],
+        )
+        df_births = pd.concat(
+            [df_births[df_births["AGE"] <= age_Tup], df_births_up],
+            ignore_index=True,
+        )
 
-    # Spread the births that were in Y10-14 (now Y14) among ages 10 through
-    # 14 (births=0 for age <=9) using an exponential function of the form
-    # BIRTHS_AGE = a * (AGE ** b) + c for AGE = 10, 11, ... 15
-    age_Tdn = 15
-    births_Tdn = df_births.loc[
-        df_births["AGE"] == age_Tdn, "BIRTHS"
-    ].values.astype(float)[0]
-    age_lastpos_dn = 10
-    age_min_dn = 8
-    births_lastbin_dn = df_births.loc[
-        df_births["AGE"] == age_Tdn - 1, "BIRTHS"
-    ].values.astype(float)[0]
-    bddn_args = (
-        age_Tdn,
-        age_lastpos_dn,
-        age_min_dn,
-        births_Tdn,
-        births_lastbin_dn,
-    )
-    age_vec_dn, births_vec_dn, abc_vec_dn, age_lastpos_dn = distribute_bin(
-        bddn_args
-    )
-    df_births_dn = pd.DataFrame(
-        np.hstack(
-            (
-                age_vec_dn.reshape(len(age_vec_dn), 1),
-                births_vec_dn.reshape(len(births_vec_dn), 1),
-            )
-        ),
-        columns=["AGE", "BIRTHS"],
-    )
-    df_births = pd.concat(
-        [df_births_dn, df_births[df_births["AGE"] >= age_Tdn]],
-        ignore_index=True,
-    )
+        # Spread the births that were in Y10-14 (now Y14) among ages 10 through
+        # 14 (births=0 for age <=9) using an exponential function of the form
+        # BIRTHS_AGE = a * (AGE ** b) + c for AGE = 10, 11, ... 15
+        age_Tdn = 15
+        births_Tdn = df_births.loc[
+            df_births["AGE"] == age_Tdn, "BIRTHS"
+        ].values.astype(float)[0]
+        age_lastpos_dn = 10
+        age_min_dn = 8
+        births_lastbin_dn = df_births.loc[
+            df_births["AGE"] == age_Tdn - 1, "BIRTHS"
+        ].values.astype(float)[0]
+        bddn_args = (
+            age_Tdn,
+            age_lastpos_dn,
+            age_min_dn,
+            births_Tdn,
+            births_lastbin_dn,
+        )
+        age_vec_dn, births_vec_dn, abc_vec_dn, age_lastpos_dn = distribute_bin(
+            bddn_args
+        )
+        df_births_dn = pd.DataFrame(
+            np.hstack(
+                (
+                    age_vec_dn.reshape(len(age_vec_dn), 1),
+                    births_vec_dn.reshape(len(births_vec_dn), 1),
+                )
+            ),
+            columns=["AGE", "BIRTHS"],
+        )
+        df_births = pd.concat(
+            [df_births_dn, df_births[df_births["AGE"] >= age_Tdn]],
+            ignore_index=True,
+        )
 
-    # Concatenate missing years with zero births at beginning and end of
-    # df_births dataframe
-    df_zeros_a = pd.DataFrame(
-        np.hstack(
-            (
-                np.arange(age_lastpos_dn).reshape(age_lastpos_dn, 1),
-                np.zeros((age_lastpos_dn, 1)),
-            )
-        ),
-        columns=["AGE", "BIRTHS"],
-    )
-    df_zeros_z = pd.DataFrame(
-        np.hstack(
-            (
-                np.arange(age_lastpos_up + 1, max_yr + 1).reshape(
-                    max_yr - age_lastpos_up, 1
-                ),
-                np.zeros((max_yr - age_lastpos_up, 1)),
-            )
-        ),
-        columns=["AGE", "BIRTHS"],
-    )
-    df_births = pd.concat(
-        [df_zeros_a, df_births, df_zeros_z], ignore_index=True
-    )
+        # Concatenate missing years with zero births at beginning and end of
+        # df_births dataframe
+        df_zeros_a = pd.DataFrame(
+            np.hstack(
+                (
+                    np.arange(age_lastpos_dn).reshape(age_lastpos_dn, 1),
+                    np.zeros((age_lastpos_dn, 1)),
+                )
+            ),
+            columns=["AGE", "BIRTHS"],
+        )
+        df_zeros_z = pd.DataFrame(
+            np.hstack(
+                (
+                    np.arange(age_lastpos_up + 1, max_yr + 1).reshape(
+                        max_yr - age_lastpos_up, 1
+                    ),
+                    np.zeros((max_yr - age_lastpos_up, 1)),
+                )
+            ),
+            columns=["AGE", "BIRTHS"],
+        )
+        df_births = pd.concat(
+            [df_zeros_a, df_births, df_zeros_z], ignore_index=True
+        )
 
-    # sort values by AGE
-    df_births = df_births.sort_values(by=["AGE"])
+        # sort values by AGE
+        df_births = df_births.sort_values(by=["AGE"])
 
-    if save_data_path:
-        df_births.to_csv(save_data_path, index=False)
+        if save_data_dir:
+            file_path = os.path.join(save_data_dir, "births_age.csv")
+            df_births.to_csv(file_path, index=False)
+    else:
+        print("using csv saved births by age data")
+        # Make sure the data files are accessible in DATA_DIR
+        if not save_data_dir:
+            save_data_dir = DATA_DIR
+        file_path = os.path.join(save_data_dir, "births_age.csv")
+        assert os.access(file_path, os.F_OK)
+        df_births = pd.read_csv(file_path, sep=",")
 
     if plot_data_path:
         age_vec = np.arange(0, max_yr + 1)
