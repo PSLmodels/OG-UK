@@ -5,7 +5,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Functions to Get Micro-data from Tax-Calculator &#8212; OG-UK-Calibration</title>
+    <title>Functions to Get Micro-data from OpenFisca-UK &#8212; OG-UK</title>
     
   <link href="../../_static/css/theme.css" rel="stylesheet">
   <link href="../../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
@@ -53,7 +53,7 @@ const thebe_selector_output = ".output, .cell_output"
     <script async="async" src="../../_static/sphinx-thebe.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Tax Function Estimation Functions" href="txfunc.html" />
+    <link rel="next" title="Tax Functions" href="../calibration/tax_functions.html" />
     <link rel="prev" title="Main Calibration Functions" href="calibrate.html" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="docsearch:language" content="None">
@@ -83,7 +83,7 @@ const thebe_selector_output = ".output, .cell_output"
       <img src="../../_static/OG-UK_logo.png" class="logo" alt="logo">
       
       
-      <h1 class="site-logo" id="site-title">OG-UK-Calibration</h1>
+      <h1 class="site-logo" id="site-title">OG-UK</h1>
       
     </a>
 </div><form class="bd-search d-flex align-items-center" action="../../search.html" method="get">
@@ -94,13 +94,13 @@ const thebe_selector_output = ".output, .cell_output"
         <ul class="nav bd-sidenav">
  <li class="toctree-l1">
   <a class="reference internal" href="../intro/intro.html">
-   OG-UK-Calibration
+   OG-UK
   </a>
  </li>
 </ul>
 <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
-  Contributing to OG-UK-Calibration
+  Contributing to OG-UK
  </span>
 </p>
 <ul class="nav bd-sidenav">
@@ -112,7 +112,7 @@ const thebe_selector_output = ".output, .cell_output"
 </ul>
 <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
-  OG-UK-Calibration API
+  OG-UK API
  </span>
 </p>
 <ul class="current nav bd-sidenav">
@@ -133,27 +133,7 @@ const thebe_selector_output = ".output, .cell_output"
    </li>
    <li class="toctree-l2 current active">
     <a class="current reference internal" href="#">
-     Functions to Get Micro-data from Tax-Calculator
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="txfunc.html">
-     Tax Function Estimation Functions
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="calibrate.html">
-     Main Calibration Functions
-    </a>
-   </li>
-   <li class="toctree-l2 current active">
-    <a class="current reference internal" href="#">
-     Functions to Get Micro-data from Tax-Calculator
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="txfunc.html">
-     Tax Function Estimation Functions
+     Functions to Get Micro-data from OpenFisca-UK
     </a>
    </li>
   </ul>
@@ -168,6 +148,30 @@ const thebe_selector_output = ".output, .cell_output"
  <li class="toctree-l1">
   <a class="reference internal" href="../calibration/tax_functions.html">
    Tax Functions
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  References
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../OGUK_references.html">
+   References
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Citations of OG-UK
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../citations.html">
+   Citations and use cases of OG-UK
   </a>
  </li>
 </ul>
@@ -227,11 +231,11 @@ const thebe_selector_output = ".output, .cell_output"
         aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
     <div class="dropdown-buttons sourcebuttons">
         <a class="repository-button"
-            href="https://github.com/PSLmodels/OG-UK-Calibration"><button type="button" class="btn btn-secondary topbarbtn"
+            href="https://github.com/PSLmodels/OG-UK"><button type="button" class="btn btn-secondary topbarbtn"
                 data-toggle="tooltip" data-placement="left" title="Source repository"><i
                     class="fab fa-github"></i>repository</button></a>
         <a class="issues-button"
-            href="https://github.com/PSLmodels/OG-UK-Calibration/issues/new?title=Issue%20on%20page%20%2Fcontent/api/get_micro_data.html&body=Your%20issue%20content%20here."><button
+            href="https://github.com/PSLmodels/OG-UK/issues/new?title=Issue%20on%20page%20%2Fcontent/api/get_micro_data.html&body=Your%20issue%20content%20here."><button
                 type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
                 title="Open an issue"><i class="fas fa-lightbulb"></i>open issue</button></a>
         
@@ -258,8 +262,8 @@ const thebe_selector_output = ".output, .cell_output"
             <nav id="bd-toc-nav" aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#og-uk-calibrate-get-micro-data">
-   og_uk_calibrate.get_micro_data
+  <a class="reference internal nav-link" href="#module-oguk.get_micro_data">
+   oguk.get_micro_data
   </a>
  </li>
 </ul>
@@ -272,7 +276,7 @@ const thebe_selector_output = ".output, .cell_output"
         <div class="col-12 col-md-9 pl-md-3 pr-md-0">
             <!-- Table of contents that is only displayed when printing the page -->
             <div id="jb-print-docs-body" class="onlyprint">
-                <h1>Functions to Get Micro-data from Tax-Calculator</h1>
+                <h1>Functions to Get Micro-data from OpenFisca-UK</h1>
                 <!-- Table of contents -->
                 <div id="print-main-content">
                     <div id="jb-print-toc">
@@ -283,8 +287,8 @@ const thebe_selector_output = ".output, .cell_output"
                         <nav aria-label="Page">
                             <ul class="visible nav section-nav flex-column">
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#og-uk-calibrate-get-micro-data">
-   og_uk_calibrate.get_micro_data
+  <a class="reference internal nav-link" href="#module-oguk.get_micro_data">
+   oguk.get_micro_data
   </a>
  </li>
 </ul>
@@ -296,11 +300,101 @@ const thebe_selector_output = ".output, .cell_output"
             
               <div>
                 
-  <div class="section" id="functions-to-get-micro-data-from-tax-calculator">
-<span id="get-micro-data"></span><h1>Functions to Get Micro-data from Tax-Calculator<a class="headerlink" href="#functions-to-get-micro-data-from-tax-calculator" title="Permalink to this headline">¶</a></h1>
-<p><strong>Get Micro-data Functions</strong></p>
-<div class="section" id="og-uk-calibrate-get-micro-data">
-<h2>og_uk_calibrate.get_micro_data<a class="headerlink" href="#og-uk-calibrate-get-micro-data" title="Permalink to this headline">¶</a></h2>
+  <div class="section" id="functions-to-get-micro-data-from-openfisca-uk">
+<span id="get-micro-data"></span><h1>Functions to Get Micro-data from OpenFisca-UK<a class="headerlink" href="#functions-to-get-micro-data-from-openfisca-uk" title="Permalink to this headline">¶</a></h1>
+<p><strong>get_micro_data.py classes, methods, and modules</strong></p>
+<div class="section" id="module-oguk.get_micro_data">
+<span id="oguk-get-micro-data"></span><h2>oguk.get_micro_data<a class="headerlink" href="#module-oguk.get_micro_data" title="Permalink to this headline">¶</a></h2>
+<hr class="docutils" />
+<dl class="py function">
+<dt class="sig sig-object py" id="oguk.get_micro_data.get_calculator_output">
+<span class="sig-prename descclassname"><span class="pre">oguk.get_micro_data.</span></span><span class="sig-name descname"><span class="pre">get_calculator_output</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">baseline</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">year</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/oguk/get_micro_data.html#get_calculator_output"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#oguk.get_micro_data.get_calculator_output" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function creates an OpenFisca Microsimulation object with the
+policy specified in reform and the data specified with the data
+kwarg.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>baseline</strong> (<em>boolean</em>) – True if baseline tax policy</p></li>
+<li><p><strong>year</strong> (<em>int</em>) – year of data to simulate</p></li>
+<li><p><strong>reform</strong> (<em>OpenFisca Reform object</em>) – IIT policy reform parameters,
+None if baseline</p></li>
+<li><p><strong>data</strong> (<em>DataFrame</em><em> or </em><em>str</em>) – DataFrame or path to datafile for
+the PopulationSim object</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>a dictionary of microdata with marginal tax</dt><dd><p>rates and other information computed from OpenFisca-UK</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tax_dict (dict)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="oguk.get_micro_data.get_data">
+<span class="sig-prename descclassname"><span class="pre">oguk.get_micro_data.</span></span><span class="sig-name descname"><span class="pre">get_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">baseline</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_year</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2021</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'frs'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/home/runner/work/OG-UK/OG-UK/oguk'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/oguk/get_micro_data.html#get_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#oguk.get_micro_data.get_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function creates dataframes of micro data with marginal tax
+rates and information to compute effective tax rates from the
+PopulationSim object.  The resulting dictionary of dataframes is
+returned and saved to disk in a pickle file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>baseline</strong> (<em>boolean</em>) – True if baseline tax policy</p></li>
+<li><p><strong>start_year</strong> (<em>int</em>) – first year of budget window</p></li>
+<li><p><strong>reform</strong> (<em>OpenFisca Reform object</em>) – IIT policy reform parameters,
+None if baseline</p></li>
+<li><p><strong>data</strong> (<em>DataFrame</em><em> or </em><em>str</em>) – DataFrame or path to datafile for
+the PopulationSim object</p></li>
+<li><p><strong>path</strong> (<em>str</em>) – path to save microdata files to</p></li>
+<li><p><strong>client</strong> (<em>Dask Client object</em>) – client for Dask multiprocessing</p></li>
+<li><p><strong>num_workers</strong> (<em>int</em>) – number of workers to use for Dask
+multiprocessing</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>dict of Pandas Dataframe, one for each</dt><dd><p>year from start_year to the maximum year OpenFisca-UK can
+analyze</p>
+</dd>
+</dl>
+<p>OpenFiscaUK_version (str): version of OpenFisca-UK used</p>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>micro_data_dict (dict)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="oguk.get_micro_data.get_household_mtrs">
+<span class="sig-prename descclassname"><span class="pre">oguk.get_micro_data.</span></span><span class="sig-name descname"><span class="pre">get_household_mtrs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reform</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">openfisca_core.reforms.reform.Reform</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">openfisca_core.reforms.reform.Reform</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">baseline</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">openfisca_uk.tools.simulation.Microsimulation</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pandas.core.series.Series</span></span></span><a class="reference internal" href="../../_modules/oguk/get_micro_data.html#get_household_mtrs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#oguk.get_micro_data.get_household_mtrs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates household MTRs with respect to a given variable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>reform</strong> (<em>ReformType</em>) – The reform to apply to the simulation.</p></li>
+<li><p><strong>variable</strong> (<em>str</em>) – The variable to increase.</p></li>
+<li><p><strong>period</strong> (<em>int</em>) – The period (year) to calculate the MTRs for.</p></li>
+<li><p><strong>kwargs</strong> (<em>dict</em>) – Additional arguments to pass to the simulation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The household MTRs.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pd.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
 </div>
 </div>
 
@@ -336,10 +430,10 @@ const thebe_selector_output = ".output, .cell_output"
             <p class="prev-next-title">Main Calibration Functions</p>
         </div>
     </a>
-    <a class='right-next' id="next-link" href="txfunc.html" title="next page">
+    <a class='right-next' id="next-link" href="../calibration/tax_functions.html" title="next page">
     <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Tax Function Estimation Functions</p>
+        <p class="prev-next-title">Tax Functions</p>
     </div>
     <i class="fas fa-angle-right"></i>
     </a>
@@ -350,9 +444,9 @@ const thebe_selector_output = ".output, .cell_output"
     <footer class="footer">
   <p>
     
-      By Jason DeBacker and Richard W. Evans and Jonathan Pycroft<br/>
+      By Jason DeBacker, Richard W. Evans, and Jonathan Pycroft<br/>
     
-        &copy; Copyright 2021.<br/>
+        &copy; Copyright 2022.<br/>
   </p>
 </footer>
 </main>

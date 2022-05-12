@@ -5,7 +5,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>API &#8212; OG-UK-Calibration</title>
+    <title>API &#8212; OG-UK</title>
     
   <link href="../../_static/css/theme.css" rel="stylesheet">
   <link href="../../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
@@ -83,7 +83,7 @@ const thebe_selector_output = ".output, .cell_output"
       <img src="../../_static/OG-UK_logo.png" class="logo" alt="logo">
       
       
-      <h1 class="site-logo" id="site-title">OG-UK-Calibration</h1>
+      <h1 class="site-logo" id="site-title">OG-UK</h1>
       
     </a>
 </div><form class="bd-search d-flex align-items-center" action="../../search.html" method="get">
@@ -94,13 +94,13 @@ const thebe_selector_output = ".output, .cell_output"
         <ul class="nav bd-sidenav">
  <li class="toctree-l1">
   <a class="reference internal" href="../intro/intro.html">
-   OG-UK-Calibration
+   OG-UK
   </a>
  </li>
 </ul>
 <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
-  Contributing to OG-UK-Calibration
+  Contributing to OG-UK
  </span>
 </p>
 <ul class="nav bd-sidenav">
@@ -112,7 +112,7 @@ const thebe_selector_output = ".output, .cell_output"
 </ul>
 <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
-  OG-UK-Calibration API
+  OG-UK API
  </span>
 </p>
 <ul class="current nav bd-sidenav">
@@ -133,27 +133,7 @@ const thebe_selector_output = ".output, .cell_output"
    </li>
    <li class="toctree-l2">
     <a class="reference internal" href="get_micro_data.html">
-     Functions to Get Micro-data from Tax-Calculator
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="txfunc.html">
-     Tax Function Estimation Functions
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="calibrate.html">
-     Main Calibration Functions
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="get_micro_data.html">
-     Functions to Get Micro-data from Tax-Calculator
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="txfunc.html">
-     Tax Function Estimation Functions
+     Functions to Get Micro-data from OpenFisca-UK
     </a>
    </li>
   </ul>
@@ -168,6 +148,30 @@ const thebe_selector_output = ".output, .cell_output"
  <li class="toctree-l1">
   <a class="reference internal" href="../calibration/tax_functions.html">
    Tax Functions
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  References
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../OGUK_references.html">
+   References
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Citations of OG-UK
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../citations.html">
+   Citations and use cases of OG-UK
   </a>
  </li>
 </ul>
@@ -227,11 +231,11 @@ const thebe_selector_output = ".output, .cell_output"
         aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
     <div class="dropdown-buttons sourcebuttons">
         <a class="repository-button"
-            href="https://github.com/PSLmodels/OG-UK-Calibration"><button type="button" class="btn btn-secondary topbarbtn"
+            href="https://github.com/PSLmodels/OG-UK"><button type="button" class="btn btn-secondary topbarbtn"
                 data-toggle="tooltip" data-placement="left" title="Source repository"><i
                     class="fab fa-github"></i>repository</button></a>
         <a class="issues-button"
-            href="https://github.com/PSLmodels/OG-UK-Calibration/issues/new?title=Issue%20on%20page%20%2Fcontent/api/public_api.html&body=Your%20issue%20content%20here."><button
+            href="https://github.com/PSLmodels/OG-UK/issues/new?title=Issue%20on%20page%20%2Fcontent/api/public_api.html&body=Your%20issue%20content%20here."><button
                 type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
                 title="Open an issue"><i class="fas fa-lightbulb"></i>open issue</button></a>
         
@@ -272,20 +276,17 @@ const thebe_selector_output = ".output, .cell_output"
                 
   <div class="section" id="api">
 <h1>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h1>
-<p>The source code for <cite>OG-UK-Calibration</cite> is located in the <cite>OG-UK-Calibration/og_uk_calibrate</cite> directory tree.</p>
-<p>Here we provide a high-level view of the API of the <cite>OG-UK-Calibration</cite> package, with links
+<p>The source code for <cite>OG-UK</cite> is located in the <cite>/OG-UK/oguk/</cite> directory tree.</p>
+<p>Here we provide a high-level view of the API of the <cite>OG-UK</cite> package, with links
 to the source code. This high-level view is organized around the modules that
-make up the <cite>OG-UK-Calibration</cite> package. Below is a list of these modules (in alphabetical
+make up the <cite>OG-UK</cite> package. Below is a list of these modules (in alphabetical
 order) with documentation about how to call each class method and function.
 There is also a link to the source code for each documented member.</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="calibrate.html">Main Calibration Functions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="get_micro_data.html">Functions to Get Micro-data from Tax-Calculator</a></li>
-<li class="toctree-l1"><a class="reference internal" href="txfunc.html">Tax Function Estimation Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="get_micro_data.html">Functions to Get Micro-data from OpenFisca-UK</a></li>
 </ul>
-</div>
-<div class="toctree-wrapper compound">
 </div>
 </div>
 
@@ -335,9 +336,9 @@ There is also a link to the source code for each documented member.</p>
     <footer class="footer">
   <p>
     
-      By Jason DeBacker and Richard W. Evans and Jonathan Pycroft<br/>
+      By Jason DeBacker, Richard W. Evans, and Jonathan Pycroft<br/>
     
-        &copy; Copyright 2021.<br/>
+        &copy; Copyright 2022.<br/>
   </p>
 </footer>
 </main>

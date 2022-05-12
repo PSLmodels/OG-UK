@@ -5,7 +5,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Main Calibration Functions &#8212; OG-UK-Calibration</title>
+    <title>Main Calibration Functions &#8212; OG-UK</title>
     
   <link href="../../_static/css/theme.css" rel="stylesheet">
   <link href="../../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
@@ -53,7 +53,7 @@ const thebe_selector_output = ".output, .cell_output"
     <script async="async" src="../../_static/sphinx-thebe.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Functions to Get Micro-data from Tax-Calculator" href="get_micro_data.html" />
+    <link rel="next" title="Functions to Get Micro-data from OpenFisca-UK" href="get_micro_data.html" />
     <link rel="prev" title="API" href="public_api.html" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="docsearch:language" content="None">
@@ -83,7 +83,7 @@ const thebe_selector_output = ".output, .cell_output"
       <img src="../../_static/OG-UK_logo.png" class="logo" alt="logo">
       
       
-      <h1 class="site-logo" id="site-title">OG-UK-Calibration</h1>
+      <h1 class="site-logo" id="site-title">OG-UK</h1>
       
     </a>
 </div><form class="bd-search d-flex align-items-center" action="../../search.html" method="get">
@@ -94,13 +94,13 @@ const thebe_selector_output = ".output, .cell_output"
         <ul class="nav bd-sidenav">
  <li class="toctree-l1">
   <a class="reference internal" href="../intro/intro.html">
-   OG-UK-Calibration
+   OG-UK
   </a>
  </li>
 </ul>
 <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
-  Contributing to OG-UK-Calibration
+  Contributing to OG-UK
  </span>
 </p>
 <ul class="nav bd-sidenav">
@@ -112,7 +112,7 @@ const thebe_selector_output = ".output, .cell_output"
 </ul>
 <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
-  OG-UK-Calibration API
+  OG-UK API
  </span>
 </p>
 <ul class="current nav bd-sidenav">
@@ -133,27 +133,7 @@ const thebe_selector_output = ".output, .cell_output"
    </li>
    <li class="toctree-l2">
     <a class="reference internal" href="get_micro_data.html">
-     Functions to Get Micro-data from Tax-Calculator
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="txfunc.html">
-     Tax Function Estimation Functions
-    </a>
-   </li>
-   <li class="toctree-l2 current active">
-    <a class="current reference internal" href="#">
-     Main Calibration Functions
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="get_micro_data.html">
-     Functions to Get Micro-data from Tax-Calculator
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="txfunc.html">
-     Tax Function Estimation Functions
+     Functions to Get Micro-data from OpenFisca-UK
     </a>
    </li>
   </ul>
@@ -168,6 +148,30 @@ const thebe_selector_output = ".output, .cell_output"
  <li class="toctree-l1">
   <a class="reference internal" href="../calibration/tax_functions.html">
    Tax Functions
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  References
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../OGUK_references.html">
+   References
+  </a>
+ </li>
+</ul>
+<p aria-level="2" class="caption" role="heading">
+ <span class="caption-text">
+  Citations of OG-UK
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../citations.html">
+   Citations and use cases of OG-UK
   </a>
  </li>
 </ul>
@@ -227,11 +231,11 @@ const thebe_selector_output = ".output, .cell_output"
         aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
     <div class="dropdown-buttons sourcebuttons">
         <a class="repository-button"
-            href="https://github.com/PSLmodels/OG-UK-Calibration"><button type="button" class="btn btn-secondary topbarbtn"
+            href="https://github.com/PSLmodels/OG-UK"><button type="button" class="btn btn-secondary topbarbtn"
                 data-toggle="tooltip" data-placement="left" title="Source repository"><i
                     class="fab fa-github"></i>repository</button></a>
         <a class="issues-button"
-            href="https://github.com/PSLmodels/OG-UK-Calibration/issues/new?title=Issue%20on%20page%20%2Fcontent/api/calibrate.html&body=Your%20issue%20content%20here."><button
+            href="https://github.com/PSLmodels/OG-UK/issues/new?title=Issue%20on%20page%20%2Fcontent/api/calibrate.html&body=Your%20issue%20content%20here."><button
                 type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
                 title="Open an issue"><i class="fas fa-lightbulb"></i>open issue</button></a>
         
@@ -258,8 +262,8 @@ const thebe_selector_output = ".output, .cell_output"
             <nav id="bd-toc-nav" aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#og-uk-calibrate-calibrate">
-   og_uk_calibrate.calibrate
+  <a class="reference internal nav-link" href="#oguk-calibrate">
+   oguk.calibrate
   </a>
  </li>
 </ul>
@@ -283,8 +287,8 @@ const thebe_selector_output = ".output, .cell_output"
                         <nav aria-label="Page">
                             <ul class="visible nav section-nav flex-column">
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#og-uk-calibrate-calibrate">
-   og_uk_calibrate.calibrate
+  <a class="reference internal nav-link" href="#oguk-calibrate">
+   oguk.calibrate
   </a>
  </li>
 </ul>
@@ -298,9 +302,60 @@ const thebe_selector_output = ".output, .cell_output"
                 
   <div class="section" id="main-calibration-functions">
 <span id="calibrate"></span><h1>Main Calibration Functions<a class="headerlink" href="#main-calibration-functions" title="Permalink to this headline">¶</a></h1>
-<p><strong>Main Calibration Functions</strong></p>
-<div class="section" id="og-uk-calibrate-calibrate">
-<h2>og_uk_calibrate.calibrate<a class="headerlink" href="#og-uk-calibrate-calibrate" title="Permalink to this headline">¶</a></h2>
+<p><strong>calibrate.py classes, methods, and modules</strong></p>
+<div class="section" id="oguk-calibrate">
+<h2>oguk.calibrate<a class="headerlink" href="#oguk-calibrate" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="oguk.calibrate.Calibration">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">oguk.calibrate.</span></span><span class="sig-name descname"><span class="pre">Calibration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimate_tax_functions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimate_beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimate_chi_n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tax_func_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iit_reform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">guid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'frs'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/oguk/calibrate.html#Calibration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#oguk.calibrate.Calibration" title="Permalink to this definition">¶</a></dt>
+<dd><p>OG-UK calibration class</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="oguk.calibrate.Calibration.get_tax_function_parameters">
+<span class="sig-name descname"><span class="pre">get_tax_function_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iit_reform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">guid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">run_micro</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tax_func_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/oguk/calibrate.html#Calibration.get_tax_function_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#oguk.calibrate.Calibration.get_tax_function_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads pickle file of tax function parameters or estimates the
+parameters from microsimulation model output.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>client</strong> (<em>Dask client object</em>) – client</p></li>
+<li><p><strong>run_micro</strong> (<em>bool</em>) – whether to estimate parameters from
+microsimulation model</p></li>
+<li><p><strong>tax_func_path</strong> (<em>string</em>) – path where find or save tax
+function parameter estimates</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="oguk.calibrate.Calibration.read_tax_func_estimate">
+<span class="sig-name descname"><span class="pre">read_tax_func_estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tax_func_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/oguk/calibrate.html#Calibration.read_tax_func_estimate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#oguk.calibrate.Calibration.read_tax_func_estimate" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function reads in tax function parameters from pickle
+files.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>tax_func_path</strong> (<em>str</em>) – path to pickle with tax function
+parameter estimates</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>dictionary containing arrays of tax</dt><dd><p>function parameters</p>
+</dd>
+</dl>
+<p>run_micro (bool): whether to estimate tax function parameters</p>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict_params (dict)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 </div>
 
@@ -339,7 +394,7 @@ const thebe_selector_output = ".output, .cell_output"
     <a class='right-next' id="next-link" href="get_micro_data.html" title="next page">
     <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Functions to Get Micro-data from Tax-Calculator</p>
+        <p class="prev-next-title">Functions to Get Micro-data from OpenFisca-UK</p>
     </div>
     <i class="fas fa-angle-right"></i>
     </a>
@@ -350,9 +405,9 @@ const thebe_selector_output = ".output, .cell_output"
     <footer class="footer">
   <p>
     
-      By Jason DeBacker and Richard W. Evans and Jonathan Pycroft<br/>
+      By Jason DeBacker, Richard W. Evans, and Jonathan Pycroft<br/>
     
-        &copy; Copyright 2021.<br/>
+        &copy; Copyright 2022.<br/>
   </p>
 </footer>
 </main>
