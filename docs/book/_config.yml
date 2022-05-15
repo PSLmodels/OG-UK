@@ -1,8 +1,8 @@
 ####################################################
 # Book settings
-title                    : OG-UK-Calibration
-author                   : Jason DeBacker and Richard W. Evans and Jonathan Pycroft
-copyright                : '2021'
+title                    : OG-UK
+author                   : Jason DeBacker, Richard W. Evans, and Jonathan Pycroft
+copyright                : '2022'
 logo                     : '..//OG-UK_logo.png'
 
 ####################################################
@@ -40,7 +40,7 @@ launch_buttons:
 ####################################################
 # Information about where the book exists on the web
 repository:
-  url                    : https://github.com/PSLmodels/OG-UK-Calibration
+  url                    : https://github.com/PSLmodels/OG-UK
   path_to_book           : 'book'
 
 #######################################################################################
@@ -50,6 +50,8 @@ sphinx:
                                'sphinx.ext.viewcode', 'sphinx.ext.napoleon',
                                'alabaster']   # A list of extra extensions to load by Sphinx.
   config                    :   # key-value pairs to directly over-ride the Sphinx configuration
+    bibtex_reference_style: author_year
+    mathjax_path          : https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
 ####################################################
 # LaTeX information
@@ -57,5 +59,6 @@ latex:
   latex_engine           : 'xelatex'
   latex_documents:
     targetname           : book.tex
-# bibtex_bibfiles:
-#    - OGUK_references.bib
+bibtex_bibfiles:
+  - OGUK_references.bib
+  - citations.bib

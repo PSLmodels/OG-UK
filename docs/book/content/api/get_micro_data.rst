@@ -1,14 +1,14 @@
 .. _get_micro_data:
 
-Functions to Get Micro-data from Tax-Calculator
+Functions to Get Micro-data from OpenFisca-UK
 =================================================
 
-**Get Micro-data Functions**
+**get_micro_data.py classes, methods, and modules**
 
-og_uk_calibrate.get_micro_data
+oguk.get_micro_data
 ------------------------------------------
 
-.. currentmodule:: og_uk_calibrate.get_micro_data
+.. currentmodule:: oguk.get_micro_data
 
-.. automodule:: og_uk_calibrate.get_micro_data
-  :members: get_calculator_output, get_data
+.. automodule:: oguk.get_micro_data
+  :members: get_household_mtrs, get_calculator_output, get_data
