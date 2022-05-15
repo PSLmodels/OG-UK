@@ -44,7 +44,7 @@ def test_frs():
     reform = lower_personal_tax_allowance
 
     calc_out = get_micro_data.get_calculator_output(
-    baseline, start_year, reform=reform, data="frs"
+        baseline, start_year, reform=reform, data="frs"
     )
     # check some trivial variable
     assert calc_out["age"].sum() > 0
