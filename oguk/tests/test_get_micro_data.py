@@ -25,7 +25,7 @@ def dask_client():
 
 def test_frs():
     """
-    Check that setting `data` to 'frs' uses cps data
+    Check that setting `data` to 'frs' uses frs data
     """
     baseline = False
     start_year = 2022
@@ -37,17 +37,17 @@ def test_frs():
         )
         return parameters
 
-#     class lower_personal_tax_allowance(Reform):
-#         def apply(self):
-#             self.modify_parameters(modifier_function=lower_pa)
+    class lower_personal_tax_allowance(Reform):
+        def apply(self):
+            self.modify_parameters(modifier_function=lower_pa)
 
-#     reform = lower_personal_tax_allowance
+    reform = lower_personal_tax_allowance
 
-#     calc_out = get_micro_data.get_calculator_output(
-#         baseline, start_year, reform=reform, data="frs"
-#     )
-#     # check some trivial variable
-#     assert calc_out["age"].sum() > 0
+    calc_out = get_micro_data.get_calculator_output(
+    baseline, start_year, reform=reform, data="frs"
+    )
+    # check some trivial variable
+    assert calc_out["age"].sum() > 0
 
 
 def test_get_calculator_exception():
