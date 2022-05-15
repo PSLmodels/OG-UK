@@ -39,7 +39,7 @@ def test_frs():
 
     class lower_personal_tax_allowance(Reform):
         def apply(self):
-            self.modify_parameters(modifier_function=lower_pa)
+            self.modify_parameters(lower_pa)
 
     reform = lower_personal_tax_allowance
 
