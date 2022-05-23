@@ -48,8 +48,12 @@ Define functions
 
 
 def get_pop_age(
-    country, year, max_yr, download=False, save_data_dir=None,
-    plot_data_path=None
+    country,
+    year,
+    max_yr,
+    download=False,
+    save_data_dir=None,
+    plot_data_path=None,
 ):
     """
     This function downloads and cleans one year's population data by age
@@ -151,8 +155,12 @@ def get_pop_age(
 
 
 def get_births_age(
-    country, year, max_yr, download=False, save_data_dir=None,
-    plot_data_path=None
+    country,
+    year,
+    max_yr,
+    download=False,
+    save_data_dir=None,
+    plot_data_path=None,
 ):
     """
     This function downloads and cleans one year's birth data by age
@@ -990,7 +998,12 @@ def get_pop_objs(
 
     fert_rates = get_fert(E + S, base_yr, min_yr, max_yr, graph=False)
     mort_rates, infmort_rate = get_mort(
-        E + S, min_yr, max_yr, beg_yr=2018, end_yr=2018, graph=False,
+        E + S,
+        min_yr,
+        max_yr,
+        beg_yr=2018,
+        end_yr=2018,
+        graph=False,
     )
     mort_rates_S = mort_rates[-S:]
     imm_rates_orig = get_imm_resid(E + S, min_yr, max_yr, base_yr, graph=False)
