@@ -350,8 +350,8 @@ def get_births_age(
         plt.plot(age_vec, df_births["BIRTHS"].to_numpy(dtype="float64"))
         plt.xlabel(r"Age (years)")
         plt.ylabel(r"Births")
-        vals = ax.get_yticks()
-        ax.set_yticklabels(["{:,.0%}".format(x) for x in vals])
+        # vals = ax.get_yticks()
+        # ax.set_yticklabels(["{:,.0}".format(x) for x in vals])
         plt.title(country + " Births by Age, " + str(year))
 
         plt.savefig(plot_data_path)
