@@ -427,8 +427,8 @@ def get_fert(
             dtype="float64"
         ) / df_fert["POP"].to_numpy(dtype="float64")
         fert_rates_maxyr = df_fert["fert_rates"].to_numpy(dtype="float64")
-        if save_data_path:
-            file_path = os.path.join(save_data_path, "df_fert_maxyr.csv")
+        if save_data_dir:
+            file_path = os.path.join(save_data_dir, "df_fert_maxyr.csv")
             df_fert.to_csv(file_path, index=False)
 
     else:
