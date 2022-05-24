@@ -271,32 +271,32 @@ const thebe_selector_output = ".output, .cell_output"
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">from</span> <span class="nn">openfisca_uk.api</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="kn">from</span> <span class="nn">openfisca_uk_data</span> <span class="kn">import</span> <span class="n">FRSEnhanced</span><span class="p">,</span> <span class="n">SynthFRS</span>
+<span class="kn">from</span> <span class="nn">openfisca_uk.data</span> <span class="kn">import</span> <span class="n">EnhancedFRS</span><span class="p">,</span> <span class="n">SynthFRS</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 
 <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
 
-<span class="k">if</span> <span class="mi">2019</span> <span class="ow">in</span> <span class="n">FRSEnhanced</span><span class="o">.</span><span class="n">years</span><span class="p">:</span>
-    <span class="n">dataset</span> <span class="o">=</span> <span class="n">FRSEnhanced</span>
+<span class="k">if</span> <span class="mi">2022</span> <span class="ow">in</span> <span class="n">EnhancedFRS</span><span class="o">.</span><span class="n">years</span><span class="p">:</span>
+    <span class="n">dataset</span> <span class="o">=</span> <span class="n">EnhancedFRS</span>
     <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using enhanced FRS microdata data.&quot;</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="n">logging</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Could not locate FRS microdata. If you have access to the data, try running:</span>
 
-<span class="sd">    openfisca-uk-data frs_enhanced download 2019</span>
+<span class="sd">    openfisca-uk-data enhanced_frs download 2022</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="p">)</span>
-    <span class="n">dataset</span> <span class="o">=</span> <span class="n">SynthFRS</span>  <span class="c1"># Change to FRSEnhanced if running locally</span>
+    <span class="n">dataset</span> <span class="o">=</span> <span class="n">SynthFRS</span>  <span class="c1"># Change to EnhancedFRS if running locally</span>
     <span class="n">logging</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Using synthetic FRS microdata.&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="mi">2019</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dataset</span><span class="o">.</span><span class="n">years</span><span class="p">:</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Downloading 2019 synthetic FRS microdata.&quot;</span><span class="p">)</span>
-        <span class="n">dataset</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="mi">2019</span><span class="p">)</span>
+    <span class="k">if</span> <span class="mi">2022</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dataset</span><span class="o">.</span><span class="n">years</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Downloading 2022 synthetic FRS microdata.&quot;</span><span class="p">)</span>
+        <span class="n">dataset</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="mi">2022</span><span class="p">)</span>
 
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
 
 <span class="n">CUR_PATH</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
-<span class="n">DATA_LAST_YEAR</span> <span class="o">=</span> <span class="mi">2022</span>  <span class="c1"># this is the last year data are extrapolated for</span>
+<span class="n">DATA_LAST_YEAR</span> <span class="o">=</span> <span class="mi">2027</span>  <span class="c1"># this is the last year data are extrapolated for</span>
 
 
 <div class="viewcode-block" id="get_household_mtrs"><a class="viewcode-back" href="../../content/api/get_micro_data.html#oguk.get_micro_data.get_household_mtrs">[docs]</a><span class="k">def</span> <span class="nf">get_household_mtrs</span><span class="p">(</span>
@@ -354,7 +354,7 @@ const thebe_selector_output = ".output, .cell_output"
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># create a simulation</span>
-    <span class="n">sim_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span> <span class="n">year</span><span class="o">=</span><span class="mi">2019</span><span class="p">)</span>
+    <span class="n">sim_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span> <span class="n">year</span><span class="o">=</span><span class="mi">2022</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">reform</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">sim</span> <span class="o">=</span> <span class="n">Microsimulation</span><span class="p">(</span><span class="o">**</span><span class="n">sim_kwargs</span><span class="p">)</span>
         <span class="n">reform</span> <span class="o">=</span> <span class="p">()</span>
