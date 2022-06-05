@@ -1,3 +1,5 @@
+import pytest
+from oguk import demographics as dmg
 import numpy as np
 import sys, os
 # currentdir = os.path.dirname(os.path.realpath(__file__))
@@ -7,7 +9,23 @@ import sys, os
 # import os
 # os.chdir('../..')
 sys.path.append('../..')
-from oguk import demographics as dmg
+
+
+def test_get_pop_age():
+    '''
+    Test properties of get_pop_age() function in demographics.py
+    '''
+    assert get_pop
+
+
+def test_get_fert():
+    '''
+    Test of function to get fertility rates from data
+    '''
+    E = 20
+    S = 80
+    fert_rates = dmg.get_fert(E + S, 2018, graph=False)
+    assert (fert_rates.shape[0] == E + S)
 
 
 def test_get_pop_objs():
@@ -58,16 +76,6 @@ def test_imm_smooth():
 
     assert (np.any(np.absolute(pop_dict['imm_rates'][:-1, :] -
                                pop_dict['imm_rates'][1:, :]) < 0.0001))
-
-
-def test_get_fert():
-    '''
-    Test of function to get fertility rates from data
-    '''
-    E = 20
-    S = 80
-    fert_rates = dmg.get_fert(E + S, 2018, graph=False)
-    assert (fert_rates.shape[0] == E + S)
 
 
 def test_get_mort():
