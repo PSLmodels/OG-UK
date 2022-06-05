@@ -434,9 +434,9 @@ def get_fert(
     else:
         print("using csv saved fertility rates by age data")
         # Make sure the data files are accessible in DATA_DIR
-        if not save_data_path:
-            save_data_path = DATA_DIR
-        file_path = os.path.join(save_data_path, "df_fert_maxyr.csv")
+        if not save_data_dir:
+            save_data_dir = DATA_DIR
+        file_path = os.path.join(save_data_dir, "df_fert_maxyr.csv")
         assert os.access(file_path, os.F_OK)
         df_fert = pd.read_csv(file_path, sep=",")
         fert_rates_maxyr = df_fert["fert_rates"].to_numpy(dtype="float64")
@@ -994,9 +994,11 @@ def get_pop_objs(
                 path, length T + S
 
     """
-    assert curr_year >= 2019
+    # assert curr_year >= 2019
+    # fert_rates = get_fert(E + S, base_yr, min_yr, max_yr, graph=False)
+    fert_rates = get_fert(E + S, base_yr, max_yr, download=False, save_data_dir=None,
+    plot_data_path=None)   
 
-    fert_rates = get_fert(E + S, base_yr, min_yr, max_yr, graph=False)
     mort_rates, infmort_rate = get_mort(
         E + S,
         min_yr,

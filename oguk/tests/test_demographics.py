@@ -15,7 +15,12 @@ def test_get_pop_age():
     '''
     Test properties of get_pop_age() function in demographics.py
     '''
-    assert get_pop
+    country = "UK" 
+    E = 20
+    S = 80
+    df_pop = dmg.get_pop_age(country, 2018, 100, download=False, 
+        save_data_dir=None, plot_data_path=None)
+    assert(df_pop.shape[0] == E + S)
 
 
 def test_get_fert():
@@ -24,9 +29,9 @@ def test_get_fert():
     '''
     E = 20
     S = 80
-    fert_rates = dmg.get_fert(E + S, 2018, graph=False)
+    fert_rates = dmg.get_fert(E + S, 2018, 100, download=False, 
+        save_data_dir=None, plot_data_path=None)
     assert (fert_rates.shape[0] == E + S)
-
 
 def test_get_pop_objs():
     """
