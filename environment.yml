@@ -19,5 +19,5 @@ dependencies:
 - pre-commit
 - pip:
   - jupyter-book>=0.8.0
-  - git+https://github.com/PSLmodels/OG-Core.git
+  - ogcore
   - openfisca-uk>=0.21.0
