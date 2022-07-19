@@ -9,7 +9,7 @@ OG-UK is an overlapping-generations (OG) model of the economy of the United King
 
 ## Disclaimer
 
-The model is currently under developement.  PLEASE DO NOT USE OR CITE THE MODEL'S OUTPUT FOR ANY PURPOSE.
+The model is currently under development.  PLEASE DO NOT USE OR CITE THE MODEL'S OUTPUT FOR ANY PURPOSE.
 
 
 ## Using/contributing to OG-UK
@@ -49,4 +49,3 @@ If you run into errors running the example script, please open a new issue in th
 ## Citing OG-UK
 
 PLEASE DO NOT CITE
-
