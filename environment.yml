@@ -1,0 +1,23 @@
+name: oguk-dev
+channels:
+- conda-forge
+dependencies:
+- python<=3.7.11
+- dask==2.30.0
+- dask-core==2.30.0
+- distributed==2.30.1
+- paramtools>=0.15.0
+- pip
+- pytest>=6.0
+- pytest-pep8
+- pytest-xdist
+- pycodestyle
+- pylint
+- coverage
+- requests
+- black
+- pre-commit
+- pip:
+  - jupyter-book>=0.8.0
+  - ogcore
+  - openfisca-uk>=0.21.0
