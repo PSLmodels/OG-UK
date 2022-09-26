@@ -3,7 +3,14 @@
 
 The government is not an optimizing agent in `OG-UK`. The government levies taxes on households, provides transfers to households, levies taxes on firms, spends resources on public goods, and makes rule-based adjustments to stabilize the economy in the long-run. The government can run budget deficits or surpluses in a given year and must, therefore, be able to accumulate debt or savings.
 
-The government sector influences households through two terms in the budget constraint {eq}`EqHHBC`---government transfers $TR_{t}$ and through the total tax liability function $T_{s,t}$, which can be decomposed into the effective tax rate times total income {eq}`EqTaxCalcLiabETR`. In this chapter, we detail the household tax component of government activity $T_{s,t}$ in `OG-UK`, along with our method of incorporating detailed microsimulation data into a dynamic general equilibrium model.
+The government sector influences households through two terms in the household budget constraint {eq}`EqHHBC`---government transfers $TR_{t}$ and through the total tax liability function $T_{s,t}$, which can be decomposed into the effective tax rate times total income {eq}`EqTaxCalcLiabETR2`. In this chapter, we detail the household tax component of government activity $T_{s,t}$ in `OG-UK`, along with our method of incorporating detailed microsimulation data into a dynamic general equilibrium model.
+
+```{math}
+:label: EqHHBC
+  c_{j,s,t} + b_{j,s+1,t+1} &= (1 + r_{hh,t})b_{j,s,t} + w_t e_{j,s} n_{j,s,t} + \\
+  &\quad\quad\zeta_{j,s}\frac{BQ_t}{\lambda_j\omega_{s,t}} + \eta_{j,s,t}\frac{TR_{t}}{\lambda_j\omega_{s,t}} + ubi_{j,s,t} - T_{s,t}  \\
+  &\quad\forall j,t\quad\text{and}\quad s\geq E+1 \quad\text{where}\quad b_{j,E+1,t}=0\quad\forall j,t
+```
 
 Incorporating realistic tax and incentive detail into a general equilibrium model is notoriously difficult for two reasons. First, it is impossible in a dynamic general equilibrium model to capture all of the dimensions of heterogeneity on which the real-world tax rate depends. For example, a household's tax liability in reality depends on filing status, number of dependents, many types of income, and some characteristics correlated with age. A good heterogeneous agent DGE model tries to capture the most important dimensions of heterogeneity, and necessarily neglects the other dimensions.
 
@@ -45,7 +52,7 @@ The second difficulty in modeling realistic tax and incentive detail is the need
     \tau^{mtry} \equiv \frac{\partial T_{s,t}}{\partial r_{hh,t}b_{j,s,t}} = \frac{\partial T_{s,t}}{\partial y_{j,s,t}} \qquad\quad\forall j,t \quad\text{and}\quad E+1\leq s\leq E+S
   ```
 
-  As we show in Section {ref}`SecHHeulers`, the derivative of total tax liability with respect to labor supply $\frac{\partial T_{s,t}}{n_{j,s,t}}$ and the derivative of total tax liability next period with respect to savings $\frac{\partial T_{s+1,t+1}}{b_{j,s+1,t+1}}$ show up in the household Euler equations for labor supply {eq}`EqHHeul_n` and savings {eq}`EqHHeul_b`, respectively. It is valuable to be able to express those marginal tax rates, for which we have no data, as marginal tax rates for which we do have data. The following two expressions show how the marginal tax rates of labor supply can be expressed as the marginal tax rate on labor income times the household-specific wage and how the marginal tax rate of savings can be expressed as the marginal tax rate of capital income times the interest rate.
+  As we show in Section [Optimality Conditions](https://pslmodels.github.io/OG-Core/content/theory/households.html#optimality-conditions) of the Households chapter of the `OG-Core` repository documentation, the derivative of total tax liability with respect to labor supply $\frac{\partial T_{s,t}}{n_{j,s,t}}$ and the derivative of total tax liability next period with respect to savings $\frac{\partial T_{s+1,t+1}}{b_{j,s+1,t+1}}$ show up in the household Euler equations for labor supply and savings , respectively, in the `OG-Core` documentation. It is valuable to be able to express those marginal tax rates, for which we have no data, as marginal tax rates for which we do have data. The following two expressions show how the marginal tax rates of labor supply can be expressed as the marginal tax rate on labor income times the household-specific wage and how the marginal tax rate of savings can be expressed as the marginal tax rate of capital income times the interest rate.
 
   ```{math}
   :label: EqMTRx_derive
@@ -60,11 +67,11 @@ The second difficulty in modeling realistic tax and incentive detail is the need
 (SecTaxCalcMicro)=
 ## Microeconomic Data
 
-  For `OG-UK`, we use an open source microsimulation model called `OpenFisca-UK` that uses microeconomic data on U.S. households from the Internal Revenue Service (IRS) Statistics of Income (SOI) Public Use File (PUF).[^taxcalc_note]  For users that have not paid for access to the Public Use File (PUF), `OpenFisca-UK` has an option to use a CPS matched dataset that is publicly available free of charge that has the same general properties as the PUF.
+  For `OG-UK`, we use an open-source microsimulation model called [`OpenFisca-UK`](https://policyengine.github.io/openfisca-uk//) that uses microeconomic data on U.K. households from the [Family Resources Survey (FRS)](https://www.gov.uk/government/collections/family-resources-survey--2), [HMRC Survey of Personal Incomes (SPI)](https://data.gov.uk/dataset/5908f917-7dfa-451d-81ac-e942e00884a2/hmrc-survey-of-personal-incomes-spi), [Living Costs and Food Survey (LCFS)](https://www.ons.gov.uk/peoplepopulationandcommunity/personalandhouseholdfinances/incomeandwealth/methodologies/livingcostsandfoodsurvey), and [Wealth and Assets Survey QMI (WAS)](https://www.ons.gov.uk/peoplepopulationandcommunity/personalandhouseholdfinances/debt/methodologies/wealthandassetssurveyqmi).[^openfisca_note] All of these data are public, except for the FRS. For users that do not have access to the FRS, `OpenFisca-UK` includes a synthetic FRS option.
 
-  `OpenFisca-UK` starts with the underlying population microeconomic data, in which each observation is a filer with a population weight that renders the sample representative. It then processes the relevant income and demographic characteristics in order to calculate the tax liability of each individual, according to all the rich tax law of the United States tax code. `OpenFisca-UK` can then calculate effective tax rates for all of these individuals, thereby creating a sample of how ETR's are related to other variables in our `OG-UK` model, such as total income $x + y$, labor income $x$, and capital income $y$. `OpenFisca-UK` can also generate marginal tax rates by adding a dollar to each filer's income of a particular type and calculate how the filer's tax liability changes. This is a finite difference calculation of a derivative.
+  `OpenFisca-UK` starts with the underlying population microeconomic data, in which each observation is a filer with a population weight that renders the sample representative. It then processes the relevant income and demographic characteristics in order to calculate the tax liability of each individual, according to the tax and benefit law of the U.K.. `OpenFisca-UK` can then calculate effective tax rates for all of these individuals, thereby creating a sample of how ETR's are related to other variables in our `OG-UK` model, such as total income $x + y$, labor income $x$, and capital income $y$. `OpenFisca-UK` can also generate marginal tax rates by adding a dollar to each filer's income of a particular type and calculate how the filer's tax liability changes. This is a finite difference calculation of a derivative.
 
-  Figure {numref}`FigTaxCalcETRtotinc` shows a scatter plot of $ETR$'s for 43-year-olds in 2017 and unadjusted gross income $x + y$. It is clear that $ETR$ is positively related to income. It is also clear that a significant number of filers have a negative $ETR$. We will discuss in Section {ref}`SecTaxCalcFuncs` the functional form `OG-UK` uses to best capture the main characteristics of these ETR data.
+  [TODO: Update this paragraph and associated figure, which currently come from `OG-USA`.] Figure {numref}`FigTaxCalcETRtotinc` shows a scatter plot of $ETR$'s for 43-year-olds in 2017 and unadjusted gross income $x + y$. It is clear that $ETR$ is positively related to income. It is also clear that a significant number of filers have a negative $ETR$. We will discuss in Section {ref}`SecTaxCalcFuncs` the functional form `OG-UK` uses to best capture the main characteristics of these ETR data.
 
   ```{figure} ./images/Compare_ETR_functions.png
   ---
@@ -74,7 +81,7 @@ The second difficulty in modeling realistic tax and incentive detail is the need
   Plot of estimated $ETR$ functions: $t=2017$ and $s=43$ under current law
   ```
 
-  Figure {numref}`FigTaxCalc3Dtaxrates` shows 3D scatter plots of $ETR$, $MTRx$, and $MTRy$ (and a histogram of the data) with the labor income and capital income, separately, of each age-42 filer in 2017, generated by `OpenFisca-UK`. This figure presents the main visual evidence for the functional form we use to fit tax functions to these data in Section {ref}`SecTaxCalcFuncs`. Figure {numref}`FigTaxCalc3Dtaxrates` presents strong evidence that the tax rate---$ETR$, $MTRx$, and $MTRy$---is most accurately modeled as a function of labor income and capital income, separately: $\tau(x,y)$.
+  [TODO: Update this paragraph and associated figure, which currently come from `OG-USA`.] Figure {numref}`FigTaxCalc3Dtaxrates` shows 3D scatter plots of $ETR$, $MTRx$, and $MTRy$ (and a histogram of the data) with the labor income and capital income, separately, of each age-42 filer in 2017, generated by `OpenFisca-UK`. This figure presents the main visual evidence for the functional form we use to fit tax functions to these data in Section {ref}`SecTaxCalcFuncs`. Figure {numref}`FigTaxCalc3Dtaxrates` presents strong evidence that the tax rate---$ETR$, $MTRx$, and $MTRy$---is most accurately modeled as a function of labor income and capital income, separately: $\tau(x,y)$.
 
 
   ```{figure} ./images/Age42_2017_scatters.png
@@ -235,15 +242,15 @@ The second difficulty in modeling realistic tax and incentive detail is the need
 
   In `OG-UK`, we estimate the 12-parameter functional form {eq}`EqTaxCalcTaxFuncForm` using weighted nonlinear least squares to fit an effective tax rate function $(\tau^{etr}_{s,t})$, a marginal tax rate of labor income function $(\tau^{mtrx}_{s,t})$, and a marginal tax rate of capital income function $(\tau^{mtry}_{s,t})$ for each age $E+1\leq s\leq E+S$ and each of the first 10 years from the current period. [^param_note] That means we have to perform 2,400 estimations of 12 parameters each. Figure {numref}`FigTaxCalc3DvsPred` shows the predicted surfaces for $\tau^{etr}_{s=42,t=2017}$, $\tau^{mtrx}_{s=42,t=2017}$, and $\tau^{mtry}_{s=42,t=2017}$ along with the underlying scatter plot data from which those functions were estimated. {numref}`TabTaxCalcEst42` shows the estimated values of those functional forms.
 
-  The full set of estimated values are calculated in the [`OG-UK-Calibration/og_uk_calibrate/txfunc.py`](https://github.com/open-source-economics/OG-UK-Calibration/blob/master/og_uk_calibrate/txfunc.py) module in the `OG-UK-Calibrate` repository. And the estimated values are stored in the [`TxFuncEst_baseline.pkl`](https://github.com/open-source-economics/OG-UK-Calibration/blob/master/TxFuncEst_baseline.pkl) file.
+  The full set of estimated values are calculated using the [`get_tax_function_parameters`](https://github.com/PSLmodels/OG-UK/blob/main/oguk/calibrate.py#L68) method of the [`Calibration`](https://github.com/PSLmodels/OG-UK/blob/main/oguk/calibrate.py#L12) class  of the [`OG-UK/oguk/calibrate.py`](https://github.com/PSLmodels/OG-UK/blob/main/oguk/calibrate.py) module. And the estimated baseline values are stored in the [`oguk_default_parameters.json`](https://github.com/PSLmodels/OG-UK/blob/master/oguk/oguk_default_parameters.json) file.
 
 
 (SecTaxCalcFuncs_Alt)=
 ### Alternative Functional Forms
 
-  In addition to the default option using tax functions of the form developed by {cite}`DeBackerEtAl:2019`, `OG-UK` also allows users to specify alternative tax functions.  Three alternatives are offered:
+  In addition to the default option using tax functions of the form developed by {cite}`DeBackerEtAl:2019`, `OG-UK` also allows users to specify alternative tax functions. Three alternatives are offered:
 
-  1. Functions as in {cite}`DeBackerEtAl:2019`, but where $\tau^{etr}_{s,t}$, $\tau^{mtrx}_{s,t}$, and $\tau^{mtry}_{s,t}$ are functions of total income (i.e., $x+y$) and not labor and capital income separately.  Users can select this option by setting the parameter `tax_func_type="DEP_totalinc"`.
+  1. Functions as in {cite}`DeBackerEtAl:2019`, but where $\tau^{etr}_{s,t}$, $\tau^{mtrx}_{s,t}$, and $\tau^{mtry}_{s,t}$ are functions of total income (i.e., $x+y$) and not labor and capital income separately. Users can select this option by setting the parameter `tax_func_type="DEP_totalinc"`.
 
   2. Functions of the Gouveia and Strauss form {cite}`GouveiaStrauss:1994`:
 
@@ -260,9 +267,9 @@ The second difficulty in modeling realistic tax and incentive detail is the need
 (SecTaxCalcFactor)=
 ## Factor Transforming Income Units
 
-  The tax functions $\tau^{etr}_{s,t}$, $\tau^{mtrx}_{s,t}$, and $\tau^{mtry}_{s,t}$ are estimated based on current U.S. tax filer reported incomes in dollars. However, the consumption units of the `OG-UK` model are not in the same units as the real-world U.S. incomes data. For this reason, we have to transform the income by a $factor$ so that it is in the same units as the income data on which the tax functions were estimated.
+  The tax functions $\tau^{etr}_{s,t}$, $\tau^{mtrx}_{s,t}$, and $\tau^{mtry}_{s,t}$ are estimated based on current U.K. tax filer reported incomes in pounds. However, the consumption units of the `OG-UK` model are not in the same units as the real-world U.K. incomes data. For this reason, we have to transform the income by a $factor$ so that it is in the same units as the income data on which the tax functions were estimated.
 
-  The tax rate functions are each functions of capital income and labor income $\tau(x,y)$. In order to make the tax functions return accurate tax rates associated with the correct levels of income, we multiply the model income $x^m$ and $y^m$ by a $factor$ so that they are in the same units as the real-world U.S. income data $\tau(factor\times x^m, factor\times y^m)$. We define the $factor$ such that average steady-state household total income in the model times the $factor$ equals the U.S. data average total income.
+  The tax rate functions are each functions of capital income and labor income $\tau(x,y)$. In order to make the tax functions return accurate tax rates associated with the correct levels of income, we multiply the model income $x^m$ and $y^m$ by a $factor$ so that they are in the same units as the real-world U.K. income data $\tau(factor\times x^m, factor\times y^m)$. We define the $factor$ such that average steady-state household total income in the model times the $factor$ equals the U.K. data average total income.
 
   ```{math}
   :label: EqTaxCalcFactor
@@ -281,10 +288,13 @@ The second difficulty in modeling realistic tax and incentive detail is the need
     \eta_{j,s,t} = \frac{\lambda_j\omega_{s,t}}{\tilde{N}_t} \quad\forall j,t \quad\text{and}\quad E+1\leq s\leq E+S
   ```
 
-  However, this distribution function $\eta_{j,s,t}$ could also be modified to more accurately reflect the way transfers are distributed in the United States.
+  However, this distribution function $\eta_{j,s,t}$ could also be modified to more accurately reflect the way transfers are distributed in the United Kingdom.
 
-[^taxcalc_note]:`OpenFisca-UK` is available through an open source repository [https://github.com/PSLmodels/Tax-Calculator](https://github.com/PSLmodels/Tax-Calculator) as well as through a web application [Tax-Brain](https://compute.studio/PSLmodels/Tax-Brain/), hosted by [Compute.Studio](https://about.compute.studio/). Documentation for `OpenFisca-UK` is available at [https://pslmodels.github.io/Tax-Calculator/](https://pslmodels.github.io/Tax-Calculator/).
+(SecTaxfootnotes)=
+## Footnotes
 
-[^interpolation_note]: We use two criterion to determine whether the function should be interpolated. First, we require a minimum number of observations of filers of that age and in that tax year. Second, we require that that sum of squared errors meet a predefined threshold.
+  [^openfisca_note]:`OpenFisca-UK` is available through an open-source repository [https://github.com/PolicyEngine/openfisca-uk](https://github.com/PolicyEngine/openfisca-uk), with online documentation available at [https://policyengine.github.io/openfisca-uk](https://policyengine.github.io/openfisca-uk).
 
-[^param_note]: We assume that whatever parameters the tax functions have in year 10 persist forever.
+  [^interpolation_note]: We use two criterion to determine whether the function should be interpolated. First, we require a minimum number of observations of filers of that age and in that tax year. Second, we require that that sum of squared errors meet a predefined threshold.
+
+  [^param_note]: We assume that whatever parameters the tax functions have in year 10 persist forever.

@@ -13,32 +13,32 @@ from openfisca_uk import Microsimulation
 import pandas as pd
 import warnings
 from openfisca_uk.api import *
-from openfisca_uk_data import FRSEnhanced, SynthFRS
+from openfisca_uk.data import EnhancedFRS, SynthFRS
 import logging
 
 logging.basicConfig(level=logging.INFO)
 
-if 2019 in FRSEnhanced.years:
-    dataset = FRSEnhanced
+if 2022 in EnhancedFRS.years:
+    dataset = EnhancedFRS
     logging.info("Using enhanced FRS microdata data.")
 else:
     logging.warn(
         """
     Could not locate FRS microdata. If you have access to the data, try running:
 
-    openfisca-uk-data frs_enhanced download 2019
+    openfisca-uk-data enhanced_frs download 2022
     """
     )
-    dataset = SynthFRS  # Change to FRSEnhanced if running locally
+    dataset = SynthFRS  # Change to EnhancedFRS if running locally
     logging.warn("Using synthetic FRS microdata.")
-    if 2019 not in dataset.years:
-        logging.info("Downloading 2019 synthetic FRS microdata.")
-        dataset.download(2019)
+    if 2022 not in dataset.years:
+        logging.info("Downloading 2022 synthetic FRS microdata.")
+        dataset.download(2022)
 
 warnings.filterwarnings("ignore")
 
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
-DATA_LAST_YEAR = 2023  # this is the last year data are extrapolated for
+DATA_LAST_YEAR = 2027  # this is the last year data are extrapolated for
 
 
 def get_household_mtrs(
@@ -96,7 +96,7 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     """
     # create a simulation
-    sim_kwargs = dict(dataset=dataset, year=2019)
+    sim_kwargs = dict(dataset=dataset, year=2022)
     if reform is None:
         sim = Microsimulation(**sim_kwargs)
         reform = ()
@@ -107,22 +107,20 @@ def get_calculator_output(baseline, year, reform=None, data=None):
     else:
         print("Baseline policy is: ", reform)
 
+    sim.year = 2022
+
     # Check that start_year is appropriate
     if year > DATA_LAST_YEAR:
         raise RuntimeError("Start year is beyond data extrapolation.")
 
     # define market income - taking expanded_income and excluding gov't
     # transfer benefits
-    market_income = np.maximum(
-        sim.calc("gross_income", map_to="household", period=year).values
-        - sim.calc("benefits", map_to="household", period=year).values,
-        1,
-    )
+    market_income = sim.calc("household_market_income", period=year)
 
     # Compute marginal tax rates (can only do on earned income now)
 
     # Put MTRs, income, tax liability, and other variables in dict
-    length = sim.calc("household_weight").size
+    length = sim.calc("household_weight", period=year).size
     tax_dict = {
         "mtr_labinc": get_household_mtrs(
             reform,
@@ -142,18 +140,21 @@ def get_calculator_output(baseline, year, reform=None, data=None):
         "total_labinc": sim.calc(
             "earned_income", map_to="household", period=year
         ),
-        "total_capinc": market_income
-        - sim.calc("earned_income", map_to="household", period=year),
-        "market_income": market_income,
-        "total_tax_liab": sim.calc(
-            "income_tax", map_to="household", period=year
+        "total_capinc": sim.calc(
+            "capital_income", map_to="household", period=year
         ),
+        "market_income": market_income,
+        "total_tax_liab": sim.calc("household_tax", period=year),
         "payroll_tax_liab": sim.calc(
             "national_insurance", map_to="household", period=year
         ),
         "etr": (
             1
-            - (sim.calc("net_income", map_to="household", period=year))
+            - (
+                sim.calc(
+                    "household_net_income", map_to="household", period=year
+                )
+            )
             / market_income
         ).clip(-10, 1.5),
         "year": year * np.ones(length),

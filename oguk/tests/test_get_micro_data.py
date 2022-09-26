@@ -25,21 +25,21 @@ def dask_client():
 
 def test_frs():
     """
-    Check that setting `data` to 'frs' uses cps data
+    Check that setting `data` to 'frs' uses frs data
     """
     baseline = False
-    start_year = 2019
+    start_year = 2022
 
     # create a parametric reform
     def lower_pa(parameters):
         parameters.tax.income_tax.allowances.personal_allowance.amount.update(
-            period="2020", value=10000
+            period="year:2022:10", value=10000
         )
         return parameters
 
     class lower_personal_tax_allowance(Reform):
         def apply(self):
-            self.modify_parameters(modifier_function=lower_pa)
+            self.modify_parameters(lower_pa)
 
     reform = lower_personal_tax_allowance
 
@@ -62,9 +62,9 @@ def test_household_mtr_calculation():
     mtr_x = get_micro_data.get_household_mtrs(
         (),
         "employment_income",
-        2019,
+        2022,
         dataset=get_micro_data.dataset,
-        year=2019,
+        year=2022,
     )
     assert mtr_x.isna().sum() == 0
     assert mtr_x.min() >= 0
@@ -73,9 +73,9 @@ def test_household_mtr_calculation():
     mtr_y = get_micro_data.get_household_mtrs(
         (),
         "savings_interest_income",
-        2019,
+        2022,
         dataset=get_micro_data.dataset,
-        year=2019,
+        year=2022,
     )
     assert mtr_y.isna().sum() == 0
     assert mtr_y.min() >= 0
