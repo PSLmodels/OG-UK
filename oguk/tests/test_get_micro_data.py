@@ -4,7 +4,7 @@ import pytest
 import os
 from oguk import get_micro_data
 from oguk.get_micro_data import DATA_LAST_YEAR
-from openfisca_core.model_api import Reform
+from policyenginge_core.model_api import Reform
 
 
 NUM_WORKERS = min(multiprocessing.cpu_count(), 7)
