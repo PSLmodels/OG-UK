@@ -6,7 +6,7 @@ except ImportError:
 with open("README.md") as f:
     longdesc = f.read()
 
-version = "0.1.1"
+version = "0.1.2"
 
 config = {
     "description": "OG-UK",
@@ -18,7 +18,7 @@ config = {
     "packages": ["oguk"],
     "include_package_data": True,
     "name": "oguk",
-    "install_requires": ["openfisca-uk>=0.21.0", "ogcore>=0.9.0"],
+    "install_requires": ["PolicyEngine-UK>=0.35.0", "ogcore>=0.10.0"],
     "package_data": {"oguk": ["data/*"]},
     "classifiers": [
         "Development Status :: 2 - Pre-Alpha",
@@ -28,7 +28,7 @@ config = {
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.9",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     "tests_require": ["pytest"],
