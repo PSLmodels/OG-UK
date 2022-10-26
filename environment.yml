@@ -3,6 +3,8 @@ channels:
 - conda-forge
 dependencies:
 - python<=3.7.11
+- pandas
+- numpy
 - dask==2.30.0
 - dask-core==2.30.0
 - distributed==2.30.1
@@ -20,4 +22,5 @@ dependencies:
 - pip:
   - jupyter-book>=0.8.0
   - ogcore
-  - openfisca-uk>=0.21.0
+  - PolicyEngine-UK>=0.35.0
+  - eurostat
