@@ -61,8 +61,9 @@ class Calibration:
         # )
 
         # demographics
+        # p.pop_base_yr not part of p, entered as 2019 - TO BE ADDED
         self.demographic_params = demographics.get_pop_objs(
-            p.E, p.S, p.T, 1, 100, p.pop_base_yr, p.start_year
+            p.E, p.S, p.T, 1, 100, 2018, p.start_year
         )
 
     # Tax Functions
