@@ -1,24 +1,16 @@
 import pytest
 from oguk import demographics as dmg
 import numpy as np
-import sys, os
-# currentdir = os.path.dirname(os.path.realpath(__file__))
-# parentdir = os.path.dirname(currentdir)
-# sys.path.append(parentdir)
-
-# import os
-# os.chdir('../..')
-sys.path.append('../..')
 
 
 def test_get_pop_age():
     '''
     Test properties of get_pop_age() function in demographics.py
     '''
-    country = "UK" 
+    country = "UK"
     E = 20
     S = 80
-    df_pop = dmg.get_pop_age(country, 2018, 100, download=False, 
+    df_pop = dmg.get_pop_age(country, 2018, 100, download=False,
         save_data_dir=None, plot_data_path=None)
     assert(df_pop.shape[0] == E + S)
 
@@ -29,9 +21,10 @@ def test_get_fert():
     '''
     E = 20
     S = 80
-    fert_rates = dmg.get_fert(E + S, 2018, 100, download=False, 
+    fert_rates = dmg.get_fert(E + S, 2018, 100, download=False,
         save_data_dir=None, plot_data_path=None)
     assert (fert_rates.shape[0] == E + S)
+
 
 def test_get_pop_objs():
     """
