@@ -1,4 +1,4 @@
-[![Python 3.7+](https://img.shields.io/badge/python-3.7%2B-blue.svg)](https://www.python.org/downloads/release/python-377/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/release/python-3915/)
 [![Build Status](https://travis-ci.com/PSLmodels/OG-UK.svg?branch=master)](https://travis-ci.com/PSLmodels/OG-UK)
 [![Codecov](https://codecov.io/gh/PSLmodels/OG-UK/branch/main/graph/badge.svg)](https://codecov.io/gh/PSLmodels/OG-UK)
 
@@ -21,7 +21,7 @@ The model is currently under development.  PLEASE DO NOT USE OR CITE THE MODEL'S
 * Then install by `pip install -e .`
 * Navigate to `./examples`
 * Run the model with an example reform from terminal/command prompt by typing `python run_og_uk.py examples.small_ubi_reform.ubi_reform`
-* You can adjust the `./run_examples/run_og_uk.py` by adjusting the individual income tax reform (using an OpenFisca `Reform` object) or other model parameters specified in a dictionary and passed to the `Specifications.update_specification()` method.
+* You can adjust the `./run_examples/run_og_uk.py` by adjusting the individual income tax reform (using an PolicyEngine UK `Reform` object) or other model parameters specified in a dictionary and passed to the `Specifications.update_specification()` method.
 * Model outputs will be saved in the following files:
   * `./examples/OG-UK_example_plots`
     * This folder will contain a number of plots generated from OG-UK to help you visualize the output from your run
