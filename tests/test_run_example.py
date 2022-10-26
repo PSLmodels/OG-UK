@@ -15,7 +15,7 @@ import pytest
 def call_run_oguk():
     cur_path = os.path.split(os.path.abspath(__file__))[0]
     path = Path(cur_path)
-    roe_fldr = os.path.join(path.parent.parent, "examples")
+    roe_fldr = os.path.join(path.parent, "examples")
     roe_file_path = os.path.join(roe_fldr, "run_oguk.py")
     spec = importlib.util.spec_from_file_location("run_oguk.py", roe_file_path)
     roe_module = importlib.util.module_from_spec(spec)
