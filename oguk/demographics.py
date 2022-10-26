@@ -13,7 +13,6 @@ This module includes the following function definitions:
 """
 # Import packages
 import os
-import sys
 import numpy as np
 import pandas as pd
 import eurostat
@@ -997,7 +996,7 @@ def get_pop_objs(
     # assert curr_year >= 2019
     # fert_rates = get_fert(E + S, base_yr, min_yr, max_yr, graph=False)
     fert_rates = get_fert(E + S, base_yr, max_yr, download=False, save_data_dir=None,
-    plot_data_path=None)   
+    plot_data_path=None)
 
     mort_rates, infmort_rate = get_mort(
         E + S,
