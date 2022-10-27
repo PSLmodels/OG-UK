@@ -4,26 +4,38 @@ import numpy as np
 
 
 def test_get_pop_age():
-    '''
+    """
     Test properties of get_pop_age() function in demographics.py
-    '''
+    """
     country = "UK"
     E = 20
     S = 80
-    df_pop = dmg.get_pop_age(country, 2018, 100, download=False,
-        save_data_dir=None, plot_data_path=None)
-    assert(df_pop.shape[0] == E + S)
+    df_pop = dmg.get_pop_age(
+        country,
+        2018,
+        100,
+        download=False,
+        save_data_dir=None,
+        plot_data_path=None,
+    )
+    assert df_pop.shape[0] == E + S
 
 
 def test_get_fert():
-    '''
+    """
     Test of function to get fertility rates from data
-    '''
+    """
     E = 20
     S = 80
-    fert_rates = dmg.get_fert(E + S, 2018, 100, download=False,
-        save_data_dir=None, plot_data_path=None)
-    assert (fert_rates.shape[0] == E + S)
+    fert_rates = dmg.get_fert(
+        E + S,
+        2018,
+        100,
+        download=False,
+        save_data_dir=None,
+        plot_data_path=None,
+    )
+    assert fert_rates.shape[0] == E + S
 
 
 def test_get_pop_objs():
@@ -36,10 +48,9 @@ def test_get_pop_objs():
     T = int(round(4.0 * S))
     start_year = 2018
 
-    pop_dict = dmg.get_pop_objs(
-        E, S, T, 1, 100, start_year, False)
+    pop_dict = dmg.get_pop_objs(E, S, T, 1, 100, start_year, False)
 
-    assert (np.allclose(pop_dict['omega_SS'], pop_dict['omega'][-1, :]))
+    assert np.allclose(pop_dict["omega_SS"], pop_dict["omega"][-1, :])
 
 
 def test_pop_smooth():
@@ -51,13 +62,15 @@ def test_pop_smooth():
     T = int(round(4.0 * S))
     start_year = 2018
 
-    pop_dict = dmg.get_pop_objs(
-        E, S, T, 1, 100, start_year, False)
+    pop_dict = dmg.get_pop_objs(E, S, T, 1, 100, start_year, False)
 
-    assert (np.any(np.absolute(pop_dict['omega'][:-1, :] -
-                               pop_dict['omega'][1:, :]) < 0.0001))
-    assert (np.any(np.absolute(pop_dict['g_n'][:-1] -
-                               pop_dict['g_n'][1:]) < 0.0001))
+    assert np.any(
+        np.absolute(pop_dict["omega"][:-1, :] - pop_dict["omega"][1:, :])
+        < 0.0001
+    )
+    assert np.any(
+        np.absolute(pop_dict["g_n"][:-1] - pop_dict["g_n"][1:]) < 0.0001
+    )
 
 
 def test_imm_smooth():
@@ -69,11 +82,14 @@ def test_imm_smooth():
     T = int(round(4.0 * S))
     start_year = 2018
 
-    pop_dict = dmg.get_pop_objs(
-        E, S, T, 1, 100, start_year, False)
+    pop_dict = dmg.get_pop_objs(E, S, T, 1, 100, start_year, False)
 
-    assert (np.any(np.absolute(pop_dict['imm_rates'][:-1, :] -
-                               pop_dict['imm_rates'][1:, :]) < 0.0001))
+    assert np.any(
+        np.absolute(
+            pop_dict["imm_rates"][:-1, :] - pop_dict["imm_rates"][1:, :]
+        )
+        < 0.0001
+    )
 
 
 def test_get_mort():
@@ -206,9 +222,7 @@ def test_get_mort():
 
     # Test that we get the right mort_rates and infmort_rate when reading data
     # from local hard drive path
-    mort_rates_1, infmort_rate_1 = dmg.get_mort(
-        totpers, 0, 100, graph=False
-    )
+    mort_rates_1, infmort_rate_1 = dmg.get_mort(totpers, 0, 100, graph=False)
     assert mort_rates_1.shape[0] == totpers
     assert infmort_rate_1 == 0.003507
     assert np.allclose(mort_rates_1, mort_rates_100)
@@ -234,11 +248,11 @@ def test_get_mort():
 
 
 def test_get_imm_resid():
-    '''
+    """
     Test of function to solve for immigration rates from population data
-    '''
+    """
     E = 20
     S = 80
     totpers = E + S
     imm_rates = dmg.get_imm_resid(totpers, 0, 100, 2018)
-    assert (imm_rates.shape[0] == E + S)
+    assert imm_rates.shape[0] == E + S

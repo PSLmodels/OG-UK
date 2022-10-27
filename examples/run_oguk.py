@@ -15,6 +15,7 @@ from argparse import ArgumentParser
 
 # default reform
 
+
 def get_default_reform():
     from openfisca_tools.reforms import set_parameter
 

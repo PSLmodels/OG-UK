@@ -995,8 +995,14 @@ def get_pop_objs(
     """
     # assert curr_year >= 2019
     # fert_rates = get_fert(E + S, base_yr, min_yr, max_yr, graph=False)
-    fert_rates = get_fert(E + S, base_yr, max_yr, download=False, save_data_dir=None,
-    plot_data_path=None)
+    fert_rates = get_fert(
+        E + S,
+        base_yr,
+        max_yr,
+        download=False,
+        save_data_dir=None,
+        plot_data_path=None,
+    )
 
     mort_rates, infmort_rate = get_mort(
         E + S,
@@ -1239,11 +1245,11 @@ def exp_b_zerofunc(b, *args):
         err_message = "ERROR exp_b_zerofunc(): xN equals x0."
         raise ValueError(err_message)
     x1 = x0 + step
-    a = (y0 - 1) / ((x0 ** b) - (xN ** b))
-    c = 1 - (a * (xN ** b))
+    a = (y0 - 1) / ((x0**b) - (xN**b))
+    c = 1 - (a * (xN**b))
     sum_y = 0
     for x in range(x1, xN + step, step):
-        sum_y += (a * (x ** b)) + c
+        sum_y += (a * (x**b)) + c
     error_val = sum_y - y_lastbin
 
     return error_val
@@ -1361,14 +1367,14 @@ def distribute_bin(args):
         b_sol = opt.root(exp_b_zerofunc, x0=1.0, args=b_args)
         b = b_sol.x[0]
         print("b_sol.success=", b_sol.success)
-        a = (y0 - 1) / ((x0 ** b) - (xN_new ** b))
-        c = 1 - (a * (xN_new ** b))
+        a = (y0 - 1) / ((x0**b) - (xN_new**b))
+        c = 1 - (a * (xN_new**b))
 
     if distribute_up:
         x_vec = np.arange(x1, xN_new + 1)
     else:
         x_vec = np.arange(xN_new, x1 + 1)
-    y_vec = (a * (x_vec ** b)) + c
+    y_vec = (a * (x_vec**b)) + c
     abc_vec = np.array([a, b, c])
 
     return x_vec, y_vec, abc_vec, xN_new
