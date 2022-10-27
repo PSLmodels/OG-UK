@@ -1,4 +1,4 @@
-[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/release/python-3915/)
+[![Python 3.7+](https://img.shields.io/badge/python-3.7%2B-blue.svg)](https://www.python.org/downloads/release/python-377/)
 [![Build Status](https://travis-ci.com/PSLmodels/OG-UK.svg?branch=master)](https://travis-ci.com/PSLmodels/OG-UK)
 [![Codecov](https://codecov.io/gh/PSLmodels/OG-UK/branch/main/graph/badge.svg)](https://codecov.io/gh/PSLmodels/OG-UK)
 
