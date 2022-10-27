@@ -3,8 +3,8 @@ from distributed import Client
 import json
 import time
 import os
-from policyengine_uk.api import *
-from policyengine_core.model_api import Reform
+from openfisca_uk.api import *
+from openfisca_core.model_api import Reform
 from oguk.calibrate import Calibration
 from ogcore import output_tables as ot
 from ogcore import output_plots as op
@@ -16,7 +16,7 @@ from argparse import ArgumentParser
 # default reform
 
 def get_default_reform():
-    from policyengine_tools.reforms import set_parameter
+    from openfisca_tools.reforms import set_parameter
 
     return set_parameter(
         "tax.income_tax.rates.uk[0].rate", 0.3, "year:2022:10"
@@ -72,7 +72,7 @@ def main(reform=None):
             "start_year": START_YEAR,
         }
     )
-    # Estimate baseline tax functions from PolicyEngine-UK
+    # Estimate baseline tax functions from OpenFisca-UK
     c = Calibration(p, estimate_tax_functions=True, client=client)
     # update tax function parameters in Specifications Object
     d = c.get_dict()
@@ -120,7 +120,7 @@ def main(reform=None):
             "start_year": START_YEAR,
         }
     )
-    # Estimate reform tax functions from PolicyEngine-UK, passing Reform
+    # Estimate reform tax functions from OpenFisca-UK, passing Reform
     # class object
     c2 = Calibration(
         p2, iit_reform=reform, estimate_tax_functions=True, client=client

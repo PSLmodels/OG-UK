@@ -18,7 +18,7 @@ config = {
     "packages": ["oguk"],
     "include_package_data": True,
     "name": "oguk",
-    "install_requires": ["PolicyEngine-UK>=0.35.0", "ogcore>=0.10.0"],
+    "install_requires": ["OpenFisca-UK>=0.34.1", "ogcore>=0.10.0"],
     "package_data": {"oguk": ["data/*"]},
     "classifiers": [
         "Development Status :: 2 - Pre-Alpha",

@@ -12,9 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Updated `demographics.py` and `test_demographics.py` (and `calibrate.py`).
 * Added some `.csv` data files and `.png` image files.
 * Updated the `initial_guess_r_SS` starting value in `oguk_default_parameters.json`.
-* Updated the `environment.yml` to allow for `python<=3.9.15`
-* Updated the model to use `PolicyEngine-UK` microsimulation model package.
-
 
 ## [0.1.1] - 2022-07-19
 
