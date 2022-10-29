@@ -3,6 +3,7 @@ from distributed import Client
 import json
 import time
 import os
+from openfisca_uk.api import *
 from openfisca_core.model_api import Reform
 from oguk.calibrate import Calibration
 from ogcore import output_tables as ot
@@ -13,8 +14,6 @@ import time
 from argparse import ArgumentParser
 
 # default reform
-
-from openfisca_uk.api import *
 
 
 def get_default_reform():

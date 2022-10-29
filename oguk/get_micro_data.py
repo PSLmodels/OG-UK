@@ -10,10 +10,10 @@ import numpy as np
 import os
 import pickle
 from openfisca_uk import Microsimulation
-import pandas as pd
-import warnings
 from openfisca_uk.api import *
 from openfisca_uk.data import EnhancedFRS, SynthFRS
+import pandas as pd
+import warnings
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -78,14 +78,14 @@ def get_household_mtrs(
 
 def get_calculator_output(baseline, year, reform=None, data=None):
     """
-    This function creates an OpenFisca Microsimulation object with the
+    This function creates an OpenFisca UK Microsimulation object with the
     policy specified in reform and the data specified with the data
     kwarg.
 
     Args:
         baseline (boolean): True if baseline tax policy
         year (int): year of data to simulate
-        reform (OpenFisca Reform object): IIT policy reform parameters,
+        reform (OpenFisca UK Reform object): IIT policy reform parameters,
             None if baseline
         data (DataFrame or str): DataFrame or path to datafile for
             the PopulationSim object
@@ -182,7 +182,7 @@ def get_data(
     Args:
         baseline (boolean): True if baseline tax policy
         start_year (int): first year of budget window
-        reform (OpenFisca Reform object): IIT policy reform parameters,
+        reform (OpenFisca UK Reform object): IIT policy reform parameters,
             None if baseline
         data (DataFrame or str): DataFrame or path to datafile for
             the PopulationSim object
