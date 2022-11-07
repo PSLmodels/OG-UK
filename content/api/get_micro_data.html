@@ -367,7 +367,7 @@ title="Print to PDF"
     <nav id="bd-toc-nav" aria-label="Page">
         <ul class="visible nav section-nav flex-column">
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#module-oguk.get_micro_data">
+  <a class="reference internal nav-link" href="#oguk-get-micro-data">
    oguk.get_micro_data
   </a>
  </li>
@@ -391,7 +391,7 @@ title="Print to PDF"
                         <nav aria-label="Page">
                             <ul class="visible nav section-nav flex-column">
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#module-oguk.get_micro_data">
+  <a class="reference internal nav-link" href="#oguk-get-micro-data">
    oguk.get_micro_data
   </a>
  </li>
@@ -408,98 +408,8 @@ title="Print to PDF"
   <section id="functions-to-get-micro-data-from-openfisca-uk">
 <span id="get-micro-data"></span><h1>Functions to Get Micro-data from OpenFisca-UK<a class="headerlink" href="#functions-to-get-micro-data-from-openfisca-uk" title="Permalink to this headline">#</a></h1>
 <p><strong>get_micro_data.py classes, methods, and modules</strong></p>
-<section id="module-oguk.get_micro_data">
-<span id="oguk-get-micro-data"></span><h2>oguk.get_micro_data<a class="headerlink" href="#module-oguk.get_micro_data" title="Permalink to this headline">#</a></h2>
-<hr class="docutils" />
-<dl class="py function">
-<dt class="sig sig-object py" id="oguk.get_micro_data.get_calculator_output">
-<span class="sig-prename descclassname"><span class="pre">oguk.get_micro_data.</span></span><span class="sig-name descname"><span class="pre">get_calculator_output</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">baseline</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">year</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/oguk/get_micro_data.html#get_calculator_output"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#oguk.get_micro_data.get_calculator_output" title="Permalink to this definition">#</a></dt>
-<dd><p>This function creates an OpenFisca Microsimulation object with the
-policy specified in reform and the data specified with the data
-kwarg.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>baseline</strong> (<em>boolean</em>) – True if baseline tax policy</p></li>
-<li><p><strong>year</strong> (<em>int</em>) – year of data to simulate</p></li>
-<li><p><strong>reform</strong> (<em>OpenFisca Reform object</em>) – IIT policy reform parameters,
-None if baseline</p></li>
-<li><p><strong>data</strong> (<em>DataFrame</em><em> or </em><em>str</em>) – DataFrame or path to datafile for
-the PopulationSim object</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p><dl class="simple">
-<dt>a dictionary of microdata with marginal tax</dt><dd><p>rates and other information computed from OpenFisca-UK</p>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>tax_dict (dict)</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="oguk.get_micro_data.get_data">
-<span class="sig-prename descclassname"><span class="pre">oguk.get_micro_data.</span></span><span class="sig-name descname"><span class="pre">get_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">baseline</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_year</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2021</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'frs'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/home/runner/work/OG-UK/OG-UK/oguk'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/oguk/get_micro_data.html#get_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#oguk.get_micro_data.get_data" title="Permalink to this definition">#</a></dt>
-<dd><p>This function creates dataframes of micro data with marginal tax
-rates and information to compute effective tax rates from the
-PopulationSim object.  The resulting dictionary of dataframes is
-returned and saved to disk in a pickle file.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>baseline</strong> (<em>boolean</em>) – True if baseline tax policy</p></li>
-<li><p><strong>start_year</strong> (<em>int</em>) – first year of budget window</p></li>
-<li><p><strong>reform</strong> (<em>OpenFisca Reform object</em>) – IIT policy reform parameters,
-None if baseline</p></li>
-<li><p><strong>data</strong> (<em>DataFrame</em><em> or </em><em>str</em>) – DataFrame or path to datafile for
-the PopulationSim object</p></li>
-<li><p><strong>path</strong> (<em>str</em>) – path to save microdata files to</p></li>
-<li><p><strong>client</strong> (<em>Dask Client object</em>) – client for Dask multiprocessing</p></li>
-<li><p><strong>num_workers</strong> (<em>int</em>) – number of workers to use for Dask
-multiprocessing</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p><dl class="simple">
-<dt>dict of Pandas Dataframe, one for each</dt><dd><p>year from start_year to the maximum year OpenFisca-UK can
-analyze</p>
-</dd>
-</dl>
-<p>OpenFiscaUK_version (str): version of OpenFisca-UK used</p>
-</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>micro_data_dict (dict)</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="oguk.get_micro_data.get_household_mtrs">
-<span class="sig-prename descclassname"><span class="pre">oguk.get_micro_data.</span></span><span class="sig-name descname"><span class="pre">get_household_mtrs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reform</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">openfisca_core.reforms.reform.Reform</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">openfisca_core.reforms.reform.Reform</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">baseline</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">openfisca_uk.tools.simulation.Microsimulation</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pandas.core.series.Series</span></span></span><a class="reference internal" href="../../_modules/oguk/get_micro_data.html#get_household_mtrs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#oguk.get_micro_data.get_household_mtrs" title="Permalink to this definition">#</a></dt>
-<dd><p>Calculates household MTRs with respect to a given variable.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>reform</strong> (<em>ReformType</em>) – The reform to apply to the simulation.</p></li>
-<li><p><strong>variable</strong> (<em>str</em>) – The variable to increase.</p></li>
-<li><p><strong>period</strong> (<em>int</em>) – The period (year) to calculate the MTRs for.</p></li>
-<li><p><strong>kwargs</strong> (<em>dict</em>) – Additional arguments to pass to the simulation.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>The household MTRs.</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>pd.Series</p>
-</dd>
-</dl>
-</dd></dl>
-
+<section id="oguk-get-micro-data">
+<h2>oguk.get_micro_data<a class="headerlink" href="#oguk-get-micro-data" title="Permalink to this headline">#</a></h2>
 </section>
 </section>
 
