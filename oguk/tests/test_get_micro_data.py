@@ -32,7 +32,7 @@ def test_frs():
 
     # create a parametric reform
     def lower_pa(parameters):
-        parameters.tax.income_tax.allowances.personal_allowance.amount.update(
+        parameters.gov.hmrc.income_tax.allowances.personal_allowance.amount.update(
             period="year:2022:10", value=10000
         )
         return parameters
