@@ -196,7 +196,7 @@ def get_births_age(
             flags=True,
             verbose=True,
         )
-        
+
         # Select Sex = T (meaning "Total" of boys and girls born); drop others
         df_births = df_births[(df_births["SEX"] == "T")]
 
@@ -571,8 +571,8 @@ def get_mort(
         )
         df_pop.rename(
             columns={
-                "sex": "sex", 
-                "age": "age_str", 
+                "sex": "sex",
+                "age": "age_str",
                 "2018_value": "tot_pop",
             },
             inplace=True,
@@ -1101,15 +1101,9 @@ def get_pop_objs(
         # df_pop = df_pop.drop(
         #     columns=["unit", "sex", "geo", "freq", Obs_status_col]
         # )
-        df_pop = df_pop.drop(
-                    columns=["unit", "sex"]
-                )
-        df_pop = df_pop.drop(
-                    columns=["geo\\TIME_PERIOD", "freq"]
-                )
-        df_pop = df_pop.drop(
-                    columns=[flag_col]
-                )
+        df_pop = df_pop.drop(columns=["unit", "sex"])
+        df_pop = df_pop.drop(columns=["geo\\TIME_PERIOD", "freq"])
+        df_pop = df_pop.drop(columns=[flag_col])
 
         if StartPeriod != Year:
             num_yr = Year - StartPeriod
@@ -1123,7 +1117,7 @@ def get_pop_objs(
 
         # sort values by AGE
         df_pop = df_pop.sort_values(by=["age"])
-        
+
         yr_col = str(Year) + "_value"
 
         np_pop = df_pop[yr_col].to_numpy().astype(float)
