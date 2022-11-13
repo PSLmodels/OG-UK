@@ -527,33 +527,51 @@ def get_mort(
         mort_data_end_yr = end_yr
         pop_data_beg_yr = beg_yr
         pop_data_end_yr = end_yr
-        filter_pars = {"GEO": [country]}
-        df_mort = eurostat.get_sdmx_data_df(
+        # filter_pars = {"geo": [country]}
+        mort_filter_pars = {
+            "startPeriod": "2018",
+            "endPeriod": "2018",
+            "geo": [country],
+        }
+        pop_filter_pars = {
+            "startPeriod": "2018",
+            "endPeriod": "2018",
+            "geo": [country],
+        }
+
+        df_mort = eurostat.get_data_df(
             "demo_magec",
-            mort_data_beg_yr,
-            mort_data_end_yr,
-            filter_pars,
+            filter_pars=mort_filter_pars,
             flags=True,
             verbose=True,
         )
-        df_pop = eurostat.get_sdmx_data_df(
+        df_pop = eurostat.get_data_df(
             "demo_pjan",
-            pop_data_beg_yr,
-            pop_data_end_yr,
-            filter_pars,
+            filter_pars=pop_filter_pars,
             flags=True,
             verbose=True,
         )
+
         # Delete columns that we don't use (keep only columns that do use)
-        df_mort = df_mort[["SEX", "AGE", beg_yr]]
-        df_pop = df_pop[["SEX", "AGE", beg_yr]]
+        # df_mort = df_mort[["SEX", "AGE", beg_yr]]
+        # df_pop = df_pop[["SEX", "AGE", beg_yr]]
+        df_mort = df_mort[["sex", "age", "2018_value"]]
+        df_pop = df_pop[["sex", "age", "2018_value"]]
         # Rename the total deaths column, and the other columns
         df_mort.rename(
-            columns={"SEX": "sex", "AGE": "age_str", beg_yr: "tot_deaths"},
+            columns={
+                "sex": "sex",
+                "age": "age_str",
+                "2018_value": "tot_deaths",
+            },
             inplace=True,
         )
         df_pop.rename(
-            columns={"SEX": "sex", "AGE": "age_str", beg_yr: "tot_pop"},
+            columns={
+                "sex": "sex", 
+                "age": "age_str", 
+                "2018_value": "tot_pop",
+            },
             inplace=True,
         )
         # Keep only all gender ('T') deaths and population by age
