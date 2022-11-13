@@ -77,21 +77,23 @@ def get_pop_age(
         EndPeriod = year
 
         # Download population by age data
-        filter_pars = {"GEO": [country]}
-        df_pop = eurostat.get_sdmx_data_df(
+        pop_filter_pars = {
+            "startPeriod": "2018",
+            "endPeriod": "2018",
+            "geo": [country],
+        }
+        df_pop = eurostat.get_data_df(
             "demo_pjan",
-            StartPeriod,
-            EndPeriod,
-            filter_pars,
+            filter_pars=pop_filter_pars,
             flags=True,
             verbose=True,
         )
 
         # Remove totals and other unused rows
         indexNames = df_pop[
-            (df_pop["AGE"] == "TOTAL")
-            | (df_pop["AGE"] == "UNK")
-            | (df_pop["AGE"] == "Y_OPEN")
+            (df_pop["age"] == "TOTAL")
+            | (df_pop["age"] == "UNK")
+            | (df_pop["age"] == "Y_OPEN")
         ].index
         df_pop.drop(indexNames, inplace=True)
 
@@ -99,17 +101,17 @@ def get_pop_age(
         df_pop.AGE[df_pop.AGE == "Y_LT1"] = "Y0"
 
         #  Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
-        df_pop["AGE"] = df_pop["AGE"].str[1:]
+        df_pop["age"] = df_pop["age"].str[1:]
 
         # Drop gender specific population, keep only total
-        df_pop = df_pop[(df_pop["SEX"] == "T")]
+        df_pop = df_pop[(df_pop["sex"] == "T")]
 
         # Name of 1 column includes the year - create column name before
         # dropping
         Obs_status_col = str(year) + "_OBS_STATUS"
         # Drop columns except: Age, Frequency
         df_pop = df_pop.drop(
-            columns=["UNIT", "SEX", "GEO", "FREQ", Obs_status_col]
+            columns=["unit", "sex", "geo", "freq", Obs_status_col]
         )
 
         # rename population total series "POP" instead of the year
@@ -182,18 +184,19 @@ def get_births_age(
     if download:
         StartPeriod = year
         EndPeriod = year
-        filter_pars = {"GEO": [country]}
 
-        # Download births by age data
-        df_births = eurostat.get_sdmx_data_df(
+        births_filter_pars = {
+            "startPeriod": "2018",
+            "endPeriod": "2018",
+            "geo": [country],
+        }
+        df_births = eurostat.get_data_df(
             "demo_fasec",
-            StartPeriod,
-            EndPeriod,
-            filter_pars,
+            filter_pars=births_filter_pars,
             flags=True,
             verbose=True,
         )
-
+        
         # Select Sex = T (meaning "Total" of boys and girls born); drop others
         df_births = df_births[(df_births["SEX"] == "T")]
 
@@ -744,17 +747,19 @@ def get_imm_resid(
     """
 
     ##### download previous years of population - START ############
-    Country = "UK"
+    country = "UK"
     StartPeriod = 2015
     EndPeriod = base_yr
 
     if download:
-        filter_pars = {"GEO": [Country]}
-        df_pop = eurostat.get_sdmx_data_df(
+        pop_filter_pars = {
+            "startPeriod": "2015",
+            "endPeriod": "2018",
+            "geo": [country],
+        }
+        df_pop = eurostat.get_data_df(
             "demo_pjan",
-            StartPeriod,
-            EndPeriod,
-            filter_pars,
+            filter_pars=pop_filter_pars,
             flags=True,
             verbose=True,
         )
@@ -838,12 +843,16 @@ def get_imm_resid(
     Total = "TOTAL"
     Gender = "T"
     if download:
-        filter_pars = {"GEO": [Country], "AGE": [Total], "SEX": [Gender]}
-        df_fert_total = eurostat.get_sdmx_data_df(
+        fert_total_filter_pars = {
+            "startPeriod": "2015",
+            "endPeriod": "2018",
+            "geo": [country],
+            "age": "TOTAL",
+            "sex": "T",
+        }
+        df_fert_total = eurostat.get_data_df(
             "demo_fasec",
-            StartPeriod,
-            EndPeriod,
-            filter_pars,
+            filter_pars=fert_total_filter_pars,
             flags=True,
             verbose=True,
         )
@@ -1057,54 +1066,67 @@ def get_pop_objs(
     EndPeriod = Year
 
     if download:
-        filter_pars = {"GEO": [Country]}
-        df_pop = eurostat.get_sdmx_data_df(
+        pop_filter_pars = {
+            "startPeriod": "2015",
+            "endPeriod": "2018",
+            "geo": [Country],
+        }
+        df_pop = eurostat.get_data_df(
             "demo_pjan",
-            StartPeriod,
-            EndPeriod,
-            filter_pars,
+            filter_pars=pop_filter_pars,
             flags=True,
             verbose=True,
         )
 
         # Remove totals and other unused rows
         indexNames = df_pop[
-            (df_pop["AGE"] == "TOTAL")
-            | (df_pop["AGE"] == "UNK")
-            | (df_pop["AGE"] == "Y_OPEN")
+            (df_pop["age"] == "TOTAL")
+            | (df_pop["age"] == "UNK")
+            | (df_pop["age"] == "Y_OPEN")
         ].index
         df_pop.drop(indexNames, inplace=True)
 
         # Rename Y_LT1 to 0 (means 'less than one year')
-        df_pop.AGE[df_pop.AGE == "Y_LT1"] = "Y0"
+        df_pop.age[df_pop.age == "Y_LT1"] = "Y0"
 
         # Remove leading 'Y' from 'AGE' (e.g. 'Y23' --> '23')
-        df_pop["AGE"] = df_pop["AGE"].str[1:]
+        df_pop["age"] = df_pop["age"].str[1:]
 
         # Use total population, to calculate fertility per person
-        df_pop = df_pop[(df_pop["SEX"] == "T")]
+        df_pop = df_pop[(df_pop["sex"] == "T")]
 
         # Name of 1 column includes the year - create column name before dropping
-        Obs_status_col = str(Year) + "_OBS_STATUS"
+        flag_col = str(Year) + "_flag"
         # Drop columns except: Age, Frequency
+        # df_pop = df_pop.drop(
+        #     columns=["unit", "sex", "geo", "freq", Obs_status_col]
+        # )
         df_pop = df_pop.drop(
-            columns=["UNIT", "SEX", "GEO", "FREQ", Obs_status_col]
-        )
+                    columns=["unit", "sex"]
+                )
+        df_pop = df_pop.drop(
+                    columns=["geo\\TIME_PERIOD", "freq"]
+                )
+        df_pop = df_pop.drop(
+                    columns=[flag_col]
+                )
 
         if StartPeriod != Year:
             num_yr = Year - StartPeriod
             for n in range(1, num_yr + 1):
                 print("n: ", n)
-                Obs_status_col_SP = str(Year - n) + "_OBS_STATUS"
-                df_pop = df_pop.drop(columns=[Obs_status_col_SP])
+                flag_col_SP = str(Year - n) + "_flag"
+                df_pop = df_pop.drop(columns=[flag_col_SP])
 
         # convert strings to float
         df_pop = df_pop.astype(float)
 
         # sort values by AGE
-        df_pop = df_pop.sort_values(by=["AGE"])
+        df_pop = df_pop.sort_values(by=["age"])
+        
+        yr_col = str(Year) + "_value"
 
-        np_pop = df_pop[Year].to_numpy().astype(float)
+        np_pop = df_pop[yr_col].to_numpy().astype(float)
         if save_data:
             np_pop_csv_path = os.path.join(DATA_DIR, "np_pop.csv")
             np.savetxt(np_pop_csv_path, np_pop, delimiter=",")
@@ -1125,13 +1147,14 @@ def get_pop_objs(
         num_yr = Year - StartPeriod
         np_pop_prev = np.zeros((len(np_pop), num_yr))
         for n in range(1, num_yr + 1):
+            yr_n_col = str(Year - n) + "_value"
             if download:
                 np_pop_prev[:, n - 1] = (
-                    df_pop[Year - n].to_numpy().astype(float)
+                    df_pop[yr_n_col].to_numpy().astype(float)
                 )
             else:
                 np_pop_prev[:, n - 1] = (
-                    df_pop[str(Year - n)].to_numpy().astype(float)
+                    df_pop[yr_n_col].to_numpy().astype(float)
                 )
             print("np_pop_prev[-20:]: ", np_pop_prev[-20:, n - 1])
             print("np_pop_prev.shape: ", np_pop_prev.shape)
