@@ -140,7 +140,7 @@
     "initial_debt_ratio": 0.78,
     "r_gov_scale": 1.0,
     "r_gov_shift": 0.02,
-    "cit_rate": [[0.21]],
+    "cit_rate": [[0.19], [0.25]],
     "c_corp_share_of_assets": 0.55,
     "adjustment_factor_for_cit_receipts": [0.30909090909090914],
     "tau_c": [[0.0]],
