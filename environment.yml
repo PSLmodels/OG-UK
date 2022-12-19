@@ -2,10 +2,10 @@ name: oguk-dev
 channels:
 - conda-forge
 dependencies:
-- python<=3.7.11
-- dask==2.30.0
-- dask-core==2.30.0
-- distributed==2.30.1
+- python<3.10.0
+- dask
+- dask-core
+- distributed
 - paramtools>=0.15.0
 - pip
 - pytest>=6.0
@@ -20,4 +20,4 @@ dependencies:
 - pip:
   - jupyter-book>=0.8.0
   - ogcore
-  - openfisca-uk>=0.21.0
+  - PolicyEngine-UK>=0.36.0

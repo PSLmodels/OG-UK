@@ -3,7 +3,7 @@ from distributed import Client
 import json
 import time
 import os
-from openfisca_core.model_api import Reform
+from policyengine_core.model_api import Reform
 from oguk.calibrate import Calibration
 from ogcore import output_tables as ot
 from ogcore import output_plots as op
@@ -14,11 +14,11 @@ from argparse import ArgumentParser
 
 # default reform
 
-from openfisca_uk.api import *
+from policyengine_uk.api import *
 
 
 def get_default_reform():
-    from openfisca_tools.reforms import set_parameter
+    from policyengine_core.reforms import set_parameter
 
     return set_parameter(
         "tax.income_tax.rates.uk[0].rate", 0.3, "year:2022:10"

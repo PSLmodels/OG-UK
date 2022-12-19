@@ -1,7 +1,7 @@
 """
 ------------------------------------------------------------------------
 This program extracts tax rate and income data from the microsimulation
-model (OpenFisca-UK).
+model (PolicyEngine-UK).
 ------------------------------------------------------------------------
 """
 from dask import delayed, compute
@@ -9,11 +9,11 @@ import dask.multiprocessing
 import numpy as np
 import os
 import pickle
-from openfisca_uk import Microsimulation
+from policyengine_uk import Microsimulation
 import pandas as pd
 import warnings
-from openfisca_uk.api import *
-from openfisca_uk.data import EnhancedFRS, SynthFRS
+from policyengine_uk.api import *
+from policyengine_uk.data import EnhancedFRS, SynthFRS
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -42,7 +42,7 @@ DATA_LAST_YEAR = 2027  # this is the last year data are extrapolated for
 
 
 def get_household_mtrs(
-    reform: ReformType,
+    reform: Reform,
     variable: str,
     period: int = None,
     baseline: Microsimulation = None,
@@ -51,7 +51,7 @@ def get_household_mtrs(
     """Calculates household MTRs with respect to a given variable.
 
     Args:
-        reform (ReformType): The reform to apply to the simulation.
+        reform (Reform): The reform to apply to the simulation.
         variable (str): The variable to increase.
         period (int): The period (year) to calculate the MTRs for.
         kwargs (dict): Additional arguments to pass to the simulation.
