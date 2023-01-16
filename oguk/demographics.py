@@ -65,6 +65,8 @@ def get_un_fert_data(
     Returns:
         fert_rates_df (DataFrame): dataset with fertility rates by age
     """
+    if start_year > 2021:  # 2021 is the most recent non-forecast data
+        start_year = 2021
     if end_year is None:
         end_year = start_year
     # UN variable code for Population by 1-year age groups and sex
@@ -186,6 +188,8 @@ def get_un_mort_data(
         infmort_rate_df (DataFrame): dataset with infant mortality rates by yr
         mort_rates_df(DataFrame): dataset with mortality rates by age
     """
+    if start_year > 2021:  # 2021 is the most recent non-forecast data
+        start_year = 2021
     if end_year is None:
         end_year = start_year
     # UN variable code for Population by 1-year age groups and sex
@@ -340,6 +344,8 @@ def get_wb_infmort_rate(
     Returns:
         wb_infmort_rate (float): neonatal infant mortality rate
     """
+    if start_year > 2020:  # 2020 is the most recent data
+        start_year = 2020
     if end_year is None:
         end_year = start_year
     if download:
