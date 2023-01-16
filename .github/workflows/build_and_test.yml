@@ -17,7 +17,6 @@ jobs:
           persist-credentials: false
 
       - name: Install
-        shell: bash -l {0}
         run: |
           pip3 install -e .[dev]
       - name: Conda info and list
