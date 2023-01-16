@@ -44,6 +44,13 @@ setuptools.setup(
         "ogcore",
         "PolicyEngine-UK",
     ],
+    extras_require={
+        "dev": [
+            "pytest",
+            "pytest-cov",
+            "pytest-pycodestyle",
+        ],
+    },
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Intended Audience :: Developers",

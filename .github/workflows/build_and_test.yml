@@ -16,12 +16,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Build
+      - name: Install
         shell: bash -l {0}
         run: |
-          pip install -e .
-          pip install pytest-cov
-          pip install pytest-pycodestyle
+          pip install -e .[dev]
       - name: Conda info and list
         shell: bash -el {0}
         run: |
