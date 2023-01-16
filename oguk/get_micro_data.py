@@ -42,7 +42,7 @@ DATA_LAST_YEAR = 2027  # this is the last year data are extrapolated for
 
 
 def get_household_mtrs(
-    reform: ReformType,
+    reform,
     variable: str,
     period: int = None,
     baseline: Microsimulation = None,
@@ -59,10 +59,10 @@ def get_household_mtrs(
     Returns:
         pd.Series: The household MTRs.
     """
-    baseline = baseline or Microsimulation(reform, **kwargs)
+    baseline = baseline or Microsimulation(reform=reform, **kwargs)
     baseline_var = baseline.calc(variable, period)
     bonus = baseline.calc("is_adult", period) * 1  # Increase only adult values
-    reformed = Microsimulation(reform, **kwargs)
+    reformed = Microsimulation(reform=reform, **kwargs)
     reformed.set_input(variable, period, baseline_var + bonus)
 
     household_bonus = reformed.calc(
@@ -96,12 +96,12 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     """
     # create a simulation
-    sim_kwargs = dict(dataset=dataset, year=2022)
+    sim_kwargs = dict(dataset=dataset, dataset_year=2022)
     if reform is None:
         sim = Microsimulation(**sim_kwargs)
         reform = ()
     else:
-        sim = Microsimulation(reform, **sim_kwargs)
+        sim = Microsimulation(reform=reform, **sim_kwargs)
     if baseline:
         print("Running current law policy baseline")
     else:
@@ -121,6 +121,9 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     # Put MTRs, income, tax liability, and other variables in dict
     length = sim.calc("household_weight", period=year).size
+    household = sim.populations["household"]
+    person = sim.populations["person"]
+    max_age_in_hh = household.max(person("age", "2022"))
     tax_dict = {
         "mtr_labinc": get_household_mtrs(
             reform,
@@ -136,7 +139,7 @@ def get_calculator_output(baseline, year, reform=None, data=None):
             baseline=sim,
             **sim_kwargs,
         ),
-        "age": sim.calc("age", map_to="household", how="max", period=year),
+        "age": max_age_in_hh,
         "total_labinc": sim.calc(
             "earned_income", map_to="household", period=year
         ),
