@@ -131,37 +131,37 @@ def get_calculator_output(baseline, year, reform=None, data=None):
             period=year,
             baseline=sim,
             **sim_kwargs,
-        ),
+        ).values,
         "mtr_capinc": get_household_mtrs(
             reform,
             "savings_interest_income",
             period=year,
             baseline=sim,
             **sim_kwargs,
-        ),
+        ).values,
         "age": max_age_in_hh,
         "total_labinc": sim.calc(
             "earned_income", map_to="household", period=year
-        ),
+        ).values,
         "total_capinc": sim.calc(
             "capital_income", map_to="household", period=year
-        ),
+        ).values,
         "market_income": market_income,
-        "total_tax_liab": sim.calc("household_tax", period=year),
+        "total_tax_liab": sim.calc("household_tax", period=year).values,
         "payroll_tax_liab": sim.calc(
             "national_insurance", map_to="household", period=year
-        ),
+        ).values,
         "etr": (
             1
             - (
                 sim.calc(
                     "household_net_income", map_to="household", period=year
-                )
+                ).values
             )
             / market_income
         ).clip(-10, 1.5),
         "year": year * np.ones(length),
-        "weight": sim.calc("household_weight", period=year),
+        "weight": sim.calc("household_weight", period=year).values,
     }
 
     return tax_dict
@@ -211,7 +211,7 @@ def get_data(
         futures = client.compute(lazy_values, num_workers=num_workers)
         results = client.gather(futures)
     else:
-        results = results = compute(
+        results = compute(
             *lazy_values,
             scheduler=dask.multiprocessing.get,
             num_workers=num_workers,
