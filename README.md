@@ -1,5 +1,5 @@
-[![Python 3.7+](https://img.shields.io/badge/python-3.7%2B-blue.svg)](https://www.python.org/downloads/release/python-377/)
-[![Build Status](https://travis-ci.com/PSLmodels/OG-UK.svg?branch=master)](https://travis-ci.com/PSLmodels/OG-UK)
+[![Python 3.9](https://img.shields.io/badge/python-3.9-blue.svg)](https://www.python.org/downloads/release/python-3916/)
+![example event parameter](https://github.com/PSLmodels/OG-UK/actions/workflows/check_black.yml/badge.svg?branch=main)
 [![Codecov](https://codecov.io/gh/PSLmodels/OG-UK/branch/main/graph/badge.svg)](https://codecov.io/gh/PSLmodels/OG-UK)
 
 # OG-UK
@@ -9,7 +9,7 @@ OG-UK is an overlapping-generations (OG) model of the economy of the United King
 
 ## Disclaimer
 
-The model is currently under development.  PLEASE DO NOT USE OR CITE THE MODEL'S OUTPUT FOR ANY PURPOSE.
+The model is currently under development. PLEASE DO NOT USE OR CITE THE MODEL'S OUTPUT FOR ANY PURPOSE.
 
 
 ## Using/contributing to OG-UK
