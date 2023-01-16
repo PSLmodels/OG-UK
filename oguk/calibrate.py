@@ -1,5 +1,6 @@
 from ogcore import txfunc
 from oguk import get_micro_data
+from oguk import demographics
 import os
 import numpy as np
 from ogcore.utils import safe_read_pickle, mkdirs
@@ -59,16 +60,16 @@ class Calibration:
         #     p.S, p.omega_SS, p.omega_SS_80, p.lambdas, plot=False
         # )
 
-        # # demographics
-        # self.demographic_params = demographics.get_pop_objs(
-        #     p.E, p.S, p.T, 1, 100, p.start_year
-        # )
+        # demographics
+        self.demographic_params = demographics.get_pop_objs(
+            p.E, p.S, p.T, p.start_year
+        )
 
     # Tax Functions
     def get_tax_function_parameters(
         self,
         p,
-        iit_reform=None,
+        iit_reform={},
         guid="",
         data="",
         client=None,
@@ -382,6 +383,6 @@ class Calibration:
         # dict["zeta"] = self.zeta
         # dict.update(self.macro_params)
         # dict["e"] = self.e
-        # dict.update(self.demographic_params)
+        dict.update(self.demographic_params)
 
         return dict
