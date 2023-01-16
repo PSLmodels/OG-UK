@@ -4,7 +4,7 @@ import json
 import time
 import os
 import copy
-from policyengine_core.model_api import Reform
+from policyengine_core.reforms import Reform
 from policyengine_uk.api import *
 from oguk.calibrate import Calibration
 from ogcore.parameters import Specifications
@@ -73,20 +73,6 @@ def main(reform=None):
     runner(p, time_path=True, client=client)
     print("run time = ", time.time() - start_time)
 
-    *****
-
-    if reform is None:
-        reform = get_default_reform()
-    # Define parameters to use for multiprocessing
-    client = Client()
-    num_workers = min(multiprocessing.cpu_count(), 7)
-    print("Number of workers = ", num_workers)
-
-    # Directories to save data
-    CUR_DIR = os.path.dirname(os.path.realpath(__file__))
-    base_dir = os.path.join(CUR_DIR, "OG-UK-Example", "OUTPUT_BASELINE")
-    reform_dir = os.path.join(CUR_DIR, "OG-UK-Example", "OUTPUT_REFORM")
-
     """
     ------------------------------------------------------------------------
     Run reform policy
@@ -98,7 +84,7 @@ def main(reform=None):
     p2.baseline = False
     p2.output_base = reform_dir
 
-    # Estimate reform tax functions from OpenFisca-UK, passing Reform
+    # Estimate reform tax functions from PolicyEngine-UK, passing Reform
     # class object
     reform = Reform.set_parameter(
         "tax.income_tax.rates.uk[0].rate", 0.3, "year:2022:10"
