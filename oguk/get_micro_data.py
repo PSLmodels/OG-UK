@@ -1,7 +1,7 @@
 """
 ------------------------------------------------------------------------
 This program extracts tax rate and income data from the microsimulation
-model (OpenFisca-UK).
+model (PolicyEngine-UK).
 ------------------------------------------------------------------------
 """
 from dask import delayed, compute
@@ -9,11 +9,11 @@ import dask.multiprocessing
 import numpy as np
 import os
 import pickle
-from openfisca_uk import Microsimulation
+from policyengine_uk import Microsimulation
 import pandas as pd
 import warnings
-from openfisca_uk.api import *
-from openfisca_uk.data import EnhancedFRS, SynthFRS
+from policyengine_uk.api import *
+from policyengine_uk.data import EnhancedFRS, SynthFRS
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -26,7 +26,7 @@ else:
         """
     Could not locate FRS microdata. If you have access to the data, try running:
 
-    openfisca-uk-data enhanced_frs download 2022
+    policyengine-uk-data enhanced_frs download 2022
     """
     )
     dataset = SynthFRS  # Change to EnhancedFRS if running locally
@@ -78,21 +78,21 @@ def get_household_mtrs(
 
 def get_calculator_output(baseline, year, reform=None, data=None):
     """
-    This function creates an OpenFisca Microsimulation object with the
+    This function creates a PolicyEngine Microsimulation object with the
     policy specified in reform and the data specified with the data
     kwarg.
 
     Args:
         baseline (boolean): True if baseline tax policy
         year (int): year of data to simulate
-        reform (OpenFisca Reform object): IIT policy reform parameters,
+        reform (PolicyEngine Reform object): IIT policy reform parameters,
             None if baseline
         data (DataFrame or str): DataFrame or path to datafile for
             the PopulationSim object
 
     Returns:
         tax_dict (dict): a dictionary of microdata with marginal tax
-            rates and other information computed from OpenFisca-UK
+            rates and other information computed from PolicyEngine-UK
 
     """
     # create a simulation
@@ -182,7 +182,7 @@ def get_data(
     Args:
         baseline (boolean): True if baseline tax policy
         start_year (int): first year of budget window
-        reform (OpenFisca Reform object): IIT policy reform parameters,
+        reform (PolicyEngine Reform object): IIT policy reform parameters,
             None if baseline
         data (DataFrame or str): DataFrame or path to datafile for
             the PopulationSim object
@@ -193,9 +193,9 @@ def get_data(
 
     Returns:
         micro_data_dict (dict): dict of Pandas Dataframe, one for each
-            year from start_year to the maximum year OpenFisca-UK can
+            year from start_year to the maximum year PolicyEngine-UK can
             analyze
-        OpenFiscaUK_version (str): version of OpenFisca-UK used
+        PolicyEngineUK_version (str): version of PolicyEngine-UK used
 
     """
     # Compute MTRs and taxes or each year, but not beyond DATA_LAST_YEAR
@@ -231,9 +231,9 @@ def get_data(
     # Do some garbage collection
     del results
 
-    # Pull OpenFisca-UK version for reference
-    OpenFiscaUK_version = (
+    # Pull PolicyEngine-UK version for reference
+    PolicyEngineUK_version = (
         None  # pkg_resources.get_distribution("taxcalc").version
     )
 
-    return micro_data_dict, OpenFiscaUK_version
+    return micro_data_dict, PolicyEngineUK_version
