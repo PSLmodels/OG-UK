@@ -19,7 +19,7 @@ jobs:
       - name: Install
         shell: bash -l {0}
         run: |
-          pip install -e .[dev]
+          pip3 install -e .[dev]
       - name: Conda info and list
         shell: bash -el {0}
         run: |
