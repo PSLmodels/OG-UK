@@ -42,7 +42,7 @@ setuptools.setup(
         "black",
         "pandas-datareader",
         "ogcore",
-        "PolicyEngine-UK"
+        "PolicyEngine-UK",
     ],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
