@@ -17,6 +17,7 @@ jobs:
           persist-credentials: false
 
       - name: Install
+        shell: bash -el {0}
         run: make install
       - name: Conda info and list
         shell: bash -el {0}
