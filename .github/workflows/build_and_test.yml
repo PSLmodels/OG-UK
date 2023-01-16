@@ -27,7 +27,7 @@ jobs:
         shell: bash -l {0}
         working-directory: ./
         run: |
-          pytest -m 'not local --cov=./ --cov-report=xml --maxfail=0'
+          pytest -m 'not local' --cov=./ --cov-report=xml --maxfail=0
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
