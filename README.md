@@ -1,5 +1,7 @@
 [![Python 3.9](https://img.shields.io/badge/python-3.9-blue.svg)](https://www.python.org/downloads/release/python-3916/)
-![example event parameter](https://github.com/PSLmodels/OG-UK/actions/workflows/check_black.yml/badge.svg?branch=main)
+![example event parameter](https://github.com/PSLmodels/OG-Core/actions/workflows/build_and_test.yml/badge.svg?branch=main)
+![example event parameter](https://github.com/PSLmodels/OG-Core/actions/workflows/deploy_docs.yml/badge.svg?branch=main)
+![example event parameter](https://github.com/PSLmodels/OG-Core/actions/workflows/check_black.yml/badge.svg?branch=main)
 [![Codecov](https://codecov.io/gh/PSLmodels/OG-UK/branch/main/graph/badge.svg)](https://codecov.io/gh/PSLmodels/OG-UK)
 
 # OG-UK
