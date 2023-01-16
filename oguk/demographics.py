@@ -355,7 +355,7 @@ def get_wb_infmort_rate(
     else:
         # Hard code the infant mortality rate for South Africa from the most
         # recent year (2020)
-        wb_infmort_rate = 0.0106
+        wb_infmort_rate = 0.0027
 
     return wb_infmort_rate
 
