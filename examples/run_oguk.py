@@ -3,37 +3,19 @@ from distributed import Client
 import json
 import time
 import os
-from openfisca_core.model_api import Reform
+import copy
+from policyengine_core.model_api import Reform
+from policyengine_uk.api import *
 from oguk.calibrate import Calibration
+from ogcore.parameters import Specifications
 from ogcore import output_tables as ot
 from ogcore import output_plots as op
 from ogcore.execute import runner
 from ogcore.utils import safe_read_pickle
-import time
 from argparse import ArgumentParser
-
-# default reform
-
-from openfisca_uk.api import *
-
-
-def get_default_reform():
-    from openfisca_tools.reforms import set_parameter
-
-    return set_parameter(
-        "tax.income_tax.rates.uk[0].rate", 0.3, "year:2022:10"
-    )
-
-
-start_time = time.time()
-# Set start year and last year
-START_YEAR = 2022
-from ogcore.parameters import Specifications
 
 
 def main(reform=None):
-    if reform is None:
-        reform = get_default_reform()
     # Define parameters to use for multiprocessing
     client = Client()
     num_workers = min(multiprocessing.cpu_count(), 7)
@@ -45,9 +27,9 @@ def main(reform=None):
     reform_dir = os.path.join(CUR_DIR, "OG-UK-Example", "OUTPUT_REFORM")
 
     """
-    ------------------------------------------------------------------------
+    ---------------------------------------------------------------------------
     Run baseline policy
-    ------------------------------------------------------------------------
+    ---------------------------------------------------------------------------
     """
     # Set up baseline parameterization
     p = Specifications(
@@ -74,9 +56,8 @@ def main(reform=None):
             "start_year": START_YEAR,
         }
     )
-    # Estimate baseline tax functions from OpenFisca-UK
+    # Update parameters from calibrate.py Calibration class
     c = Calibration(p, estimate_tax_functions=True, client=client)
-    # update tax function parameters in Specifications Object
     d = c.get_dict()
     updated_params = {
         "etr_params": d["etr_params"],
@@ -86,10 +67,25 @@ def main(reform=None):
         "frac_tax_payroll": d["frac_tax_payroll"],
     }
     p.update_specifications(updated_params)
+
     # Run model
     start_time = time.time()
     runner(p, time_path=True, client=client)
     print("run time = ", time.time() - start_time)
+
+    *****
+
+    if reform is None:
+        reform = get_default_reform()
+    # Define parameters to use for multiprocessing
+    client = Client()
+    num_workers = min(multiprocessing.cpu_count(), 7)
+    print("Number of workers = ", num_workers)
+
+    # Directories to save data
+    CUR_DIR = os.path.dirname(os.path.realpath(__file__))
+    base_dir = os.path.join(CUR_DIR, "OG-UK-Example", "OUTPUT_BASELINE")
+    reform_dir = os.path.join(CUR_DIR, "OG-UK-Example", "OUTPUT_REFORM")
 
     """
     ------------------------------------------------------------------------
@@ -98,32 +94,15 @@ def main(reform=None):
     """
 
     # create new Specifications object for reform simulation
-    p2 = Specifications(
-        baseline=False,
-        num_workers=num_workers,
-        baseline_dir=base_dir,
-        output_base=reform_dir,
-    )
-    # Update parameters for baseline from default json file
-    p2.update_specifications(
-        json.load(
-            open(
-                os.path.join(
-                    CUR_DIR, "..", "oguk", "oguk_default_parameters.json"
-                )
-            )
-        )
-    )
-    # specify tax function form and start year
-    p2.update_specifications(
-        {
-            "tax_func_type": "linear",
-            "age_specific": False,
-            "start_year": START_YEAR,
-        }
-    )
+    p2 = copy.deepcopy(p)
+    p2.baseline = False
+    p2.output_base = reform_dir
+
     # Estimate reform tax functions from OpenFisca-UK, passing Reform
     # class object
+    reform = Reform.set_parameter(
+        "tax.income_tax.rates.uk[0].rate", 0.3, "year:2022:10"
+    )
     c2 = Calibration(
         p2, iit_reform=reform, estimate_tax_functions=True, client=client
     )
@@ -179,21 +158,4 @@ def main(reform=None):
 
 if __name__ == "__main__":
     # execute only if run as a script
-
-    parser = ArgumentParser(
-        description="A script to run the main OG-UK routine on a reform."
-    )
-    parser.add_argument(
-        "--reform",
-        help="The Python reform object to use as a reform (if `reform` is defined in `reform_file.py`, then use `reform_file.reform`)",
-    )
-    args = parser.parse_args()
-    reform = args.reform
-    if reform is not None:
-        reform_path = reform.split(".")
-        python_module, object_name = (
-            ".".join(reform_path[:-1]),
-            reform_path[-1],
-        )
-        reform = getattr(__import__(python_module), object_name)
-    main(reform=reform)
+    main()
