@@ -27,7 +27,7 @@ setuptools.setup(
     python_requires=">=3.7.7, <3.11",
     install_requires=[
         "psutil",
-        "numpy<=1.21.2",
+        "numpy",
         "scipy>=1.7.1",
         "pandas>=1.2.5",
         "matplotlib",
