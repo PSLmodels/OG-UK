@@ -53,7 +53,7 @@ def main(reform=None):
         {
             "tax_func_type": "linear",
             "age_specific": False,
-            "start_year": START_YEAR,
+            "start_year": 2022,
         }
     )
     # Update parameters from calibrate.py Calibration class
