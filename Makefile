@@ -4,5 +4,5 @@ format:
 test:
 	pytest .
 install:
-	pip install -e .
-	pip install policyengine-uk
+	pip3 install -e .
+	pip3 install policyengine-uk
