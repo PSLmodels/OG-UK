@@ -115,7 +115,7 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     # define market income - taking expanded_income and excluding gov't
     # transfer benefits
-    market_income = sim.calc("household_market_income", period=year)
+    market_income = sim.calc("household_market_income", period=year).values
 
     # Compute marginal tax rates (can only do on earned income now)
 
