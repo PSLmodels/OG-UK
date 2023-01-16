@@ -16,15 +16,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup Miniconda using Python ${{ matrix.python-version }}
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          auto-update-conda: true
-          activate-environment: oguk-dev
-          environment-file: environment.yml
-          python-version: ${{ matrix.python-version }}
-          auto-activate-base: false
-
       - name: Build
         shell: bash -l {0}
         run: |
