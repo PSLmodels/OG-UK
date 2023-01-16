@@ -42,7 +42,6 @@ setuptools.setup(
         "black",
         "pandas-datareader",
         "ogcore",
-        #"PolicyEngine-UK",
     ],
     extras_require={
         "dev": [

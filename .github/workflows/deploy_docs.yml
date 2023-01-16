@@ -27,6 +27,7 @@ jobs:
           pip install -e .
           pip install jupyter-book>=0.11.3
           pip install sphinxcontrib-bibtex>=2.0.0
+          pip install policyengine-uk
           cd docs
           jb build ./book
 

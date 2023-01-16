@@ -17,8 +17,7 @@ jobs:
           persist-credentials: false
 
       - name: Install
-        run: |
-          pip3 install -e .[dev]
+        run: make install
       - name: Conda info and list
         shell: bash -el {0}
         run: |
