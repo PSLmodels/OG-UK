@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="oguk",
-    version="0.0.0",
+    version="0.2.0",
     author="Richard W. Evans and Jason DeBacker",
     license="CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
     description="United Kingdom Calibration for OG-Core",
