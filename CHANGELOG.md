@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Updated `run_oguk.py` with more consistent specification, and updated references from `openfisca` to `policyengine`.
 * Small updates to `.gitignore`, `README.md`, `demographics.rst`, `get_micro_data.rst`, and `tax_functions.md`.
 * Deleted `pyproject.toml` which was just a reference to the black package.
+* Updates the `CHANGELOG.md` and updates the version number in `setup.py`.
+* Updates the GitHub Actions `deploy_docs.yml`, `docs_check.yml`, and `build_and_test.yml`.
 
 ## [0.1.2] - 2022-07-29
 
