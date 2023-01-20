@@ -148,7 +148,7 @@ class Calibration:
         params_list = ["etr", "mtrx", "mtry"]
         BW_in_tax_params = dict_params["BW"]
         start_year_in_tax_params = dict_params["start_year"]
-        S_in_tax_params = dict_params["tfunc_etr_params_S"][0].shape[0]
+        S_in_tax_params = len(dict_params["tfunc_etr_params_S"][0])
         # Check that start years are consistent in model and cached tax functions
         if p.start_year != start_year_in_tax_params:
             print(
