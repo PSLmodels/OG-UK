@@ -41,6 +41,7 @@ setuptools.setup(
             "pytest-cov",
             "pytest-pycodestyle",
             "black",
+            "jsonschema<3",
         ],
     },
     classifiers=[
