@@ -4,4 +4,5 @@ format:
 test:
 	pytest .
 install:
+	pip install policyengine-uk
 	pip install -e .[dev]
