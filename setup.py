@@ -33,6 +33,7 @@ setuptools.setup(
         "dask",
         "distributed",
         "ogcore",
+        "pandas-datareader",
     ],
     extras_require={
         "dev": [
