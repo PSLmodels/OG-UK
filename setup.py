@@ -33,7 +33,6 @@ setuptools.setup(
         "dask",
         "distributed",
         "ogcore",
-        "policyengine-uk",
     ],
     extras_require={
         "dev": [
