@@ -21,7 +21,6 @@ jobs:
         with:
           python-version: 3.9
       - name: Install
-        shell: bash -el {0}
         run: make install
       - name: Conda info and list
         shell: bash -el {0}
@@ -31,7 +30,6 @@ jobs:
           conda info
           conda list
       - name: Test
-        shell: bash -l {0}
         working-directory: ./
         run: |
           pytest -m 'not local' --cov=./ --cov-report=xml --maxfail=0
