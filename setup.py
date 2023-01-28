@@ -41,7 +41,7 @@ setuptools.setup(
             "pytest-cov",
             "pytest-pycodestyle",
             "black",
-            "jsonschema[format-nongpl]==2.6.0",
+            "jsonschema[format-nongpl]==4.17.3",
         ],
     },
     classifiers=[
