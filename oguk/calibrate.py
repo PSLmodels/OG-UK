@@ -162,8 +162,8 @@ class Calibration:
         # used there may name match what is used in a run that reads in
         # some cached tax function parameters.  Likewise for age.
         params_list = ["etr", "mtrx", "mtry"]
-        BW_in_tax_params = dict_params["tfunc_etr_params_S"].shape[1]
-        S_in_tax_params = dict_params["tfunc_etr_params_S"].shape[0]
+        BW_in_tax_params = dict_params["tfunc_etr_params_S"].shape[0]
+        S_in_tax_params = dict_params["tfunc_etr_params_S"].shape[1]
         if p.BW != BW_in_tax_params:
             print(
                 "Warning: There is a discrepency between the start"
@@ -213,41 +213,9 @@ class Calibration:
                     ),
                     axis=0,
                 )
-        etr_params = np.empty((p.T, p.S, num_etr_params))
-        mtrx_params = np.empty((p.T, p.S, num_mtrx_params))
-        mtry_params = np.empty((p.T, p.S, num_mtry_params))
-        etr_params[: p.BW, :, :] = np.transpose(
-            dict_params["tfunc_etr_params_S"][: p.S, : p.BW, :], axes=[1, 0, 2]
-        )
-        etr_params[p.BW :, :, :] = np.tile(
-            np.transpose(
-                dict_params["tfunc_etr_params_S"][: p.S, -1, :].reshape(
-                    p.S, 1, num_etr_params
-                ),
-                axes=[1, 0, 2],
-            ),
-            (p.T - p.BW, 1, 1),
-        )
-        mtrx_params[: p.BW, :, :] = np.transpose(
-            dict_params["tfunc_mtrx_params_S"][: p.S, : p.BW, :],
-            axes=[1, 0, 2],
-        )
-        mtrx_params[p.BW :, :, :] = np.transpose(
-            dict_params["tfunc_mtrx_params_S"][: p.S, -1, :].reshape(
-                p.S, 1, num_mtrx_params
-            ),
-            axes=[1, 0, 2],
-        )
-        mtry_params[: p.BW, :, :] = np.transpose(
-            dict_params["tfunc_mtry_params_S"][: p.S, : p.BW, :],
-            axes=[1, 0, 2],
-        )
-        mtry_params[p.BW :, :, :] = np.transpose(
-            dict_params["tfunc_mtry_params_S"][: p.S, -1, :].reshape(
-                p.S, 1, num_mtry_params
-            ),
-            axes=[1, 0, 2],
-        )
+        etr_params = dict_params["tfunc_etr_params_S"]
+        mtrx_params = dict_params["tfunc_mtrx_params_S"]
+        mtry_params = dict_params["tfunc_mtry_params_S"]
 
         if p.constant_rates:
             print("Using constant rates!")
