@@ -144,7 +144,11 @@ class Calibration:
             np.ones(p.T + p.S - p.BW)
             * dict_params["tfunc_frac_tax_payroll"][-1],
         )
-
+        for key in dict_params:
+            try:
+                dict_params[key] = np.array(dict_params[key])
+            except TypeError:
+                pass
         # Reorder indices of tax function and tile for all years after
         # budget window ends
         num_etr_params = dict_params["tfunc_etr_params_S"].shape[2]
@@ -164,6 +168,7 @@ class Calibration:
             print(
                 "Warning: There is a discrepency between the start"
                 + " year of the model and that of the tax functions!!"
+                + f"p.BW = {p.BW}, BW_in_tax_params = {BW_in_tax_params}"
             )
         # After printing warning, make it work by tiling
         if p.BW > BW_in_tax_params:
@@ -191,6 +196,7 @@ class Calibration:
             print(
                 "Warning: There is a discrepency between the ages"
                 + " used in the model and those in the tax functions!!"
+                + f"p.S = {p.S}, S_in_tax_params = {S_in_tax_params}"
             )
         # After printing warning, make it work by tiling
         if p.S > S_in_tax_params:
