@@ -20,6 +20,10 @@ jobs:
           environment-file: environment.yml
           python-version: 3.9
           auto-activate-base: false
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
 
       - name: Build  # Build Jupyter Book
         shell: bash -l {0}
