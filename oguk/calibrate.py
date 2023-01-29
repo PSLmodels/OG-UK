@@ -137,6 +137,7 @@ class Calibration:
                 client=client,
                 num_workers=num_workers,
                 tax_func_path=tax_func_path,
+                graph_est=True,
             )
         mean_income_data = dict_params["tfunc_avginc"][0]
         frac_tax_payroll = np.append(

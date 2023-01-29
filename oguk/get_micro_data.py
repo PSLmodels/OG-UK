@@ -20,7 +20,6 @@ logging.basicConfig(level=logging.INFO)
 
 if 2022 in EnhancedFRS.years:
     dataset = EnhancedFRS
-    logging.info("Using enhanced FRS microdata data.")
 else:
     logging.warn(
         """
@@ -30,15 +29,13 @@ else:
     """
     )
     dataset = SynthFRS  # Change to EnhancedFRS if running locally
-    logging.warn("Using synthetic FRS microdata.")
     if 2022 not in dataset.years:
-        logging.info("Downloading 2022 synthetic FRS microdata.")
         dataset.download(2022)
 
 warnings.filterwarnings("ignore")
 
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
-DATA_LAST_YEAR = 2027  # this is the last year data are extrapolated for
+DATA_LAST_YEAR = 2023  # this is the last year data are extrapolated for
 
 
 def get_household_mtrs(
@@ -159,7 +156,7 @@ def get_calculator_output(baseline, year, reform=None, data=None):
                 ).values
             )
             / market_income
-        ).clip(-10, 1.5),
+        ).clip(-1, 1.5),
         "year": year * np.ones(length),
         "weight": sim.calc("household_weight", period=year).values,
     }
@@ -221,7 +218,8 @@ def get_data(
     micro_data_dict = {}
     for i, result in enumerate(results):
         year = start_year + i
-        micro_data_dict[str(year)] = pd.DataFrame.from_dict(result)
+        df = pd.DataFrame.from_dict(result)
+        micro_data_dict[str(year)] = df
 
     if baseline:
         pkl_path = os.path.join(path, "micro_data_baseline.pkl")

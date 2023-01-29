@@ -51,7 +51,7 @@ def main(reform=None):
     # specify tax function form and start year
     p.update_specifications(
         {
-            "tax_func_type": "linear",
+            "tax_func_type": "DEP",
             "age_specific": False,
             "start_year": 2022,
         }
