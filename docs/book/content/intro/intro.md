@@ -13,7 +13,7 @@
 (Sec_CoreMaintainers)=
 ## Core Maintainers
 
-[Jason DeBacker](https://www.jasondebacker.com/) (GitHub handle [@jdebacker](https://github.com/jdebacker)), [Richard W. Evans](https://sites.google.com/site/rickecon/) (GitHub handle [@rickecon](https://github.com/rickecon)), and [Jonahtan Pycroft](https://www.linkedin.com/in/jonathan-pycroft-9839756/) (GitHub handle [@jpycroft](https://github.com/jpycroft/)) are the core maintainers of `OG-UK`. If you have questions about or contributions to the model or repository, please submit a GitHub "Issue" described in the {ref}`Sec_GitHubIssue` subsection or "Pull Request" as described in the {ref}`Sec_GitHubPR` subsection of the {ref}`Sec_Workflow` section of the `OG-UK` {ref}`Chap_ContribGuide`.
+[Jason DeBacker](https://www.jasondebacker.com/) (GitHub handle [@jdebacker](https://github.com/jdebacker)), [Richard W. Evans](https://sites.google.com/site/rickecon/) (GitHub handle [@rickecon](https://github.com/rickecon)), and [Jonathan Pycroft](https://www.linkedin.com/in/jonathan-pycroft-9839756/) (GitHub handle [@jpycroft](https://github.com/jpycroft/)) are the core maintainers of `OG-UK`. If you have questions about or contributions to the model or repository, please submit a GitHub "Issue" described in the {ref}`Sec_GitHubIssue` subsection or "Pull Request" as described in the {ref}`Sec_GitHubPR` subsection of the {ref}`Sec_Workflow` section of the `OG-UK` {ref}`Chap_ContribGuide`.
 
 
 (Sec_Disclaimer)=
