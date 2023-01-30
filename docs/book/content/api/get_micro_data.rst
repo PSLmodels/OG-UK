@@ -1,6 +1,6 @@
 .. _get_micro_data:
 
-Functions to Get Micro-data from OpenFisca-UK
+Functions to Get Micro-data from PolicyEngine-UK
 =================================================
 
 **get_micro_data.py classes, methods, and modules**
