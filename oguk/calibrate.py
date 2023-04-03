@@ -1,5 +1,6 @@
 from ogcore import txfunc
 from oguk import get_micro_data
+from oguk import demographics
 import os
 import numpy as np
 from ogcore.utils import safe_read_pickle, mkdirs
@@ -58,16 +59,16 @@ class Calibration:
         #     p.S, p.omega_SS, p.omega_SS_80, p.lambdas, plot=False
         # )
 
-        # # demographics
-        # self.demographic_params = demographics.get_pop_objs(
-        #     p.E, p.S, p.T, 1, 100, p.start_year
-        # )
+        # demographics
+        self.demographic_params = demographics.get_pop_objs(
+            p.E, p.S, p.T, p.start_year
+        )
 
     # Tax Functions
     def get_tax_function_parameters(
         self,
         p,
-        iit_reform=None,
+        iit_reform={},
         guid="",
         data="",
         client=None,
@@ -135,6 +136,7 @@ class Calibration:
                 client=client,
                 num_workers=num_workers,
                 tax_func_path=tax_func_path,
+                graph_est=True,
             )
         mean_income_data = dict_params["tfunc_avginc"][0]
         frac_tax_payroll = np.append(
@@ -142,6 +144,7 @@ class Calibration:
             np.ones(p.T + p.S - p.BW)
             * dict_params["tfunc_frac_tax_payroll"][-1],
         )
+<<<<<<< HEAD
         # Conduct checks to be sure tax function params are consistent
         # with the model run
         params_list = ["etr", "mtrx", "mtry"]
@@ -150,9 +153,33 @@ class Calibration:
         S_in_tax_params = len(dict_params["tfunc_etr_params_S"][0])
         # Check that start years are consistent in model and cached tax functions
         if p.start_year != start_year_in_tax_params:
+=======
+        for key in dict_params:
+            try:
+                dict_params[key] = np.array(dict_params[key])
+            except TypeError:
+                pass
+        # Reorder indices of tax function and tile for all years after
+        # budget window ends
+        num_etr_params = dict_params["tfunc_etr_params_S"].shape[2]
+        num_mtrx_params = dict_params["tfunc_mtrx_params_S"].shape[2]
+        num_mtry_params = dict_params["tfunc_mtry_params_S"].shape[2]
+        # First check to see if tax parameters that are used were
+        # estimated with a budget window and ages that are as long as
+        # the those implied based on the start year and model age.
+        # N.B. the tax parameters dictionary does not save the years
+        # that correspond to the parameter estimates, so the start year
+        # used there may name match what is used in a run that reads in
+        # some cached tax function parameters.  Likewise for age.
+        params_list = ["etr", "mtrx", "mtry"]
+        BW_in_tax_params = dict_params["tfunc_etr_params_S"].shape[0]
+        S_in_tax_params = dict_params["tfunc_etr_params_S"].shape[1]
+        if p.BW != BW_in_tax_params:
+>>>>>>> upstream/main
             print(
                 "Input Error: There is a discrepancy between the start"
                 + " year of the model and that of the tax functions!!"
+                + f"p.BW = {p.BW}, BW_in_tax_params = {BW_in_tax_params}"
             )
             assert False
         # Check that S is consistent in model and cached tax functions
@@ -162,7 +189,9 @@ class Calibration:
             print(
                 "Input Error: There is a discrepancy between the ages"
                 + " used in the model and those in the tax functions!!"
+                + f"p.S = {p.S}, S_in_tax_params = {S_in_tax_params}"
             )
+<<<<<<< HEAD
             assert False
 
         # Extrapolate tax function parameters for years after budget window
@@ -188,6 +217,26 @@ class Calibration:
                     mtry_params[t][s] = dict_params["tfunc_mtry_params_S"][-1][
                         s
                     ]
+=======
+        # After printing warning, make it work by tiling
+        if p.S > S_in_tax_params:
+            for item in params_list:
+                dict_params["tfunc_" + item + "_params_S"] = np.concatenate(
+                    (
+                        dict_params["tfunc_" + item + "_params_S"],
+                        np.tile(
+                            dict_params["tfunc_" + item + "_params_S"][
+                                -1, :, :
+                            ].reshape(1, p.BW, num_etr_params),
+                            (p.S - S_in_tax_params, 1, 1),
+                        ),
+                    ),
+                    axis=0,
+                )
+        etr_params = dict_params["tfunc_etr_params_S"]
+        mtrx_params = dict_params["tfunc_mtrx_params_S"]
+        mtry_params = dict_params["tfunc_mtry_params_S"]
+>>>>>>> upstream/main
 
         if p.constant_rates:
             print("Using constant rates!")
@@ -303,6 +352,6 @@ class Calibration:
         # dict["zeta"] = self.zeta
         # dict.update(self.macro_params)
         # dict["e"] = self.e
-        # dict.update(self.demographic_params)
+        dict.update(self.demographic_params)
 
         return dict

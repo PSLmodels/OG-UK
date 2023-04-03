@@ -9,20 +9,24 @@ jobs:
         uses: actions/checkout@v2 # If you're using actions/checkout@v2 you must set persist-credentials to false in most cases for the deployment to work correctly.
         with:
           persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
 
       - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v2
         with:
           activate-environment: oguk-dev
           environment-file: environment.yml
-          python-version: 3.7
+          python-version: 3.9
           auto-activate-base: false
 
       - name: Build # Build Jupyter Book
         shell: bash -l {0}
         run: |
-          pip install jupyter-book
-          pip install sphinxcontrib-bibtex==1.0.0
-          pip install -e .
+          make install
+          pip install jupyter-book>=0.11.3
+          pip install sphinxcontrib-bibtex>=2.0.0
           cd docs
           jb build ./book

@@ -16,17 +16,22 @@ jobs:
       - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v2
         with:
-          activate-environment: ogusa-dev
+          activate-environment: oguk-dev
           environment-file: environment.yml
-          python-version: 3.7
+          python-version: 3.9
           auto-activate-base: false
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
 
       - name: Build  # Build Jupyter Book
         shell: bash -l {0}
         run: |
-          pip install jupyter-book
-          pip install sphinxcontrib-bibtex==1.0.0
           pip install -e .
+          pip install jupyter-book>=0.11.3
+          pip install sphinxcontrib-bibtex>=2.0.0
+          pip install policyengine-uk
           cd docs
           jb build ./book
 
