@@ -96,7 +96,8 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     """
     # create a simulation
-    sim_kwargs = dict(dataset=dataset, year=2022)
+    # sim_kwargs = dict(dataset=dataset, year=2022)
+    sim_kwargs = dict(dataset=dataset)
     if reform is None:
         sim = Microsimulation(**sim_kwargs)
         reform = ()
