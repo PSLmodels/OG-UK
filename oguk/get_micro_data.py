@@ -48,7 +48,7 @@ def get_household_mtrs(
     """Calculates household MTRs with respect to a given variable.
 
     Args:
-        reform (ReformType): The reform to apply to the simulation.
+        reform (Reform): The reform to apply to the simulation.
         variable (str): The variable to increase.
         period (int): The period (year) to calculate the MTRs for.
         kwargs (dict): Additional arguments to pass to the simulation.
