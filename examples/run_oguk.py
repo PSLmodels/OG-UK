@@ -3,13 +3,9 @@ from distributed import Client
 import json
 import time
 import os
-<<<<<<< HEAD
-from policyengine_core.model_api import Reform
-=======
 import copy
 from policyengine_core.reforms import Reform
-from policyengine_uk.api import *
->>>>>>> upstream/main
+from policyengine_uk.model_api import *
 from oguk.calibrate import Calibration
 from ogcore.parameters import Specifications
 from ogcore import output_tables as ot
@@ -18,27 +14,6 @@ from ogcore.execute import runner
 from ogcore.utils import safe_read_pickle
 from argparse import ArgumentParser
 
-<<<<<<< HEAD
-# default reform
-
-from policyengine_uk.api import *
-
-
-def get_default_reform():
-    from policyengine_core.reforms import set_parameter
-
-    return set_parameter(
-        "tax.income_tax.rates.uk[0].rate", 0.3, "year:2022:10"
-    )
-
-
-start_time = time.time()
-# Set start year and last year
-START_YEAR = 2022
-from ogcore.parameters import Specifications
-
-=======
->>>>>>> upstream/main
 
 def main(reform=None):
     # Define parameters to use for multiprocessing

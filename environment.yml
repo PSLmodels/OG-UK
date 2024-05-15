@@ -24,7 +24,6 @@ dependencies:
 - coverage
 - requests
 - xlwt
-- openpyxl
 - statsmodels
 - linearmodels
 - black
@@ -32,5 +31,6 @@ dependencies:
 - jupyter
 - pip:
   - jupyter-book>=0.8.0
+  - openpyxl>=3.1.2
   - ogcore
   - PolicyEngine-UK>=0.38.6

@@ -4,6 +4,7 @@ This program extracts tax rate and income data from the microsimulation
 model (PolicyEngine-UK).
 ------------------------------------------------------------------------
 """
+
 from dask import delayed, compute
 import dask.multiprocessing
 import numpy as np
@@ -12,7 +13,7 @@ import pickle
 from policyengine_uk import Microsimulation
 import pandas as pd
 import warnings
-from policyengine_uk.api import *
+from policyengine_uk.model_api import *
 from policyengine_uk.data import EnhancedFRS, SynthFRS
 import logging
 

@@ -30,6 +30,10 @@ class Calibration:
         self.estimate_beta = estimate_beta
         self.estimate_chi_n = estimate_chi_n
         if estimate_tax_functions:
+            if tax_func_path is not None:
+                run_micro = False
+            else:
+                run_micro = True
             self.tax_function_params = self.get_tax_function_parameters(
                 p,
                 iit_reform,
@@ -37,7 +41,7 @@ class Calibration:
                 data,
                 client,
                 num_workers,
-                run_micro=True,
+                run_micro=run_micro,
                 tax_func_path=tax_func_path,
             )
         # if estimate_beta:
@@ -68,7 +72,7 @@ class Calibration:
     def get_tax_function_parameters(
         self,
         p,
-        iit_reform={},
+        pit_reform={},
         guid="",
         data="",
         client=None,
@@ -108,12 +112,15 @@ class Calibration:
         # If run_micro is false, check to see if parameters file exists
         # and if it is consistent with Specifications instance
         if not run_micro:
-            dict_params, run_micro = self.read_tax_func_estimate(tax_func_path)
+            dict_params, run_micro = self.read_tax_func_estimate(
+                p, tax_func_path
+            )
+            taxcalc_version = "Cached tax parameters, no taxcalc version"
         if run_micro:
             micro_data, taxcalc_version = get_micro_data.get_data(
                 baseline=p.baseline,
                 start_year=p.start_year,
-                reform=iit_reform,
+                reform=pit_reform,
                 data=data,
                 path=p.output_base,
                 client=client,
@@ -131,12 +138,11 @@ class Calibration:
                 analytical_mtrs=p.analytical_mtrs,
                 tax_func_type=p.tax_func_type,
                 age_specific=p.age_specific,
-                reform=iit_reform,
+                reform=pit_reform,
                 data=data,
                 client=client,
                 num_workers=num_workers,
                 tax_func_path=tax_func_path,
-                graph_est=True,
             )
         mean_income_data = dict_params["tfunc_avginc"][0]
         frac_tax_payroll = np.append(
@@ -144,7 +150,6 @@ class Calibration:
             np.ones(p.T + p.S - p.BW)
             * dict_params["tfunc_frac_tax_payroll"][-1],
         )
-<<<<<<< HEAD
         # Conduct checks to be sure tax function params are consistent
         # with the model run
         params_list = ["etr", "mtrx", "mtry"]
@@ -153,33 +158,9 @@ class Calibration:
         S_in_tax_params = len(dict_params["tfunc_etr_params_S"][0])
         # Check that start years are consistent in model and cached tax functions
         if p.start_year != start_year_in_tax_params:
-=======
-        for key in dict_params:
-            try:
-                dict_params[key] = np.array(dict_params[key])
-            except TypeError:
-                pass
-        # Reorder indices of tax function and tile for all years after
-        # budget window ends
-        num_etr_params = dict_params["tfunc_etr_params_S"].shape[2]
-        num_mtrx_params = dict_params["tfunc_mtrx_params_S"].shape[2]
-        num_mtry_params = dict_params["tfunc_mtry_params_S"].shape[2]
-        # First check to see if tax parameters that are used were
-        # estimated with a budget window and ages that are as long as
-        # the those implied based on the start year and model age.
-        # N.B. the tax parameters dictionary does not save the years
-        # that correspond to the parameter estimates, so the start year
-        # used there may name match what is used in a run that reads in
-        # some cached tax function parameters.  Likewise for age.
-        params_list = ["etr", "mtrx", "mtry"]
-        BW_in_tax_params = dict_params["tfunc_etr_params_S"].shape[0]
-        S_in_tax_params = dict_params["tfunc_etr_params_S"].shape[1]
-        if p.BW != BW_in_tax_params:
->>>>>>> upstream/main
             print(
                 "Input Error: There is a discrepancy between the start"
                 + " year of the model and that of the tax functions!!"
-                + f"p.BW = {p.BW}, BW_in_tax_params = {BW_in_tax_params}"
             )
             assert False
         # Check that S is consistent in model and cached tax functions
@@ -189,9 +170,7 @@ class Calibration:
             print(
                 "Input Error: There is a discrepancy between the ages"
                 + " used in the model and those in the tax functions!!"
-                + f"p.S = {p.S}, S_in_tax_params = {S_in_tax_params}"
             )
-<<<<<<< HEAD
             assert False
 
         # Extrapolate tax function parameters for years after budget window
@@ -217,26 +196,6 @@ class Calibration:
                     mtry_params[t][s] = dict_params["tfunc_mtry_params_S"][-1][
                         s
                     ]
-=======
-        # After printing warning, make it work by tiling
-        if p.S > S_in_tax_params:
-            for item in params_list:
-                dict_params["tfunc_" + item + "_params_S"] = np.concatenate(
-                    (
-                        dict_params["tfunc_" + item + "_params_S"],
-                        np.tile(
-                            dict_params["tfunc_" + item + "_params_S"][
-                                -1, :, :
-                            ].reshape(1, p.BW, num_etr_params),
-                            (p.S - S_in_tax_params, 1, 1),
-                        ),
-                    ),
-                    axis=0,
-                )
-        etr_params = dict_params["tfunc_etr_params_S"]
-        mtrx_params = dict_params["tfunc_mtrx_params_S"]
-        mtry_params = dict_params["tfunc_mtry_params_S"]
->>>>>>> upstream/main
 
         if p.constant_rates:
             print("Using constant rates!")
@@ -290,6 +249,7 @@ class Calibration:
         if os.path.exists(tax_func_path):
             print("Tax Function Path Exists")
             dict_params = safe_read_pickle(tax_func_path)
+            # check to see if tax_functions compatible
             try:
                 if p.start_year != dict_params["start_year"]:
                     print(
@@ -300,11 +260,14 @@ class Calibration:
             except KeyError:
                 pass
             try:
+                p.BW = dict_params["BW"]  # QUICK FIX
                 if p.BW != dict_params["BW"]:
                     print(
-                        "Model budget window length is not "
-                        + "consistent with tax function parameter "
-                        + "estimates"
+                        "Model budget window length is "
+                        + str(p.BW)
+                        + " but the tax function parameter "
+                        + "estimates have a budget window length of "
+                        + str(dict_params["BW"])
                     )
                     flag = 1
             except KeyError:
