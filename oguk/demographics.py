@@ -19,6 +19,7 @@ This module contains the following functions:
     b_zero_eq_artctan_func()
 -------------------------------------------------------------------------------
 """
+
 # Import packages
 import os
 import numpy as np

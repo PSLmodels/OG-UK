@@ -5,7 +5,7 @@ import time
 import os
 import copy
 from policyengine_core.reforms import Reform
-from policyengine_uk.api import *
+from policyengine_uk.model_api import *
 from oguk.calibrate import Calibration
 from ogcore.parameters import Specifications
 from ogcore import output_tables as ot
