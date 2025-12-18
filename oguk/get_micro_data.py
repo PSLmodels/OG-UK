@@ -14,29 +14,70 @@ from policyengine_uk import Microsimulation
 import pandas as pd
 import warnings
 from policyengine_uk.model_api import *
-from policyengine_uk.data import EnhancedFRS, SynthFRS
 import logging
 
 logging.basicConfig(level=logging.INFO)
 
-if 2022 in EnhancedFRS.years:
-    dataset = EnhancedFRS
-else:
-    logging.warn(
-        """
-    Could not locate FRS microdata. If you have access to the data, try running:
-
-    policyengine-uk-data enhanced_frs download 2022
-    """
-    )
-    dataset = SynthFRS  # Change to EnhancedFRS if running locally
-    if 2022 not in dataset.years:
-        dataset.download(2022)
+# New API: Microsimulation handles dataset internally
+dataset = None
 
 warnings.filterwarnings("ignore")
 
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
-DATA_LAST_YEAR = 2023  # this is the last year data are extrapolated for
+DATA_LAST_YEAR = 2026  # this is the last year data are extrapolated for
+
+# Default age brackets for UK tax function estimation
+# Each tuple is (min_age, max_age, representative_age)
+DEFAULT_AGE_BRACKETS = [
+    (21, 30, 25),   # Early career, student loans
+    (31, 45, 38),   # Family formation, child benefits
+    (46, 65, 55),   # Peak earnings to pre-retirement
+    (66, 100, 80),  # Retirement, state pension
+]
+
+
+def map_age_to_bracket(age, age_brackets=None):
+    """
+    Map an age to its bracket representative age.
+
+    Args:
+        age (int): The actual age
+        age_brackets (list): List of (min_age, max_age, representative_age) tuples
+
+    Returns:
+        int: The representative age for this bracket
+    """
+    if age_brackets is None:
+        age_brackets = DEFAULT_AGE_BRACKETS
+
+    for min_age, max_age, rep_age in age_brackets:
+        if min_age <= age <= max_age:
+            return rep_age
+
+    # If age is below first bracket, use first bracket
+    if age < age_brackets[0][0]:
+        return age_brackets[0][2]
+    # If age is above last bracket, use last bracket
+    return age_brackets[-1][2]
+
+
+def apply_age_brackets(df, age_brackets=None):
+    """
+    Apply age bracket mapping to a DataFrame.
+
+    Args:
+        df (DataFrame): DataFrame with 'age' column
+        age_brackets (list): List of (min_age, max_age, representative_age) tuples
+
+    Returns:
+        DataFrame: DataFrame with ages mapped to bracket representatives
+    """
+    if age_brackets is None:
+        return df
+
+    df = df.copy()
+    df["age"] = df["age"].apply(lambda x: map_age_to_bracket(x, age_brackets))
+    return df
 
 
 def get_household_mtrs(
@@ -57,18 +98,25 @@ def get_household_mtrs(
     Returns:
         pd.Series: The household MTRs.
     """
-    baseline = baseline or Microsimulation(reform=reform, **kwargs)
-    baseline_var = baseline.calc(variable, period)
-    bonus = baseline.calc("is_adult", period) * 1  # Increase only adult values
-    reformed = Microsimulation(reform=reform, **kwargs)
+    if baseline is None:
+        if reform is not None:
+            baseline = Microsimulation(reform=reform, **kwargs)
+        else:
+            baseline = Microsimulation(**kwargs)
+    baseline_var = baseline.calculate(variable, period)
+    bonus = baseline.calculate("is_adult", period) * 1  # Increase only adult values
+    if reform is not None:
+        reformed = Microsimulation(reform=reform, **kwargs)
+    else:
+        reformed = Microsimulation(**kwargs)
     reformed.set_input(variable, period, baseline_var + bonus)
 
-    household_bonus = reformed.calc(
-        variable, map_to="household", period=period
-    ) - baseline.calc(variable, map_to="household", period=period)
-    household_net_change = reformed.calc(
-        "household_net_income", period=period
-    ) - baseline.calc("household_net_income", period=period)
+    household_bonus = reformed.calculate(
+        variable, period, map_to="household"
+    ) - baseline.calculate(variable, period, map_to="household")
+    household_net_change = reformed.calculate(
+        "household_net_income", period
+    ) - baseline.calculate("household_net_income", period)
     mtr = (household_bonus - household_net_change) / household_bonus
     mtr = mtr.replace([np.inf, -np.inf], np.nan).fillna(0).clip(0, 1)
     return mtr
@@ -94,10 +142,9 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     """
     # create a simulation
-    sim_kwargs = dict(dataset=dataset, dataset_year=2022)
+    sim_kwargs = dict()
     if reform is None:
         sim = Microsimulation(**sim_kwargs)
-        reform = ()
     else:
         sim = Microsimulation(reform=reform, **sim_kwargs)
     if baseline:
@@ -113,15 +160,17 @@ def get_calculator_output(baseline, year, reform=None, data=None):
 
     # define market income - taking expanded_income and excluding gov't
     # transfer benefits
-    market_income = sim.calc("household_market_income", period=year).values
+    market_income = sim.calculate("household_market_income", year).values
 
     # Compute marginal tax rates (can only do on earned income now)
 
     # Put MTRs, income, tax liability, and other variables in dict
-    length = sim.calc("household_weight", period=year).size
-    household = sim.populations["household"]
-    person = sim.populations["person"]
-    max_age_in_hh = household.max(person("age", "2022"))
+    length = sim.calculate("household_weight", year).size
+    household = sim.household
+    person = sim.person
+    max_age_in_hh = household.max(person("age", year))
+    # Fill NaN ages with a default value (e.g., 40 - working age)
+    max_age_in_hh = np.where(np.isnan(max_age_in_hh), 40, max_age_in_hh)
     tax_dict = {
         "mtr_labinc": get_household_mtrs(
             reform,
@@ -138,28 +187,28 @@ def get_calculator_output(baseline, year, reform=None, data=None):
             **sim_kwargs,
         ).values,
         "age": max_age_in_hh,
-        "total_labinc": sim.calc(
-            "earned_income", map_to="household", period=year
+        "total_labinc": sim.calculate(
+            "earned_income", year, map_to="household"
         ).values,
-        "total_capinc": sim.calc(
-            "capital_income", map_to="household", period=year
+        "total_capinc": sim.calculate(
+            "capital_income", year, map_to="household"
         ).values,
         "market_income": market_income,
-        "total_tax_liab": sim.calc("household_tax", period=year).values,
-        "payroll_tax_liab": sim.calc(
-            "national_insurance", map_to="household", period=year
+        "total_tax_liab": sim.calculate("household_tax", year).values,
+        "payroll_tax_liab": sim.calculate(
+            "national_insurance", year, map_to="household"
         ).values,
         "etr": (
             1
             - (
-                sim.calc(
-                    "household_net_income", map_to="household", period=year
+                sim.calculate(
+                    "household_net_income", year, map_to="household"
                 ).values
             )
             / market_income
         ).clip(-1, 1.5),
         "year": year * np.ones(length),
-        "weight": sim.calc("household_weight", period=year).values,
+        "weight": sim.calculate("household_weight", year).values,
     }
 
     return tax_dict
@@ -173,6 +222,7 @@ def get_data(
     path=CUR_PATH,
     client=None,
     num_workers=1,
+    age_brackets=None,
 ):
     """
     This function creates dataframes of micro data with marginal tax
@@ -191,6 +241,9 @@ def get_data(
         client (Dask Client object): client for Dask multiprocessing
         num_workers (int): number of workers to use for Dask
             multiprocessing
+        age_brackets (list): List of (min_age, max_age, representative_age)
+            tuples for grouping ages. If None, uses individual ages.
+            Use DEFAULT_AGE_BRACKETS for 5-group UK brackets.
 
     Returns:
         micro_data_dict (dict): dict of Pandas Dataframe, one for each
@@ -206,7 +259,7 @@ def get_data(
             delayed(get_calculator_output)(baseline, year, reform, data)
         )
     if client:  # pragma: no cover
-        futures = client.compute(lazy_values, num_workers=num_workers)
+        futures = client.compute(lazy_values)
         results = client.gather(futures)
     else:
         results = compute(
@@ -220,6 +273,16 @@ def get_data(
     for i, result in enumerate(results):
         year = start_year + i
         df = pd.DataFrame.from_dict(result)
+        # Drop rows with NaN ages and fill any remaining NaN values
+        # (required by ogcore tax function estimation)
+        df = df.dropna(subset=["age"])
+        # Also fill any remaining NaN in numeric columns
+        df = df.fillna(0)
+        # Ensure age is integer
+        df["age"] = df["age"].astype(int)
+        # Apply age brackets if specified
+        if age_brackets is not None:
+            df = apply_age_brackets(df, age_brackets)
         micro_data_dict[str(year)] = df
 
     if baseline:

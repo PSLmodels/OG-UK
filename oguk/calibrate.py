@@ -9,6 +9,9 @@ import pkg_resources
 
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
 
+# Import age bracket utilities
+from oguk.get_micro_data import DEFAULT_AGE_BRACKETS, map_age_to_bracket
+
 
 class Calibration:
     """OG-UK calibration class"""
@@ -25,10 +28,12 @@ class Calibration:
         data="frs",
         client=None,
         num_workers=1,
+        age_brackets=None,
     ):
         self.estimate_tax_functions = estimate_tax_functions
         self.estimate_beta = estimate_beta
         self.estimate_chi_n = estimate_chi_n
+        self.age_brackets = age_brackets
         if estimate_tax_functions:
             if tax_func_path is not None:
                 run_micro = False
@@ -43,6 +48,7 @@ class Calibration:
                 num_workers,
                 run_micro=run_micro,
                 tax_func_path=tax_func_path,
+                age_brackets=age_brackets,
             )
         # if estimate_beta:
         #     self.beta_j = estimate_beta_j.beta_estimate(self)
@@ -79,6 +85,7 @@ class Calibration:
         num_workers=1,
         run_micro=False,
         tax_func_path=None,
+        age_brackets=None,
     ):
         """
         Reads pickle file of tax function parameters or estimates the
@@ -125,7 +132,10 @@ class Calibration:
                 path=p.output_base,
                 client=client,
                 num_workers=num_workers,
+                age_brackets=age_brackets,
             )
+            if age_brackets is not None:
+                print(f"Using {len(age_brackets)} age brackets for tax function estimation")
             p.BW = len(micro_data)
             dict_params = txfunc.tax_func_estimate(  # pragma: no cover
                 micro_data,
@@ -134,12 +144,9 @@ class Calibration:
                 p.starting_age,
                 p.ending_age,
                 start_year=p.start_year,
-                baseline=p.baseline,
                 analytical_mtrs=p.analytical_mtrs,
                 tax_func_type=p.tax_func_type,
                 age_specific=p.age_specific,
-                reform=pit_reform,
-                data=data,
                 client=client,
                 num_workers=num_workers,
                 tax_func_path=tax_func_path,

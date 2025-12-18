@@ -24,7 +24,7 @@ setuptools.setup(
         ]
     },
     include_packages=True,
-    python_requires=">=3.7.7, <3.11",
+    python_requires=">=3.7.7",
     install_requires=[
         "numpy",
         "scipy",
