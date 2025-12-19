@@ -12,7 +12,35 @@ import sys
 import threading
 from datetime import datetime
 from oguk.calibrate import Calibration
+from oguk.get_micro_data import generate_age_brackets, DEFAULT_AGE_BRACKETS
 from ogcore.parameters import Specifications
+
+# =============================================================================
+# CONFIGURATION OPTIONS
+# =============================================================================
+
+# Age bracket options:
+# - USE_AGE_BRACKETS = False: Single tax function for all ages (fastest)
+# - USE_AGE_BRACKETS = True with N_BRACKETS: Auto-generate N equal brackets
+# - USE_AGE_BRACKETS = True with CUSTOM_BRACKETS: Use custom age ranges
+
+USE_AGE_BRACKETS = True   # Set to True to enable bracket-based estimation
+N_BRACKETS = 4            # Number of brackets (used if CUSTOM_BRACKETS is None)
+# UK-specific age brackets (retirement age is 66)
+CUSTOM_BRACKETS = [(20, 35), (36, 50), (51, 65), (66, 100)]
+
+# Example configurations:
+# 1. Single function (fastest, ~10 min):
+#    USE_AGE_BRACKETS = False
+#
+# 2. Auto-generate 4 equal brackets (~15 min):
+#    USE_AGE_BRACKETS = True
+#    N_BRACKETS = 4
+#    CUSTOM_BRACKETS = None
+#
+# 3. Custom UK-specific brackets (~15 min):
+#    USE_AGE_BRACKETS = True
+#    CUSTOM_BRACKETS = [(21, 35), (36, 55), (56, 65), (66, 100)]
 from ogcore import output_tables as ot
 from ogcore import output_plots as op
 from ogcore.execute import runner
@@ -158,13 +186,16 @@ def main(reform=None):
 
     print_info("Setting model parameters...")
     print_info("  - tax_func_type: DEP")
-    print_info("  - age_specific: False (single tax function for all ages)")
+    if USE_AGE_BRACKETS:
+        print_info(f"  - age_specific: True (via {N_BRACKETS} age brackets)")
+    else:
+        print_info("  - age_specific: False (single tax function for all ages)")
     print_info("  - start_year: 2026")
     print_info("  - J: 5 (quintiles)")
 
     p.update_specifications({
         "tax_func_type": "DEP",
-        "age_specific": False,  # Single tax function (faster, compatible)
+        "age_specific": USE_AGE_BRACKETS,  # True if using brackets
         "start_year": 2026,
         "J": 5,
     })
@@ -177,11 +208,19 @@ def main(reform=None):
     print_step(3, total_steps, "BASELINE TAX FUNCTION CALIBRATION")
 
     # Use live timer for the calibration
-    timer = LiveTimer("Estimating baseline tax functions from PolicyEngine-UK")
+    if USE_AGE_BRACKETS:
+        timer = LiveTimer(f"Estimating baseline tax functions ({N_BRACKETS} age brackets)")
+    else:
+        timer = LiveTimer("Estimating baseline tax functions from PolicyEngine-UK")
     timer.start()
 
     c = Calibration(
-        p, estimate_tax_functions=True, client=client
+        p,
+        estimate_tax_functions=True,
+        client=client,
+        use_age_brackets=USE_AGE_BRACKETS,
+        n_brackets=N_BRACKETS,
+        age_brackets=CUSTOM_BRACKETS,
     )
 
     timer.stop("Baseline tax functions estimated")
@@ -229,11 +268,20 @@ def main(reform=None):
     print_info("Reform: Income tax basic rate 20% -> 30%")
 
     # Use live timer for reform calibration
-    timer = LiveTimer("Estimating reform tax functions")
+    if USE_AGE_BRACKETS:
+        timer = LiveTimer(f"Estimating reform tax functions ({N_BRACKETS} age brackets)")
+    else:
+        timer = LiveTimer("Estimating reform tax functions")
     timer.start()
 
     c2 = Calibration(
-        p2, iit_reform=reform_dict, estimate_tax_functions=True, client=client
+        p2,
+        iit_reform=reform_dict,
+        estimate_tax_functions=True,
+        client=client,
+        use_age_brackets=USE_AGE_BRACKETS,
+        n_brackets=N_BRACKETS,
+        age_brackets=CUSTOM_BRACKETS,
     )
 
     timer.stop("Reform tax functions estimated")

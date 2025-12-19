@@ -26,14 +26,89 @@ warnings.filterwarnings("ignore")
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
 DATA_LAST_YEAR = 2026  # this is the last year data are extrapolated for
 
-# Default age brackets for UK tax function estimation
+def generate_age_brackets(n_brackets, min_age=21, max_age=100):
+    """
+    Generate age brackets by dividing the age range into N equal parts.
+
+    Args:
+        n_brackets (int): Number of brackets to create (e.g., 4)
+        min_age (int): Minimum age (default 21)
+        max_age (int): Maximum age (default 100)
+
+    Returns:
+        list: List of (min_age, max_age, representative_age) tuples
+
+    Example:
+        >>> generate_age_brackets(4)
+        [(21, 40, 30), (41, 60, 50), (61, 80, 70), (81, 100, 90)]
+    """
+    if n_brackets < 1:
+        raise ValueError("n_brackets must be at least 1")
+
+    age_range = max_age - min_age + 1
+    bracket_size = age_range // n_brackets
+    brackets = []
+
+    for i in range(n_brackets):
+        bracket_min = min_age + i * bracket_size
+        if i == n_brackets - 1:
+            # Last bracket goes to max_age
+            bracket_max = max_age
+        else:
+            bracket_max = bracket_min + bracket_size - 1
+        rep_age = (bracket_min + bracket_max) // 2
+        brackets.append((bracket_min, bracket_max, rep_age))
+
+    return brackets
+
+
+def create_custom_brackets(age_ranges):
+    """
+    Create age brackets from custom age ranges.
+
+    Args:
+        age_ranges (list): List of (min_age, max_age) tuples
+            Example: [(21, 35), (36, 50), (51, 65), (66, 100)]
+
+    Returns:
+        list: List of (min_age, max_age, representative_age) tuples
+    """
+    brackets = []
+    for min_age, max_age in age_ranges:
+        rep_age = (min_age + max_age) // 2
+        brackets.append((min_age, max_age, rep_age))
+    return brackets
+
+
+# Default age brackets for UK tax function estimation (4 brackets)
 # Each tuple is (min_age, max_age, representative_age)
 DEFAULT_AGE_BRACKETS = [
-    (21, 30, 25),   # Early career, student loans
-    (31, 45, 38),   # Family formation, child benefits
-    (46, 65, 55),   # Peak earnings to pre-retirement
-    (66, 100, 80),  # Retirement, state pension
+    (21, 35, 28),   # Young workers
+    (36, 50, 43),   # Mid-career
+    (51, 65, 58),   # Late career
+    (66, 100, 83),  # Retirement
 ]
+
+
+def filter_micro_data_by_age_bracket(micro_data, age_min, age_max):
+    """
+    Filter micro data dictionary to only include ages in the specified range.
+
+    Args:
+        micro_data (dict): Dictionary of DataFrames keyed by year strings
+        age_min (int): Minimum age to include
+        age_max (int): Maximum age to include
+
+    Returns:
+        dict: Filtered dictionary of DataFrames
+    """
+    filtered = {}
+    for year, df in micro_data.items():
+        mask = (df['age'] >= age_min) & (df['age'] <= age_max)
+        filtered_df = df[mask].copy()
+        if len(filtered_df) > 0:
+            filtered[year] = filtered_df
+    return filtered
 
 
 def map_age_to_bracket(age, age_brackets=None):
