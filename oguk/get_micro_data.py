@@ -10,6 +10,8 @@ import dask.multiprocessing
 import numpy as np
 import os
 import pickle
+import hashlib
+import json
 from policyengine_uk import Microsimulation
 import pandas as pd
 import warnings
@@ -17,6 +19,118 @@ from policyengine_uk.model_api import *
 import logging
 
 logging.basicConfig(level=logging.INFO)
+
+
+def _compute_cache_key(baseline, start_year, reform, data):
+    """
+    Compute a hash-based cache key for micro data.
+
+    Args:
+        baseline (bool): Whether this is baseline policy
+        start_year (int): Start year of simulation
+        reform (dict): Reform parameters (None for baseline)
+        data (str): Data source identifier
+
+    Returns:
+        str: A hex hash string that uniquely identifies this configuration
+    """
+    # Create a dictionary of all cache-relevant parameters
+    # Convert to native Python types for JSON serialization
+    cache_dict = {
+        'baseline': bool(baseline),
+        'start_year': int(start_year),
+        'data': str(data) if data is not None else 'default',
+        'data_last_year': int(DATA_LAST_YEAR),
+    }
+
+    # Add reform parameters if present
+    if reform is not None:
+        # Convert reform to a JSON-serializable format
+        try:
+            cache_dict['reform'] = json.dumps(reform, sort_keys=True)
+        except (TypeError, ValueError):
+            # If reform isn't JSON serializable, use its string representation
+            cache_dict['reform'] = str(reform)
+    else:
+        cache_dict['reform'] = None
+
+    # Create a stable string representation and hash it
+    cache_str = json.dumps(cache_dict, sort_keys=True)
+    cache_hash = hashlib.sha256(cache_str.encode()).hexdigest()[:16]
+
+    return cache_hash
+
+
+def _get_cache_path(path, baseline, cache_key):
+    """
+    Get the cache file path for micro data.
+
+    Args:
+        path (str): Base output path
+        baseline (bool): Whether this is baseline policy
+        cache_key (str): The cache key hash
+
+    Returns:
+        str: Path to the cache file
+    """
+    policy_type = "baseline" if baseline else "reform"
+    filename = f"micro_data_cache_{policy_type}_{cache_key}.pkl"
+    return os.path.join(path, filename)
+
+
+def _load_cached_micro_data(cache_path):
+    """
+    Load cached micro data if it exists and is valid.
+
+    Args:
+        cache_path (str): Path to cache file
+
+    Returns:
+        tuple: (micro_data_dict, version) if cache exists and is valid, else (None, None)
+    """
+    if not os.path.exists(cache_path):
+        return None, None
+
+    try:
+        with open(cache_path, 'rb') as f:
+            cache_data = pickle.load(f)
+
+        # Validate cache structure
+        if not isinstance(cache_data, dict):
+            return None, None
+        if 'micro_data' not in cache_data or 'version' not in cache_data:
+            return None, None
+
+        print(f"  [CACHE HIT] Loading cached micro data from {os.path.basename(cache_path)}")
+        return cache_data['micro_data'], cache_data['version']
+
+    except (pickle.PickleError, EOFError, KeyError) as e:
+        print(f"  [CACHE INVALID] Cache file corrupted, will re-compute: {e}")
+        return None, None
+
+
+def _save_micro_data_cache(cache_path, micro_data_dict, version):
+    """
+    Save micro data to cache.
+
+    Args:
+        cache_path (str): Path to cache file
+        micro_data_dict (dict): The micro data dictionary
+        version (str): PolicyEngine version
+    """
+    cache_data = {
+        'micro_data': micro_data_dict,
+        'version': version,
+        'cache_time': pd.Timestamp.now().isoformat(),
+    }
+
+    try:
+        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+        with open(cache_path, 'wb') as f:
+            pickle.dump(cache_data, f)
+        print(f"  [CACHE SAVED] Micro data cached to {os.path.basename(cache_path)}")
+    except Exception as e:
+        print(f"  [CACHE WARNING] Could not save cache: {e}")
 
 # New API: Microsimulation handles dataset internally
 dataset = None
@@ -301,6 +415,7 @@ def get_data(
     client=None,
     num_workers=1,
     age_brackets=None,
+    use_cache=True,
 ):
     """
     This function creates dataframes of micro data with marginal tax
@@ -322,6 +437,8 @@ def get_data(
         age_brackets (list): List of (min_age, max_age, representative_age)
             tuples for grouping ages. If None, uses individual ages.
             Use DEFAULT_AGE_BRACKETS for 5-group UK brackets.
+        use_cache (bool): Whether to use cached micro data if available.
+            Default True. Set to False to force re-computation.
 
     Returns:
         micro_data_dict (dict): dict of Pandas Dataframe, one for each
@@ -330,6 +447,24 @@ def get_data(
         PolicyEngineUK_version (str): version of PolicyEngine-UK used
 
     """
+    # Check for cached micro data first
+    if use_cache:
+        cache_key = _compute_cache_key(baseline, start_year, reform, data)
+        cache_path = _get_cache_path(path, baseline, cache_key)
+        cached_data, cached_version = _load_cached_micro_data(cache_path)
+
+        if cached_data is not None:
+            # Apply age brackets if specified (cache stores raw data)
+            if age_brackets is not None:
+                for year_key in cached_data:
+                    cached_data[year_key] = apply_age_brackets(
+                        cached_data[year_key], age_brackets
+                    )
+            return cached_data, cached_version
+
+    # No valid cache found, compute micro data
+    print("  [CACHE MISS] Computing micro data from PolicyEngine-UK...")
+
     # Compute MTRs and taxes or each year, but not beyond DATA_LAST_YEAR
     lazy_values = []
     for year in range(start_year, DATA_LAST_YEAR + 1):
@@ -346,8 +481,8 @@ def get_data(
             num_workers=num_workers,
         )
 
-    # dictionary of data frames to return
-    micro_data_dict = {}
+    # dictionary of data frames to return (without age brackets for caching)
+    micro_data_dict_raw = {}
     for i, result in enumerate(results):
         year = start_year + i
         df = pd.DataFrame.from_dict(result)
@@ -358,11 +493,21 @@ def get_data(
         df = df.fillna(0)
         # Ensure age is integer
         df["age"] = df["age"].astype(int)
-        # Apply age brackets if specified
-        if age_brackets is not None:
-            df = apply_age_brackets(df, age_brackets)
-        micro_data_dict[str(year)] = df
+        micro_data_dict_raw[str(year)] = df
 
+    # Save to cache (raw data without age brackets)
+    if use_cache:
+        _save_micro_data_cache(cache_path, micro_data_dict_raw, None)
+
+    # Apply age brackets if specified
+    if age_brackets is not None:
+        micro_data_dict = {}
+        for year_key, df in micro_data_dict_raw.items():
+            micro_data_dict[year_key] = apply_age_brackets(df, age_brackets)
+    else:
+        micro_data_dict = micro_data_dict_raw
+
+    # Also save to the original pkl path for backwards compatibility
     if baseline:
         pkl_path = os.path.join(path, "micro_data_baseline.pkl")
     else:

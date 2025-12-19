@@ -3,6 +3,9 @@ from oguk import get_micro_data
 from oguk import demographics
 import os
 import numpy as np
+import hashlib
+import json
+import pickle
 from ogcore.utils import safe_read_pickle, mkdirs
 import pkg_resources
 
@@ -17,6 +20,101 @@ from oguk.get_micro_data import (
     create_custom_brackets,
     filter_micro_data_by_age_bracket,
 )
+
+
+def _compute_taxfunc_cache_key(
+    baseline, start_year, reform, tax_func_type, age_brackets, S, analytical_mtrs
+):
+    """
+    Compute a hash-based cache key for tax function estimates.
+
+    Args:
+        baseline (bool): Whether this is baseline policy
+        start_year (int): Start year of simulation
+        reform (dict): Reform parameters (None for baseline)
+        tax_func_type (str): Type of tax function (e.g., 'DEP')
+        age_brackets (list): Age bracket configuration
+        S (int): Number of model periods
+        analytical_mtrs (bool): Whether to use analytical MTRs
+
+    Returns:
+        str: A hex hash string that uniquely identifies this configuration
+    """
+    cache_dict = {
+        'baseline': bool(baseline),
+        'start_year': int(start_year),
+        'tax_func_type': str(tax_func_type),
+        'S': int(S),
+        'analytical_mtrs': bool(analytical_mtrs),
+    }
+
+    # Add reform parameters
+    if reform is not None:
+        try:
+            cache_dict['reform'] = json.dumps(reform, sort_keys=True)
+        except (TypeError, ValueError):
+            cache_dict['reform'] = str(reform)
+    else:
+        cache_dict['reform'] = None
+
+    # Add age brackets
+    if age_brackets is not None:
+        cache_dict['age_brackets'] = str(age_brackets)
+    else:
+        cache_dict['age_brackets'] = None
+
+    cache_str = json.dumps(cache_dict, sort_keys=True)
+    cache_hash = hashlib.sha256(cache_str.encode()).hexdigest()[:16]
+
+    return cache_hash
+
+
+def _get_taxfunc_cache_path(output_base, baseline, cache_key, use_brackets=False):
+    """Get the cache file path for tax function estimates."""
+    policy_type = "baseline" if baseline else "reform"
+    bracket_suffix = "_brackets" if use_brackets else ""
+    filename = f"TxFuncEst_cache_{policy_type}{bracket_suffix}_{cache_key}.pkl"
+    return os.path.join(output_base, filename)
+
+
+def _load_cached_taxfunc(cache_path, p):
+    """
+    Load cached tax function parameters if valid.
+
+    Returns:
+        tuple: (params_dict, is_valid) - params if cache hit, None otherwise
+    """
+    if not os.path.exists(cache_path):
+        return None, False
+
+    try:
+        cached = safe_read_pickle(cache_path)
+
+        # Validate cache
+        if cached.get('start_year') != p.start_year:
+            print(f"  [CACHE INVALID] start_year mismatch")
+            return None, False
+        if cached.get('tax_func_type') != p.tax_func_type:
+            print(f"  [CACHE INVALID] tax_func_type mismatch")
+            return None, False
+
+        print(f"  [CACHE HIT] Loading cached tax functions from {os.path.basename(cache_path)}")
+        return cached, True
+
+    except Exception as e:
+        print(f"  [CACHE ERROR] Could not load cache: {e}")
+        return None, False
+
+
+def _save_taxfunc_cache(cache_path, params_dict):
+    """Save tax function parameters to cache."""
+    try:
+        mkdirs(os.path.dirname(cache_path))
+        with open(cache_path, 'wb') as f:
+            pickle.dump(params_dict, f)
+        print(f"  [CACHE SAVED] Tax functions cached to {os.path.basename(cache_path)}")
+    except Exception as e:
+        print(f"  [CACHE WARNING] Could not save cache: {e}")
 
 
 class Calibration:
@@ -344,7 +442,21 @@ class Calibration:
             )
         print(f"{'='*60}\n")
 
-        # Set up paths
+        # Compute hash-based cache key
+        cache_key = _compute_taxfunc_cache_key(
+            baseline=p.baseline,
+            start_year=p.start_year,
+            reform=pit_reform if pit_reform else None,
+            tax_func_type=p.tax_func_type,
+            age_brackets=self.age_brackets,
+            S=p.S,
+            analytical_mtrs=p.analytical_mtrs,
+        )
+        cache_path = _get_taxfunc_cache_path(
+            p.output_base, p.baseline, cache_key, use_brackets=True
+        )
+
+        # Set up legacy paths for backwards compatibility
         if tax_func_path is None:
             if p.baseline:
                 pckl = "TxFuncEst_baseline_brackets{}.pkl".format(guid)
@@ -354,15 +466,26 @@ class Calibration:
                 tax_func_path = os.path.join(p.output_base, pckl)
         mkdirs(os.path.split(tax_func_path)[0])
 
-        # Check for cached results
+        # Check for hash-based cached results first
+        cached_params, cache_valid = _load_cached_taxfunc(cache_path, p)
+        if cache_valid and cached_params is not None:
+            # Also save to legacy path
+            with open(tax_func_path, 'wb') as f:
+                pickle.dump(cached_params, f)
+            return self._process_bracket_tax_params(cached_params, p)
+
+        # Check legacy cache as fallback
         if not run_micro and os.path.exists(tax_func_path):
-            print(f"Loading cached bracket tax functions from {tax_func_path}")
+            print(f"Checking legacy cache at {tax_func_path}")
             cached_params = safe_read_pickle(tax_func_path)
             if cached_params.get("start_year") == p.start_year:
-                return cached_params
-            print("Cached params incompatible, re-estimating...")
+                print(f"  [CACHE HIT] Using legacy cached tax functions")
+                # Save to new hash-based cache for future use
+                _save_taxfunc_cache(cache_path, cached_params)
+                return self._process_bracket_tax_params(cached_params, p)
+            print("  [CACHE INVALID] Legacy cache incompatible, re-estimating...")
 
-        # Get micro data ONCE (without age bracket mapping)
+        # Get micro data ONCE (without age bracket mapping) - uses its own cache
         print("Getting micro data from PolicyEngine-UK...")
         micro_data, taxcalc_version = get_micro_data.get_data(
             baseline=p.baseline,
@@ -373,6 +496,7 @@ class Calibration:
             client=client,
             num_workers=num_workers,
             age_brackets=None,  # Don't apply brackets yet
+            use_cache=True,  # Enable micro data caching
         )
         p.BW = len(micro_data)
 
@@ -504,13 +628,15 @@ class Calibration:
             "mean_income_data": mean_income_data,
             "frac_tax_payroll": frac_tax_payroll,
             "start_year": p.start_year,
+            "tax_func_type": p.tax_func_type,
             "BW": p.BW,
             "age_brackets": self.age_brackets,
         }
 
-        # Save to cache
-        import pickle
+        # Save to hash-based cache for future runs
+        _save_taxfunc_cache(cache_path, tax_param_dict)
 
+        # Also save to legacy path for backwards compatibility
         with open(tax_func_path, "wb") as f:
             pickle.dump(tax_param_dict, f)
         print(f"Saved bracket tax functions to {tax_func_path}")
@@ -520,6 +646,26 @@ class Calibration:
         print(f"{'='*60}\n")
 
         return tax_param_dict
+
+    def _process_bracket_tax_params(self, cached_params, p):
+        """
+        Process cached bracket tax parameters to ensure they're ready for use.
+
+        This method validates and returns cached tax function parameters,
+        updating p.BW if needed.
+
+        Args:
+            cached_params (dict): Cached tax function parameters
+            p: OG-Core Specifications object
+
+        Returns:
+            dict: Processed tax function parameters ready for model use
+        """
+        # Update BW from cached params if available
+        if "BW" in cached_params:
+            p.BW = cached_params["BW"]
+
+        return cached_params
 
     def read_tax_func_estimate(self, p, tax_func_path):
         """
