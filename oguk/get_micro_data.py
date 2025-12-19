@@ -26,6 +26,7 @@ warnings.filterwarnings("ignore")
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
 DATA_LAST_YEAR = 2026  # this is the last year data are extrapolated for
 
+
 def generate_age_brackets(n_brackets, min_age=21, max_age=100):
     """
     Generate age brackets by dividing the age range into N equal parts.
@@ -83,9 +84,9 @@ def create_custom_brackets(age_ranges):
 # Default age brackets for UK tax function estimation (4 brackets)
 # Each tuple is (min_age, max_age, representative_age)
 DEFAULT_AGE_BRACKETS = [
-    (21, 35, 28),   # Young workers
-    (36, 50, 43),   # Mid-career
-    (51, 65, 58),   # Late career
+    (21, 35, 28),  # Young workers
+    (36, 50, 43),  # Mid-career
+    (51, 65, 58),  # Late career
     (66, 100, 83),  # Retirement
 ]
 
@@ -104,7 +105,7 @@ def filter_micro_data_by_age_bracket(micro_data, age_min, age_max):
     """
     filtered = {}
     for year, df in micro_data.items():
-        mask = (df['age'] >= age_min) & (df['age'] <= age_max)
+        mask = (df["age"] >= age_min) & (df["age"] <= age_max)
         filtered_df = df[mask].copy()
         if len(filtered_df) > 0:
             filtered[year] = filtered_df
@@ -179,7 +180,9 @@ def get_household_mtrs(
         else:
             baseline = Microsimulation(**kwargs)
     baseline_var = baseline.calculate(variable, period)
-    bonus = baseline.calculate("is_adult", period) * 1  # Increase only adult values
+    bonus = (
+        baseline.calculate("is_adult", period) * 1
+    )  # Increase only adult values
     if reform is not None:
         reformed = Microsimulation(reform=reform, **kwargs)
     else:

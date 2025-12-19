@@ -76,7 +76,9 @@ class Calibration:
                 self.age_brackets = generate_age_brackets(n_brackets)
             else:
                 self.age_brackets = DEFAULT_AGE_BRACKETS
-            print(f"Using {len(self.age_brackets)} age brackets: {self.age_brackets}")
+            print(
+                f"Using {len(self.age_brackets)} age brackets: {self.age_brackets}"
+            )
         else:
             self.age_brackets = age_brackets
 
@@ -88,15 +90,17 @@ class Calibration:
 
             if use_age_brackets:
                 # Use bracket-based estimation
-                self.tax_function_params = self.estimate_tax_functions_by_bracket(
-                    p,
-                    iit_reform,
-                    guid,
-                    data,
-                    client,
-                    num_workers,
-                    run_micro=run_micro,
-                    tax_func_path=tax_func_path,
+                self.tax_function_params = (
+                    self.estimate_tax_functions_by_bracket(
+                        p,
+                        iit_reform,
+                        guid,
+                        data,
+                        client,
+                        num_workers,
+                        run_micro=run_micro,
+                        tax_func_path=tax_func_path,
+                    )
                 )
             else:
                 # Original behavior
@@ -196,7 +200,9 @@ class Calibration:
                 age_brackets=age_brackets,
             )
             if age_brackets is not None:
-                print(f"Using {len(age_brackets)} age brackets for tax function estimation")
+                print(
+                    f"Using {len(age_brackets)} age brackets for tax function estimation"
+                )
             p.BW = len(micro_data)
             dict_params = txfunc.tax_func_estimate(  # pragma: no cover
                 micro_data,
@@ -333,7 +339,9 @@ class Calibration:
         print(f"{'='*60}")
         print(f"Estimating {len(self.age_brackets)} bracket tax functions")
         for i, (age_min, age_max, rep_age) in enumerate(self.age_brackets):
-            print(f"  Bracket {i+1}: ages {age_min}-{age_max} (rep: {rep_age})")
+            print(
+                f"  Bracket {i+1}: ages {age_min}-{age_max} (rep: {rep_age})"
+            )
         print(f"{'='*60}\n")
 
         # Set up paths
@@ -374,13 +382,19 @@ class Calibration:
         frac_tax_payroll = None
 
         for i, (age_min, age_max, rep_age) in enumerate(self.age_brackets):
-            print(f"\n--- Estimating bracket {i+1}/{len(self.age_brackets)}: ages {age_min}-{age_max} ---")
+            print(
+                f"\n--- Estimating bracket {i+1}/{len(self.age_brackets)}: ages {age_min}-{age_max} ---"
+            )
 
             # Filter micro data to this bracket's ages
-            bracket_data = filter_micro_data_by_age_bracket(micro_data, age_min, age_max)
+            bracket_data = filter_micro_data_by_age_bracket(
+                micro_data, age_min, age_max
+            )
 
             if not bracket_data:
-                print(f"  WARNING: No data for bracket {age_min}-{age_max}, using previous bracket")
+                print(
+                    f"  WARNING: No data for bracket {age_min}-{age_max}, using previous bracket"
+                )
                 if bracket_params:
                     bracket_params.append(bracket_params[-1])
                 continue
@@ -405,14 +419,16 @@ class Calibration:
                 tax_func_path=None,  # Don't save individual bracket results
             )
 
-            bracket_params.append({
-                'age_min': age_min,
-                'age_max': age_max,
-                'rep_age': rep_age,
-                'etr': dict_params["tfunc_etr_params_S"],
-                'mtrx': dict_params["tfunc_mtrx_params_S"],
-                'mtry': dict_params["tfunc_mtry_params_S"],
-            })
+            bracket_params.append(
+                {
+                    "age_min": age_min,
+                    "age_max": age_max,
+                    "rep_age": rep_age,
+                    "etr": dict_params["tfunc_etr_params_S"],
+                    "mtrx": dict_params["tfunc_mtrx_params_S"],
+                    "mtry": dict_params["tfunc_mtry_params_S"],
+                }
+            )
 
             # Use first bracket's average income and payroll fraction
             if mean_income_data is None:
@@ -432,8 +448,8 @@ class Calibration:
         mtry_params = [[None for _ in range(p.S)] for _ in range(p.T)]
 
         for bracket in bracket_params:
-            age_min = bracket['age_min']
-            age_max = bracket['age_max']
+            age_min = bracket["age_min"]
+            age_max = bracket["age_max"]
 
             # Map ages to model indices (s = age - starting_age - 1)
             for age in range(age_min, age_max + 1):
@@ -442,14 +458,14 @@ class Calibration:
                     for t in range(p.T):
                         if t < p.BW:
                             # Use bracket's estimated params (index 0 since S=1)
-                            etr_params[t][s] = bracket['etr'][t][0]
-                            mtrx_params[t][s] = bracket['mtrx'][t][0]
-                            mtry_params[t][s] = bracket['mtry'][t][0]
+                            etr_params[t][s] = bracket["etr"][t][0]
+                            mtrx_params[t][s] = bracket["mtrx"][t][0]
+                            mtry_params[t][s] = bracket["mtry"][t][0]
                         else:
                             # Extrapolate using last year
-                            etr_params[t][s] = bracket['etr'][-1][0]
-                            mtrx_params[t][s] = bracket['mtrx'][-1][0]
-                            mtry_params[t][s] = bracket['mtry'][-1][0]
+                            etr_params[t][s] = bracket["etr"][-1][0]
+                            mtrx_params[t][s] = bracket["mtrx"][-1][0]
+                            mtry_params[t][s] = bracket["mtry"][-1][0]
 
         # Handle any remaining None values (ages outside all brackets)
         for t in range(p.T):
@@ -459,14 +475,26 @@ class Calibration:
                     age = s + p.starting_age + 1
                     if age < self.age_brackets[0][0]:
                         # Use first bracket
-                        etr_params[t][s] = bracket_params[0]['etr'][min(t, p.BW-1)][0]
-                        mtrx_params[t][s] = bracket_params[0]['mtrx'][min(t, p.BW-1)][0]
-                        mtry_params[t][s] = bracket_params[0]['mtry'][min(t, p.BW-1)][0]
+                        etr_params[t][s] = bracket_params[0]["etr"][
+                            min(t, p.BW - 1)
+                        ][0]
+                        mtrx_params[t][s] = bracket_params[0]["mtrx"][
+                            min(t, p.BW - 1)
+                        ][0]
+                        mtry_params[t][s] = bracket_params[0]["mtry"][
+                            min(t, p.BW - 1)
+                        ][0]
                     else:
                         # Use last bracket
-                        etr_params[t][s] = bracket_params[-1]['etr'][min(t, p.BW-1)][0]
-                        mtrx_params[t][s] = bracket_params[-1]['mtrx'][min(t, p.BW-1)][0]
-                        mtry_params[t][s] = bracket_params[-1]['mtry'][min(t, p.BW-1)][0]
+                        etr_params[t][s] = bracket_params[-1]["etr"][
+                            min(t, p.BW - 1)
+                        ][0]
+                        mtrx_params[t][s] = bracket_params[-1]["mtrx"][
+                            min(t, p.BW - 1)
+                        ][0]
+                        mtry_params[t][s] = bracket_params[-1]["mtry"][
+                            min(t, p.BW - 1)
+                        ][0]
 
         tax_param_dict = {
             "etr_params": etr_params,
@@ -482,7 +510,8 @@ class Calibration:
 
         # Save to cache
         import pickle
-        with open(tax_func_path, 'wb') as f:
+
+        with open(tax_func_path, "wb") as f:
             pickle.dump(tax_param_dict, f)
         print(f"Saved bracket tax functions to {tax_func_path}")
 

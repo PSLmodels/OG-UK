@@ -24,8 +24,8 @@ from ogcore.parameters import Specifications
 # - USE_AGE_BRACKETS = True with N_BRACKETS: Auto-generate N equal brackets
 # - USE_AGE_BRACKETS = True with CUSTOM_BRACKETS: Use custom age ranges
 
-USE_AGE_BRACKETS = True   # Set to True to enable bracket-based estimation
-N_BRACKETS = 4            # Number of brackets (used if CUSTOM_BRACKETS is None)
+USE_AGE_BRACKETS = True  # Set to True to enable bracket-based estimation
+N_BRACKETS = 4  # Number of brackets (used if CUSTOM_BRACKETS is None)
 # UK-specific age brackets (retirement age is 66)
 CUSTOM_BRACKETS = [(20, 35), (36, 50), (51, 65), (66, 100)]
 
@@ -75,7 +75,9 @@ class LiveTimer:
         while self.running:
             elapsed = time.time() - self.start_time
             # Use carriage return to overwrite the line
-            sys.stdout.write(f"\r  [..] {self.message} [elapsed: {format_time(elapsed)}]   ")
+            sys.stdout.write(
+                f"\r  [..] {self.message} [elapsed: {format_time(elapsed)}]   "
+            )
             sys.stdout.flush()
             time.sleep(0.5)
 
@@ -83,7 +85,9 @@ class LiveTimer:
         """Start the timer."""
         self.start_time = time.time()
         self.running = True
-        self.thread = threading.Thread(target=self._update_display, daemon=True)
+        self.thread = threading.Thread(
+            target=self._update_display, daemon=True
+        )
         self.thread.start()
 
     def stop(self, success_message=None):
@@ -95,9 +99,13 @@ class LiveTimer:
         # Clear the line and print success message
         sys.stdout.write("\r" + " " * 80 + "\r")  # Clear line
         if success_message:
-            print(f"  [OK] {success_message} (completed in {format_time(elapsed)})")
+            print(
+                f"  [OK] {success_message} (completed in {format_time(elapsed)})"
+            )
         else:
-            print(f"  [OK] {self.message} (completed in {format_time(elapsed)})")
+            print(
+                f"  [OK] {self.message} (completed in {format_time(elapsed)})"
+            )
         return elapsed
 
 
@@ -189,18 +197,24 @@ def main(reform=None):
     if USE_AGE_BRACKETS:
         print_info(f"  - age_specific: True (via {N_BRACKETS} age brackets)")
     else:
-        print_info("  - age_specific: False (single tax function for all ages)")
+        print_info(
+            "  - age_specific: False (single tax function for all ages)"
+        )
     print_info("  - start_year: 2026")
     print_info("  - J: 5 (quintiles)")
 
-    p.update_specifications({
-        "tax_func_type": "DEP",
-        "age_specific": USE_AGE_BRACKETS,  # True if using brackets
-        "start_year": 2026,
-        "J": 5,
-    })
+    p.update_specifications(
+        {
+            "tax_func_type": "DEP",
+            "age_specific": USE_AGE_BRACKETS,  # True if using brackets
+            "start_year": 2026,
+            "J": 5,
+        }
+    )
     print_success("Parameters updated")
-    print_success("Baseline parameter setup complete", time.time() - step_start)
+    print_success(
+        "Baseline parameter setup complete", time.time() - step_start
+    )
 
     # =========================================================================
     # STEP 3: Baseline tax function calibration
@@ -209,9 +223,13 @@ def main(reform=None):
 
     # Use live timer for the calibration
     if USE_AGE_BRACKETS:
-        timer = LiveTimer(f"Estimating baseline tax functions ({N_BRACKETS} age brackets)")
+        timer = LiveTimer(
+            f"Estimating baseline tax functions ({N_BRACKETS} age brackets)"
+        )
     else:
-        timer = LiveTimer("Estimating baseline tax functions from PolicyEngine-UK")
+        timer = LiveTimer(
+            "Estimating baseline tax functions from PolicyEngine-UK"
+        )
     timer.start()
 
     c = Calibration(
@@ -261,15 +279,15 @@ def main(reform=None):
     p2.output_base = reform_dir
 
     reform_dict = {
-        "gov.hmrc.income_tax.rates.uk[0].rate": {
-            "2023-01-01.2033-12-31": 0.30
-        }
+        "gov.hmrc.income_tax.rates.uk[0].rate": {"2023-01-01.2033-12-31": 0.30}
     }
     print_info("Reform: Income tax basic rate 20% -> 30%")
 
     # Use live timer for reform calibration
     if USE_AGE_BRACKETS:
-        timer = LiveTimer(f"Estimating reform tax functions ({N_BRACKETS} age brackets)")
+        timer = LiveTimer(
+            f"Estimating reform tax functions ({N_BRACKETS} age brackets)"
+        )
     else:
         timer = LiveTimer("Estimating reform tax functions")
     timer.start()
@@ -315,14 +333,18 @@ def main(reform=None):
     base_ss = safe_read_pickle(os.path.join(base_dir, "SS", "SS_vars.pkl"))
     base_params = safe_read_pickle(os.path.join(base_dir, "model_params.pkl"))
     reform_ss = safe_read_pickle(os.path.join(reform_dir, "SS", "SS_vars.pkl"))
-    reform_params = safe_read_pickle(os.path.join(reform_dir, "model_params.pkl"))
+    reform_params = safe_read_pickle(
+        os.path.join(reform_dir, "model_params.pkl")
+    )
     print_success("Results loaded")
 
     # Print SS comparison results
     print("\n" + "=" * 70)
     print("  OG-UK STEADY STATE RESULTS COMPARISON")
     print("=" * 70)
-    print(f"\n  {'Variable':<15} {'Baseline':>15} {'Reform':>15} {'% Change':>15}")
+    print(
+        f"\n  {'Variable':<15} {'Baseline':>15} {'Reform':>15} {'% Change':>15}"
+    )
     print("  " + "-" * 60)
 
     for var in ["Y", "C", "K", "L", "r", "w"]:
@@ -330,7 +352,9 @@ def main(reform=None):
             base_val = float(base_ss[var])
             reform_val = float(reform_ss[var])
             pct_change = ((reform_val - base_val) / base_val) * 100
-            print(f"  {var:<15} {base_val:>15.4f} {reform_val:>15.4f} {pct_change:>14.2f}%")
+            print(
+                f"  {var:<15} {base_val:>15.4f} {reform_val:>15.4f} {pct_change:>14.2f}%"
+            )
 
     print("  " + "-" * 60)
     print("\n  Reform: Income tax basic rate increased from 20% to 30%")
