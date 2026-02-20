@@ -32,7 +32,7 @@ setuptools.setup(
         "matplotlib",
         "dask",
         "distributed",
-        "ogcore @ git+https://github.com/vahid-ahmadi/OG-Core.git@performance-optimizations",
+        "ogcore",
         "pandas-datareader",
     ],
     extras_require={
