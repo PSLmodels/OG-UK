@@ -43,3 +43,6 @@ docs/book/_build/*
 */OG-UK_example_plots/*
 *oguk_example_output.csv
 */OG-UK-Example/*
+oguk/data/
+uv.lock
+test_api.py

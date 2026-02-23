@@ -1,125 +1,109 @@
-import multiprocessing
-from distributed import Client
-import json
-import time
-import os
+"""Example: Run OG-UK baseline and reform simulations."""
+
 import copy
-from policyengine_core.reforms import Reform
-from policyengine_uk.model_api import *
-from oguk.calibrate import Calibration
-from ogcore.parameters import Specifications
-from ogcore import output_tables as ot
+import json
+import os
+import time
+from datetime import datetime
+
 from ogcore import output_plots as op
+from ogcore import output_tables as ot
 from ogcore.execute import runner
+from ogcore.parameters import Specifications
 from ogcore.utils import safe_read_pickle
-from argparse import ArgumentParser
+from policyengine.core import ParameterValue, Policy
+from policyengine.tax_benefit_models.uk import uk_latest
+
+from oguk import calibrate
 
 
-def main(reform=None):
-    # Define parameters to use for multiprocessing
-    client = Client()
-    num_workers = min(multiprocessing.cpu_count(), 7)
-    print("Number of workers = ", num_workers)
-
-    # Directories to save data
+def main():
+    """Run baseline and reform OG-UK simulations."""
     CUR_DIR = os.path.dirname(os.path.realpath(__file__))
     base_dir = os.path.join(CUR_DIR, "OG-UK-Example", "OUTPUT_BASELINE")
     reform_dir = os.path.join(CUR_DIR, "OG-UK-Example", "OUTPUT_REFORM")
 
-    """
-    ---------------------------------------------------------------------------
-    Run baseline policy
-    ---------------------------------------------------------------------------
-    """
-    # Set up baseline parameterization
-    p = Specifications(
-        baseline=True,
-        num_workers=num_workers,
-        baseline_dir=base_dir,
-        output_base=base_dir,
-    )
-    # Update parameters for baseline from default json file
+    # -------------------------------------------------------------------------
+    # Baseline
+    # -------------------------------------------------------------------------
+    p = Specifications(baseline=True, baseline_dir=base_dir, output_base=base_dir)
     p.update_specifications(
-        json.load(
-            open(
-                os.path.join(
-                    CUR_DIR, "..", "oguk", "oguk_default_parameters.json"
-                )
-            )
-        )
+        json.load(open(os.path.join(CUR_DIR, "..", "oguk", "oguk_default_parameters.json")))
     )
-    # specify tax function form and start year
-    p.update_specifications(
-        {
-            "tax_func_type": "DEP",
-            "age_specific": False,
-            "start_year": 2022,
-        }
-    )
-    # Update parameters from calibrate.py Calibration class
-    c = Calibration(p, estimate_tax_functions=True, client=client)
-    d = c.get_dict()
-    updated_params = {
-        "etr_params": d["etr_params"],
-        "mtrx_params": d["mtrx_params"],
-        "mtry_params": d["mtry_params"],
-        "mean_income_data": d["mean_income_data"],
-        "frac_tax_payroll": d["frac_tax_payroll"],
-    }
-    p.update_specifications(updated_params)
+    p.update_specifications({
+        "tax_func_type": "DEP",
+        "age_specific": False,
+        "start_year": 2026,
+    })
 
-    # Run model
+    # Calibrate tax functions and demographics
+    cal = calibrate(start_year=2026)
+
+    # Update tax function parameters
+    T, S = p.T, p.S
+    BW = len(cal.etr_params)
+    p.update_specifications({
+        "etr_params": [[cal.etr_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)],
+        "mtrx_params": [[cal.mtrx_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)],
+        "mtry_params": [[cal.mtry_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)],
+        "mean_income_data": cal.mean_income,
+        "frac_tax_payroll": list(cal.frac_tax_payroll) + [cal.frac_tax_payroll[-1]] * (T + S - BW),
+    })
+
+    # Update demographic parameters
+    p.g_n_ss = cal.g_n_ss
+    p.omega = cal.omega
+    p.omega_SS = cal.omega_SS
+    p.rho = cal.rho
+    p.g_n = cal.g_n
+    p.imm_rates = cal.imm_rates
+    p.omega_S_preTP = cal.omega_S_preTP
+
     start_time = time.time()
-    runner(p, time_path=True, client=client)
-    print("run time = ", time.time() - start_time)
+    runner(p, time_path=True)
+    print(f"Baseline run time: {time.time() - start_time:.1f}s")
 
-    """
-    ------------------------------------------------------------------------
-    Run reform policy
-    ------------------------------------------------------------------------
-    """
+    # -------------------------------------------------------------------------
+    # Reform: Increase basic rate from 20% to 30%
+    # -------------------------------------------------------------------------
+    basic_rate_param = uk_latest.get_parameter("gov.hmrc.income_tax.rates.uk[0].rate")
+    reform = Policy(
+        name="Basic rate 30%",
+        parameter_values=[
+            ParameterValue(
+                parameter=basic_rate_param,
+                value=0.30,
+                start_date=datetime(2026, 1, 1),
+            )
+        ],
+    )
 
-    # create new Specifications object for reform simulation
     p2 = copy.deepcopy(p)
     p2.baseline = False
     p2.output_base = reform_dir
 
-    # Estimate reform tax functions from PolicyEngine-UK, passing Reform
-    # class object
-    reform = Reform.set_parameter(
-        "tax.income_tax.rates.uk[0].rate", 0.3, "year:2022:10"
-    )
-    c2 = Calibration(
-        p2, iit_reform=reform, estimate_tax_functions=True, client=client
-    )
-    # update tax function parameters in Specifications Object
-    d2 = c2.get_dict()
-    updated_params2 = {
-        "etr_params": d2["etr_params"],
-        "mtrx_params": d2["mtrx_params"],
-        "mtry_params": d2["mtry_params"],
-        "mean_income_data": d2["mean_income_data"],
-        "frac_tax_payroll": d2["frac_tax_payroll"],
-    }
-    p2.update_specifications(updated_params2)
-    # Run model
-    start_time = time.time()
-    runner(p2, time_path=True, client=client)
-    print("run time = ", time.time() - start_time)
+    # Calibrate with reform
+    cal2 = calibrate(start_year=2026, policy=reform)
+    p2.update_specifications({
+        "etr_params": [[cal2.etr_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)],
+        "mtrx_params": [[cal2.mtrx_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)],
+        "mtry_params": [[cal2.mtry_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)],
+        "mean_income_data": cal2.mean_income,
+        "frac_tax_payroll": list(cal2.frac_tax_payroll) + [cal2.frac_tax_payroll[-1]] * (T + S - BW),
+    })
 
-    """
-    ------------------------------------------------------------------------
-    Save some results of simulations
-    ------------------------------------------------------------------------
-    """
+    start_time = time.time()
+    runner(p2, time_path=True)
+    print(f"Reform run time: {time.time() - start_time:.1f}s")
+
+    # -------------------------------------------------------------------------
+    # Output
+    # -------------------------------------------------------------------------
     base_tpi = safe_read_pickle(os.path.join(base_dir, "TPI", "TPI_vars.pkl"))
     base_params = safe_read_pickle(os.path.join(base_dir, "model_params.pkl"))
-    reform_tpi = safe_read_pickle(
-        os.path.join(reform_dir, "TPI", "TPI_vars.pkl")
-    )
-    reform_params = safe_read_pickle(
-        os.path.join(reform_dir, "model_params.pkl")
-    )
+    reform_tpi = safe_read_pickle(os.path.join(reform_dir, "TPI", "TPI_vars.pkl"))
+    reform_params = safe_read_pickle(os.path.join(reform_dir, "model_params.pkl"))
+
     ans = ot.macro_table(
         base_tpi,
         base_params,
@@ -130,18 +114,12 @@ def main(reform=None):
         num_years=10,
         start_year=base_params.start_year,
     )
+    print("Percentage changes in aggregates:")
+    print(ans)
 
-    # create plots of output
-    op.plot_all(
-        base_dir, reform_dir, os.path.join(CUR_DIR, "OG-UK_example_plots")
-    )
-
-    print("Percentage changes in aggregates:", ans)
-    # save percentage change output to csv file
+    op.plot_all(base_dir, reform_dir, os.path.join(CUR_DIR, "OG-UK_example_plots"))
     ans.to_csv("oguk_example_output.csv")
-    client.close()
 
 
 if __name__ == "__main__":
-    # execute only if run as a script
     main()

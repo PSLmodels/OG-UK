@@ -26,7 +26,6 @@ import numpy as np
 import pandas as pd
 import scipy.optimize as opt
 from ogcore import parameter_plots as pp
-from pandas_datareader import wb
 import matplotlib.pyplot as plt
 
 # create output director for figures
@@ -328,41 +327,25 @@ def get_wb_infmort_rate(
     country: str = "GBR",
     start_year: int = 2020,
     end_year: int = None,
-    download: bool = True,
+    download: bool = False,
 ) -> np.float64:
     """
     Get World Bank infant mortality rate measure from neonatal mortality rate
-    (deaths per 1,000 live births, divided by 1,0000)
+    (deaths per 1,000 live births, divided by 1,000)
     https://data.worldbank.org/indicator/SH.DYN.NMRT
 
     Args:
         country (str): 3-digit country id (alphabetic)
         start_year (int): beginning year of the data
         end_year (int or None): end year of the data
-        download (bool): whether to download the data from the UN Data Portal.
-            If False, a path must be specified in the path_folder argument.
+        download (bool): whether to download the data (not implemented)
 
     Returns:
         wb_infmort_rate (float): neonatal infant mortality rate
     """
-    if start_year > 2020:  # 2020 is the most recent data
-        start_year = 2020
-    if end_year is None:
-        end_year = start_year
-    if download:
-        wb_infmort_rate = (
-            wb.download(
-                indicator="SH.DYN.NMRT",
-                country=country,
-                start=start_year,
-                end=end_year,
-            ).squeeze()
-            / 1000
-        )
-    else:
-        # Hard code the infant mortality rate for South Africa from the most
-        # recent year (2020)
-        wb_infmort_rate = 0.0027
+    # UK neonatal mortality rate from World Bank (2021 data)
+    # https://data.worldbank.org/indicator/SH.DYN.NMRT?locations=GB
+    wb_infmort_rate = 0.0027
 
     return wb_infmort_rate
 
