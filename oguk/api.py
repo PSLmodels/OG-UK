@@ -219,7 +219,7 @@ def calibrate(
             g_n_ss=float(demo["g_n_ss"]),
             omega=demo["omega"],
             omega_SS=demo["omega_SS"],
-            rho=demo["rho"],
+            rho=np.tile(demo["rho"].reshape(1, -1), (320 + S, 1)),
             g_n=demo["g_n"],
             imm_rates=demo["imm_rates"],
             omega_S_preTP=demo["omega_S_preTP"],
@@ -273,7 +273,7 @@ def solve_steady_state(
         p.g_n_ss = cal.g_n_ss
         p.omega = cal.omega
         p.omega_SS = cal.omega_SS
-        p.rho = np.tile(cal.rho.reshape(1, -1), (T + S, 1))
+        p.rho = cal.rho
         p.g_n = cal.g_n
         p.imm_rates = cal.imm_rates
         p.omega_S_preTP = cal.omega_S_preTP
@@ -282,14 +282,14 @@ def solve_steady_state(
         ss = run_SS(p, client=None)
 
         return SteadyStateResult(
-            r=float(ss["r"]),
-            w=float(ss["w"]),
-            Y=float(ss["Y"]),
-            K=float(ss["K"]),
-            L=float(ss["L"]),
-            C=float(ss["C"]),
-            I=float(ss["I"]),
-            G=float(ss["G"]),
-            tax_revenue=float(ss["total_tax_revenue"]),
-            debt=float(ss["D"]),
+            r=float(np.asarray(ss["r"]).flat[0]),
+            w=float(np.asarray(ss["w"]).flat[0]),
+            Y=float(np.asarray(ss["Y"]).flat[0]),
+            K=float(np.asarray(ss["K"]).flat[0]),
+            L=float(np.asarray(ss["L"]).flat[0]),
+            C=float(np.asarray(ss["C"]).flat[0]),
+            I=float(np.asarray(ss["I"]).flat[0]),
+            G=float(np.asarray(ss["G"]).flat[0]),
+            tax_revenue=float(np.asarray(ss["total_tax_revenue"]).flat[0]),
+            debt=float(np.asarray(ss["D"]).flat[0]),
         )
