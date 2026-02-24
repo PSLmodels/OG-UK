@@ -123,16 +123,37 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
 
     baseline_net = person["total_income"].values - person.get("income_tax", np.zeros(length)).values
 
+    # Build perturbation policies.  PolicyEngine silently drops parameter_values
+    # when a simulation_modifier is present, so we must apply any reform
+    # parameter changes *inside* the modifier using the TBS parameter tree.
+    reform_param_values = policy.parameter_values if policy else []
+
+    def _apply_reform_params(microsim):
+        """Replay reform parameter_values on the internal TBS."""
+        for pv in reform_param_values:
+            param_path = pv.parameter.name  # e.g. "gov.hmrc.income_tax.rates.uk[0].rate"
+            node = microsim.tax_benefit_system.parameters
+            for part in param_path.split("."):
+                # Handle bracket indexing like "uk[0]"
+                if "[" in part:
+                    name, idx = part.split("[")
+                    idx = int(idx.rstrip("]"))
+                    node = getattr(node, name).brackets[idx]
+                else:
+                    node = getattr(node, part)
+            start = pv.start_date
+            period = f"year:{start.year}:1"
+            node.update(period=period, value=pv.value)
+
     # Labour MTR: perturb employment income by £1
     def add_labor(s):
+        _apply_reform_params(s)
         emp = s.calculate("employment_income", year)
         adult = s.calculate("is_adult", year)
         s.set_input("employment_income", year, emp + adult)
         return s
 
-    labor_pol = Policy(name="labor", simulation_modifier=add_labor)
-    if policy:
-        labor_pol = policy + labor_pol
+    labor_pol = Policy(name="labor_perturb", simulation_modifier=add_labor)
     labor_sim = Simulation(dataset=dataset, tax_benefit_model_version=uk_latest, policy=labor_pol)
     labor_sim.ensure()
     labor_net = labor_sim.output_dataset.data.person["total_income"].values - labor_sim.output_dataset.data.person.get("income_tax", np.zeros(length)).values
@@ -140,14 +161,13 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
 
     # Capital MTR: perturb dividend income by £1
     def add_cap(s):
+        _apply_reform_params(s)
         div = s.calculate("dividend_income", year)
         adult = s.calculate("is_adult", year)
         s.set_input("dividend_income", year, div + adult)
         return s
 
-    cap_pol = Policy(name="cap", simulation_modifier=add_cap)
-    if policy:
-        cap_pol = policy + cap_pol
+    cap_pol = Policy(name="cap_perturb", simulation_modifier=add_cap)
     cap_sim = Simulation(dataset=dataset, tax_benefit_model_version=uk_latest, policy=cap_pol)
     cap_sim.ensure()
     cap_net = cap_sim.output_dataset.data.person["total_income"].values - cap_sim.output_dataset.data.person.get("income_tax", np.zeros(length)).values
@@ -172,45 +192,19 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
     )
 
 
-def _estimate_tax_functions(
-    data: pd.DataFrame,
-    S: int,
-) -> tuple[list, list, list, float, float]:
-    """Estimate Gouveia-Strauss tax functions from UK microdata.
+def _clean_tax_data(data: pd.DataFrame) -> pd.DataFrame:
+    """Clean microdata for tax function estimation.
 
-    Uses GS functional form (3 parameters) instead of DEP (12 parameters)
-    because GS better captures the UK's progressive tax structure and is
-    far more stable across small policy changes.
-
-    Uses differential evolution (deterministic, seed=1) for global
-    optimisation.
-
-    OG-Core's tax_data_sample drops observations with capital income < £5,
-    which removes ~75% of UK data. We add a small random positive amount
-    to zero-capital-income observations to preserve them.
-
-    Returns:
-        (etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll)
+    Preserves zero-capital-income observations that OG-Core would drop
+    and removes extreme values.
     """
-    from ogcore.txfunc import txfunc_est
-
-    numparams = 3  # GS has 3 parameters
-    avg_income = float(
-        (data["market_income"] * data["weight"]).sum() / data["weight"].sum()
-    )
-    total_tax = (data["total_tax_liab"] * data["weight"]).sum()
-    payroll_tax = (data["payroll_tax_liab"] * data["weight"]).sum()
-    frac_payroll = float(payroll_tax / total_tax) if total_tax != 0 else 0.0
-
     data = data.copy()
 
-    # Preserve zero-capital-income observations (OG-Core drops capinc < £5)
     rng = np.random.default_rng(42)
     zero_cap = data["total_capinc"] <= 0
     data["total_capinc"] = data["total_capinc"].astype(np.float64)
     data.loc[zero_cap, "total_capinc"] = rng.uniform(5, 100, size=zero_cap.sum())
 
-    # Drop extreme values
     data = data[
         (data["etr"] <= 0.65)
         & (data["etr"] >= data["etr"].quantile(0.05))
@@ -230,11 +224,40 @@ def _estimate_tax_functions(
         & np.isfinite(data["total_capinc"])
         & np.isfinite(data["weight"])
     )
-    df_clean = data.loc[finite_mask].copy()
+    return data.loc[finite_mask].copy()
 
+
+def _estimate_tax_functions(
+    data: pd.DataFrame,
+    S: int,
+) -> tuple[list, list, list, float, float]:
+    """Estimate Gouveia-Strauss tax functions from UK microdata.
+
+    Estimates ETR parameters only, then reuses them for MTRx and MTRy.
+    This works because the GS MTR formula is the analytical derivative
+    of the GS ETR formula — the same 3 parameters produce mathematically
+    consistent ETR and MTR schedules. Estimating MTR functions separately
+    introduces instability (the optimiser can land in distant basins for
+    nearly identical data).
+
+    Uses differential evolution (deterministic, seed=1) for global
+    optimisation of the ETR.
+
+    Returns:
+        (etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll)
+    """
+    from ogcore.txfunc import txfunc_est
+
+    numparams = 3  # GS has 3 parameters
+    avg_income = float(
+        (data["market_income"] * data["weight"]).sum() / data["weight"].sum()
+    )
+    total_tax = (data["total_tax_liab"] * data["weight"]).sum()
+    payroll_tax = (data["payroll_tax_liab"] * data["weight"]).sum()
+    frac_payroll = float(payroll_tax / total_tax) if total_tax != 0 else 0.0
+
+    df_clean = _clean_tax_data(data)
     df_etr = df_clean[["mtr_labinc", "mtr_capinc", "total_labinc", "total_capinc", "etr", "weight"]].copy()
-    df_mtrx = df_clean[["mtr_labinc", "total_labinc", "total_capinc", "weight"]].copy()
-    df_mtry = df_clean[["mtr_capinc", "total_labinc", "total_capinc", "weight"]].copy()
 
     output_dir = tempfile.mkdtemp()
 
@@ -242,21 +265,13 @@ def _estimate_tax_functions(
         df_etr, 0, 0, "etr", "GS", numparams, output_dir, False,
         None, True,  # global_opt=True
     )
-    mtrx_params, _, _, _ = txfunc_est(
-        df_mtrx, 0, 0, "mtrx", "GS", numparams, output_dir, False,
-        None, True,
-    )
-    mtry_params, _, _, _ = txfunc_est(
-        df_mtry, 0, 0, "mtry", "GS", numparams, output_dir, False,
-        None, True,
-    )
 
-    # Replicate single estimate across all S age groups (age_specific=False)
+    # Reuse ETR params for MTRx and MTRy: the GS MTR formula is the
+    # analytical derivative of GS ETR, so the same params give
+    # mathematically consistent marginal rates.
     etr_params_S = [[etr_params] * S]
-    mtrx_params_S = [[mtrx_params] * S]
-    mtry_params_S = [[mtry_params] * S]
 
-    return etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll
+    return etr_params_S, etr_params_S, etr_params_S, avg_income, frac_payroll
 
 
 def calibrate(
