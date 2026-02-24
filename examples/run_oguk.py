@@ -14,18 +14,29 @@ from ogcore.SS import run_SS
 from policyengine.core import ParameterValue, Policy
 from policyengine.tax_benefit_models.uk import uk_latest
 
-from oguk import calibrate
+from oguk import SteadyStateResult, calibrate, map_to_real_world
 
 
 def _load_defaults() -> dict:
     """Load UK default parameters, stripping keys overridden by calibration."""
-    path = os.path.join(os.path.dirname(__file__), "..", "oguk", "oguk_default_parameters.json")
+    path = os.path.join(
+        os.path.dirname(__file__), "..", "oguk", "oguk_default_parameters.json"
+    )
     with open(path) as f:
         defaults = json.load(f)
     for key in [
-        "etr_params", "mtrx_params", "mtry_params", "mean_income_data",
-        "frac_tax_payroll", "omega", "omega_SS", "rho", "g_n", "g_n_ss",
-        "imm_rates", "omega_S_preTP",
+        "etr_params",
+        "mtrx_params",
+        "mtry_params",
+        "mean_income_data",
+        "frac_tax_payroll",
+        "omega",
+        "omega_SS",
+        "rho",
+        "g_n",
+        "g_n_ss",
+        "imm_rates",
+        "omega_S_preTP",
     ]:
         defaults.pop(key, None)
     return defaults
@@ -35,14 +46,23 @@ def _apply_calibration(p: Specifications, cal) -> None:
     """Apply calibration results to a Specifications object."""
     T, S = p.T, p.S
     BW = len(cal.etr_params)
-    p.update_specifications({
-        "etr_params": [[cal.etr_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)],
-        "mtrx_params": [[cal.mtrx_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)],
-        "mtry_params": [[cal.mtry_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)],
-        "mean_income_data": cal.mean_income,
-        "frac_tax_payroll": (list(cal.frac_tax_payroll)
-                             + [cal.frac_tax_payroll[-1]] * (T + S - BW)),
-    })
+    p.update_specifications(
+        {
+            "etr_params": [
+                [cal.etr_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)
+            ],
+            "mtrx_params": [
+                [cal.mtrx_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)
+            ],
+            "mtry_params": [
+                [cal.mtry_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)
+            ],
+            "mean_income_data": cal.mean_income,
+            "frac_tax_payroll": (
+                list(cal.frac_tax_payroll) + [cal.frac_tax_payroll[-1]] * (T + S - BW)
+            ),
+        }
+    )
     p.g_n_ss = cal.g_n_ss
     p.omega = cal.omega
     p.omega_SS = cal.omega_SS
@@ -66,11 +86,13 @@ def main():
     print("Setting up baseline...")
     p = Specifications(baseline=True, baseline_dir=base_dir, output_base=base_dir)
     p.update_specifications(defaults)
-    p.update_specifications({
-        "tax_func_type": "GS",
-        "age_specific": False,
-        "start_year": 2026,
-    })
+    p.update_specifications(
+        {
+            "tax_func_type": "GS",
+            "age_specific": False,
+            "start_year": 2026,
+        }
+    )
 
     print("Calibrating baseline tax functions and demographics...")
     cal = calibrate(start_year=2026)
@@ -108,9 +130,9 @@ def main():
     ss_reform = run_SS(p2, client=None)
     print(f"Reform SS solved in {time.time() - t0:.1f}s")
 
-    # ---- Results ----
+    # ---- Results (model units) ----
     print("\n" + "=" * 60)
-    print("Steady state comparison: baseline vs reform")
+    print("Steady state comparison (model units)")
     print("=" * 60)
     print(f"{'Variable':<15} {'Baseline':>12} {'Reform':>12} {'% Change':>12}")
     print("-" * 51)
@@ -120,6 +142,63 @@ def main():
         pct = ((ref_val - base_val) / abs(base_val)) * 100 if base_val != 0 else 0
         label = "tax_revenue" if var == "total_tax_revenue" else var
         print(f"{label:<15} {base_val:>12.4f} {ref_val:>12.4f} {pct:>11.2f}%")
+    print("=" * 60)
+
+    # ---- Results (real-world £bn) ----
+    def _to_ss_result(ss_dict):
+        return SteadyStateResult(
+            r=float(np.asarray(ss_dict["r"]).flat[0]),
+            w=float(np.asarray(ss_dict["w"]).flat[0]),
+            Y=float(np.asarray(ss_dict["Y"]).flat[0]),
+            K=float(np.asarray(ss_dict["K"]).flat[0]),
+            L=float(np.asarray(ss_dict["L"]).flat[0]),
+            C=float(np.asarray(ss_dict["C"]).flat[0]),
+            I=float(np.asarray(ss_dict["I"]).flat[0]),
+            G=float(np.asarray(ss_dict["G"]).flat[0]),
+            tax_revenue=float(np.asarray(ss_dict["total_tax_revenue"]).flat[0]),
+            debt=float(np.asarray(ss_dict["D"]).flat[0]),
+        )
+
+    impact = map_to_real_world(_to_ss_result(ss_base), _to_ss_result(ss_reform))
+
+    print("\n" + "=" * 60)
+    print("Real-world impact (£bn, current prices)")
+    print("=" * 60)
+    print(f"{'Variable':<15} {'Baseline':>12} {'Reform':>12} {'Change':>10} {'%':>8}")
+    print("-" * 57)
+    for label, level, change, pct in [
+        ("GDP", impact.gdp, impact.gdp_change, impact.gdp_pct),
+        (
+            "Consumption",
+            impact.consumption,
+            impact.consumption_change,
+            impact.consumption_pct,
+        ),
+        (
+            "Investment",
+            impact.investment,
+            impact.investment_change,
+            impact.investment_pct,
+        ),
+        (
+            "Government",
+            impact.government,
+            impact.government_change,
+            impact.government_pct,
+        ),
+        (
+            "Tax revenue",
+            impact.tax_revenue,
+            impact.tax_revenue_change,
+            impact.tax_revenue_pct,
+        ),
+        ("Debt", impact.debt, impact.debt_change, impact.debt_pct),
+    ]:
+        base_bn = level - change
+        print(
+            f"{label:<15} {base_bn:>10.1f} {level:>12.1f} {change:>+9.1f} {pct:>+7.3f}%"
+        )
+    print(f"\nInterest rate:  {impact.r_baseline:.2%} -> {impact.r_reform:.2%}")
     print("=" * 60)
 
 
