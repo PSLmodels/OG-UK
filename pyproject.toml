@@ -30,6 +30,9 @@ dependencies = [
     "ogcore>=0.15",
     "policyengine>=0.1",
     "policyengine-uk>=2.0",
+    "requests>=2.31",
+    "rich>=13.0",
+    "openpyxl>=3.1",
 ]
 
 [project.optional-dependencies]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import json
 import logging
 import os
 import sys
@@ -247,6 +248,20 @@ def solve_steady_state(
 
     with tempfile.TemporaryDirectory() as tmpdir, _suppress_output():
         p = Specifications(baseline=True, output_base=tmpdir, baseline_dir=tmpdir)
+
+        # Load UK default parameters (fiscal, tax rates, economic params)
+        defaults_path = os.path.join(os.path.dirname(__file__), "oguk_default_parameters.json")
+        with open(defaults_path) as f:
+            defaults = json.load(f)
+        # Strip keys that calibration will override
+        for key in [
+            "etr_params", "mtrx_params", "mtry_params", "mean_income_data",
+            "frac_tax_payroll", "omega", "omega_SS", "rho", "g_n", "g_n_ss",
+            "imm_rates", "omega_S_preTP",
+        ]:
+            defaults.pop(key, None)
+        p.update_specifications(defaults)
+
         p.update_specifications({
             "tax_func_type": "DEP",
             "age_specific": False,
