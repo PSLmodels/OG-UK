@@ -131,6 +131,10 @@ def main() -> None:
     # Social protection spending ~15% of GDP (ONS PESA)
     params["alpha_T"] = [0.15]
     params["budget_balance"] = False
+    # Fiscal rule timing: tG1 is when closure begins, tG2 when debt
+    # ratio must hit target. Push out so reform effects have time to play out.
+    params["tG1"] = 80
+    params["tG2"] = 256
 
     # Tax rates
     params.update(tax_rates)

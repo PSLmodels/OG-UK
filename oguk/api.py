@@ -107,12 +107,23 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
     person = sim.output_dataset.data.person
     weights = person["person_weight"].values
     age = person["age"].values.astype(int)
-    emp_inc = person["employment_income"].values
-    cap_inc = person["savings_interest_income"].values
     length = len(weights)
+
+    # Labour income: employment + self-employment
+    emp_inc = person["employment_income"].values
+    se_inc = person.get("self_employment_income", np.zeros(length)).values
+    labor_inc = emp_inc + se_inc
+
+    # Capital income: dividends + private pensions + property + savings interest
+    div_inc = person.get("dividend_income", np.zeros(length)).values
+    pen_inc = person.get("private_pension_income", np.zeros(length)).values
+    prop_inc = person.get("property_income", np.zeros(length)).values
+    sav_inc = person.get("savings_interest_income", np.zeros(length)).values
+    cap_inc = div_inc + pen_inc + prop_inc + sav_inc
 
     baseline_net = person["total_income"].values - person.get("income_tax", np.zeros(length)).values
 
+    # Labour MTR: perturb employment income by £1
     def add_labor(s):
         emp = s.calculate("employment_income", year)
         adult = s.calculate("is_adult", year)
@@ -127,10 +138,11 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
     labor_net = labor_sim.output_dataset.data.person["total_income"].values - labor_sim.output_dataset.data.person.get("income_tax", np.zeros(length)).values
     mtr_labor = np.clip(1 - (labor_net - baseline_net), 0, 1)
 
+    # Capital MTR: perturb dividend income by £1
     def add_cap(s):
-        sav = s.calculate("savings_interest_income", year)
+        div = s.calculate("dividend_income", year)
         adult = s.calculate("is_adult", year)
-        s.set_input("savings_interest_income", year, sav + adult)
+        s.set_input("dividend_income", year, div + adult)
         return s
 
     cap_pol = Policy(name="cap", simulation_modifier=add_cap)
@@ -141,7 +153,7 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
     cap_net = cap_sim.output_dataset.data.person["total_income"].values - cap_sim.output_dataset.data.person.get("income_tax", np.zeros(length)).values
     mtr_capital = np.clip(1 - (cap_net - baseline_net), 0, 1)
 
-    market_inc = emp_inc + cap_inc
+    market_inc = labor_inc + cap_inc
     tax = person.get("income_tax", np.zeros(length)).values + person.get("national_insurance", np.zeros(length)).values
     etr = np.where(market_inc > 0, tax / market_inc, 0)
     etr = np.clip(etr, -1, 1.5)
@@ -153,11 +165,98 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
         mtr_capital=mtr_capital[adult_mask],
         etr=etr[adult_mask],
         age=age[adult_mask],
-        labor_income=emp_inc[adult_mask],
+        labor_income=labor_inc[adult_mask],
         capital_income=cap_inc[adult_mask],
         weight=weights[adult_mask],
         year=year,
     )
+
+
+def _estimate_tax_functions(
+    data: pd.DataFrame,
+    S: int,
+) -> tuple[list, list, list, float, float]:
+    """Estimate Gouveia-Strauss tax functions from UK microdata.
+
+    Uses GS functional form (3 parameters) instead of DEP (12 parameters)
+    because GS better captures the UK's progressive tax structure and is
+    far more stable across small policy changes.
+
+    Uses differential evolution (deterministic, seed=1) for global
+    optimisation.
+
+    OG-Core's tax_data_sample drops observations with capital income < £5,
+    which removes ~75% of UK data. We add a small random positive amount
+    to zero-capital-income observations to preserve them.
+
+    Returns:
+        (etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll)
+    """
+    from ogcore.txfunc import txfunc_est
+
+    numparams = 3  # GS has 3 parameters
+    avg_income = float(
+        (data["market_income"] * data["weight"]).sum() / data["weight"].sum()
+    )
+    total_tax = (data["total_tax_liab"] * data["weight"]).sum()
+    payroll_tax = (data["payroll_tax_liab"] * data["weight"]).sum()
+    frac_payroll = float(payroll_tax / total_tax) if total_tax != 0 else 0.0
+
+    data = data.copy()
+
+    # Preserve zero-capital-income observations (OG-Core drops capinc < £5)
+    rng = np.random.default_rng(42)
+    zero_cap = data["total_capinc"] <= 0
+    data["total_capinc"] = data["total_capinc"].astype(np.float64)
+    data.loc[zero_cap, "total_capinc"] = rng.uniform(5, 100, size=zero_cap.sum())
+
+    # Drop extreme values
+    data = data[
+        (data["etr"] <= 0.65)
+        & (data["etr"] >= data["etr"].quantile(0.05))
+        & (data["market_income"] >= 5)
+        & (data["total_labinc"] >= 5)
+        & (data["mtr_labinc"] <= 0.99)
+        & (data["mtr_labinc"] >= data["mtr_labinc"].quantile(0.05))
+        & (data["mtr_capinc"] <= 0.99)
+        & (data["mtr_capinc"] >= data["mtr_capinc"].quantile(0.05))
+    ].copy()
+
+    finite_mask = (
+        np.isfinite(data["etr"])
+        & np.isfinite(data["mtr_labinc"])
+        & np.isfinite(data["mtr_capinc"])
+        & np.isfinite(data["total_labinc"])
+        & np.isfinite(data["total_capinc"])
+        & np.isfinite(data["weight"])
+    )
+    df_clean = data.loc[finite_mask].copy()
+
+    df_etr = df_clean[["mtr_labinc", "mtr_capinc", "total_labinc", "total_capinc", "etr", "weight"]].copy()
+    df_mtrx = df_clean[["mtr_labinc", "total_labinc", "total_capinc", "weight"]].copy()
+    df_mtry = df_clean[["mtr_capinc", "total_labinc", "total_capinc", "weight"]].copy()
+
+    output_dir = tempfile.mkdtemp()
+
+    etr_params, _, _, _ = txfunc_est(
+        df_etr, 0, 0, "etr", "GS", numparams, output_dir, False,
+        None, True,  # global_opt=True
+    )
+    mtrx_params, _, _, _ = txfunc_est(
+        df_mtrx, 0, 0, "mtrx", "GS", numparams, output_dir, False,
+        None, True,
+    )
+    mtry_params, _, _, _ = txfunc_est(
+        df_mtry, 0, 0, "mtry", "GS", numparams, output_dir, False,
+        None, True,
+    )
+
+    # Replicate single estimate across all S age groups (age_specific=False)
+    etr_params_S = [[etr_params] * S]
+    mtrx_params_S = [[mtrx_params] * S]
+    mtry_params_S = [[mtry_params] * S]
+
+    return etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll
 
 
 def calibrate(
@@ -176,14 +275,16 @@ def calibrate(
     Returns:
         CalibrationResult with tax function and demographic parameters
     """
-    from ogcore import txfunc
     from oguk import demographics
 
+    S = 80
+
     with tempfile.TemporaryDirectory() as tmpdir:
-        micro_data = {}
+        # Collect microdata for each year in the budget window
+        frames = []
         for year in range(start_year, start_year + years):
             md = _get_micro_data(year, policy, tmpdir)
-            micro_data[str(year)] = pd.DataFrame({
+            frames.append(pd.DataFrame({
                 "mtr_labinc": md.mtr_labor,
                 "mtr_capinc": md.mtr_capital,
                 "etr": md.etr,
@@ -195,28 +296,24 @@ def calibrate(
                 "payroll_tax_liab": np.zeros(len(md.age)),
                 "year": np.full(len(md.age), year),
                 "weight": md.weight,
-            })
+            }))
 
-        S = 80
-        tax_func_path = os.path.join(tmpdir, "tax_funcs.pkl")
+        all_data = pd.concat(frames, ignore_index=True)
 
-        dict_params = txfunc.tax_func_estimate(
-            micro_data, years, S, 21, 100,
-            start_year=start_year,
-            analytical_mtrs=False,
-            tax_func_type="DEP",
-            age_specific=False,
-            tax_func_path=tax_func_path,
+        etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll = (
+            _estimate_tax_functions(all_data, S)
         )
+        BW = years
+        frac_tax_payroll = np.full(BW, frac_payroll)
 
         demo = demographics.get_pop_objs(20, S, 320, start_year)
 
         return CalibrationResult(
-            etr_params=dict_params["tfunc_etr_params_S"],
-            mtrx_params=dict_params["tfunc_mtrx_params_S"],
-            mtry_params=dict_params["tfunc_mtry_params_S"],
-            mean_income=float(dict_params["tfunc_avginc"][0]),
-            frac_tax_payroll=dict_params["tfunc_frac_tax_payroll"],
+            etr_params=etr_params_S,
+            mtrx_params=mtrx_params_S,
+            mtry_params=mtry_params_S,
+            mean_income=avg_income,
+            frac_tax_payroll=frac_tax_payroll,
             g_n_ss=float(demo["g_n_ss"]),
             omega=demo["omega"],
             omega_SS=demo["omega_SS"],
@@ -263,7 +360,7 @@ def solve_steady_state(
         p.update_specifications(defaults)
 
         p.update_specifications({
-            "tax_func_type": "DEP",
+            "tax_func_type": "GS",
             "age_specific": False,
             "start_year": start_year,
         })

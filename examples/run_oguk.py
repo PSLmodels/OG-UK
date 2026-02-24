@@ -67,7 +67,7 @@ def main():
     p = Specifications(baseline=True, baseline_dir=base_dir, output_base=base_dir)
     p.update_specifications(defaults)
     p.update_specifications({
-        "tax_func_type": "DEP",
+        "tax_func_type": "GS",
         "age_specific": False,
         "start_year": 2026,
     })
@@ -81,15 +81,15 @@ def main():
     ss_base = run_SS(p, client=None)
     print(f"Baseline SS solved in {time.time() - t0:.1f}s")
 
-    # ---- Reform: increase basic rate from 20% to 30% ----
-    print("\nSetting up reform (basic rate 20% -> 30%)...")
+    # ---- Reform: increase basic rate from 20% to 21% ----
+    print("\nSetting up reform (basic rate 20% -> 21%)...")
     basic_rate_param = uk_latest.get_parameter("gov.hmrc.income_tax.rates.uk[0].rate")
     reform = Policy(
-        name="Basic rate 30%",
+        name="Basic rate 21%",
         parameter_values=[
             ParameterValue(
                 parameter=basic_rate_param,
-                value=0.30,
+                value=0.21,
                 start_date=datetime(2026, 1, 1),
             )
         ],
