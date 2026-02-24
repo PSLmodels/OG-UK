@@ -6,6 +6,7 @@ import contextlib
 import json
 import logging
 import os
+import pickle
 import sys
 import tempfile
 import warnings
@@ -92,6 +93,46 @@ class MacroImpact(BaseModel):
     # Rates (not scaled)
     r_baseline: float = Field(description="Baseline interest rate")
     r_reform: float = Field(description="Reform interest rate")
+
+
+class TransitionPathResult(BaseModel):
+    """Time-path macro variables from a TPI solve (T periods)."""
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    years: np.ndarray = Field(description="Year labels")
+    Y: np.ndarray = Field(description="GDP")
+    C: np.ndarray = Field(description="Consumption")
+    K: np.ndarray = Field(description="Capital stock")
+    L: np.ndarray = Field(description="Labour supply")
+    I: np.ndarray = Field(description="Investment")  # noqa: E741
+    G: np.ndarray = Field(description="Government spending")
+    r: np.ndarray = Field(description="Interest rate")
+    w: np.ndarray = Field(description="Wage rate")
+    tax_revenue: np.ndarray = Field(description="Total tax revenue")
+    debt: np.ndarray = Field(description="Government debt")
+
+
+class TransitionMacroImpact(BaseModel):
+    """Time-path reform impact mapped to real-world £bn values."""
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    years: np.ndarray = Field(description="Year labels")
+    gdp: np.ndarray = Field(description="Reform GDP (£bn)")
+    consumption: np.ndarray = Field(description="Reform consumption (£bn)")
+    investment: np.ndarray = Field(description="Reform investment (£bn)")
+    government: np.ndarray = Field(description="Reform government (£bn)")
+    tax_revenue: np.ndarray = Field(description="Reform tax revenue (£bn)")
+    debt: np.ndarray = Field(description="Reform debt (£bn)")
+    gdp_change: np.ndarray = Field(description="GDP change (£bn)")
+    consumption_change: np.ndarray = Field(description="Consumption change (£bn)")
+    investment_change: np.ndarray = Field(description="Investment change (£bn)")
+    government_change: np.ndarray = Field(description="Government change (£bn)")
+    tax_revenue_change: np.ndarray = Field(description="Tax revenue change (£bn)")
+    debt_change: np.ndarray = Field(description="Debt change (£bn)")
 
 
 def map_to_real_world(
@@ -453,7 +494,13 @@ def calibrate(
     """
     from oguk import demographics
 
-    S = 80
+    defaults_path = os.path.join(
+        os.path.dirname(__file__), "oguk_default_parameters.json"
+    )
+    with open(defaults_path) as f:
+        _defaults = json.load(f)
+    S = _defaults["S"]
+    T = _defaults["T"]
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # Collect microdata for each year in the budget window
@@ -487,7 +534,7 @@ def calibrate(
         BW = years
         frac_tax_payroll = np.full(BW, frac_payroll)
 
-        demo = demographics.get_pop_objs(20, S, 320, start_year)
+        demo = demographics.get_pop_objs(20, S, T, start_year)
 
         return CalibrationResult(
             etr_params=etr_params_S,
@@ -498,11 +545,124 @@ def calibrate(
             g_n_ss=float(demo["g_n_ss"]),
             omega=demo["omega"],
             omega_SS=demo["omega_SS"],
-            rho=np.tile(demo["rho"].reshape(1, -1), (320 + S, 1)),
+            rho=np.tile(demo["rho"].reshape(1, -1), (T + S, 1)),
             g_n=demo["g_n"],
             imm_rates=demo["imm_rates"],
             omega_S_preTP=demo["omega_S_preTP"],
         )
+
+
+def _build_specs(
+    start_year: int,
+    policy: Policy | None,
+    output_base: str,
+    baseline_dir: str,
+    baseline: bool = True,
+    max_iter: int = 250,
+):
+    """Build a calibrated Specifications object (internal)."""
+    from ogcore.parameters import Specifications
+
+    defaults_path = os.path.join(
+        os.path.dirname(__file__), "oguk_default_parameters.json"
+    )
+    with open(defaults_path) as f:
+        defaults = json.load(f)
+
+    # Run calibration with S/T from defaults before constructing Specs
+    S = defaults["S"]
+    T = defaults["T"]
+    cal = calibrate(start_year=start_year, policy=policy)
+
+    # Strip calibration-provided keys (we set them from cal below)
+    for key in [
+        "etr_params",
+        "mtrx_params",
+        "mtry_params",
+        "mean_income_data",
+        "frac_tax_payroll",
+        "omega",
+        "omega_SS",
+        "rho",
+        "g_n",
+        "g_n_ss",
+        "imm_rates",
+        "omega_S_preTP",
+    ]:
+        defaults.pop(key, None)
+
+    p = Specifications(
+        baseline=baseline, output_base=output_base, baseline_dir=baseline_dir
+    )
+
+    # Set all parameters together: scalar/structural defaults plus
+    # demographic arrays (which must match S/T dimensions)
+    BW = len(cal.etr_params)
+    defaults.update(
+        {
+            "tax_func_type": "GS",
+            "age_specific": False,
+            "start_year": start_year,
+            "omega": cal.omega.tolist(),
+            "omega_SS": cal.omega_SS.tolist(),
+            "omega_S_preTP": cal.omega_S_preTP.tolist(),
+            "rho": cal.rho.tolist(),
+            "g_n": cal.g_n.tolist(),
+            "g_n_ss": cal.g_n_ss,
+            "imm_rates": cal.imm_rates.tolist(),
+            "etr_params": [
+                [cal.etr_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)
+            ],
+            "mtrx_params": [
+                [cal.mtrx_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)
+            ],
+            "mtry_params": [
+                [cal.mtry_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)
+            ],
+            "mean_income_data": cal.mean_income,
+            "frac_tax_payroll": np.append(
+                cal.frac_tax_payroll,
+                np.ones(T + S - BW) * cal.frac_tax_payroll[-1],
+            ).tolist(),
+        }
+    )
+    p.update_specifications(defaults)
+    p.maxiter = max_iter
+    return p
+
+
+def _ss_dict_to_result(ss: dict) -> SteadyStateResult:
+    """Convert OG-Core SS output dict to SteadyStateResult."""
+    return SteadyStateResult(
+        r=float(np.asarray(ss["r"]).flat[0]),
+        w=float(np.asarray(ss["w"]).flat[0]),
+        Y=float(np.asarray(ss["Y"]).flat[0]),
+        K=float(np.asarray(ss["K"]).flat[0]),
+        L=float(np.asarray(ss["L"]).flat[0]),
+        C=float(np.asarray(ss["C"]).flat[0]),
+        I=float(np.asarray(ss["I"]).flat[0]),
+        G=float(np.asarray(ss["G"]).flat[0]),
+        tax_revenue=float(np.asarray(ss["total_tax_revenue"]).flat[0]),
+        debt=float(np.asarray(ss["D"]).flat[0]),
+    )
+
+
+def _tpi_dict_to_result(tpi: dict, start_year: int) -> TransitionPathResult:
+    """Convert OG-Core TPI output dict to TransitionPathResult."""
+    T = len(tpi["Y"])
+    return TransitionPathResult(
+        years=np.arange(start_year, start_year + T),
+        Y=np.asarray(tpi["Y"]).flatten(),
+        C=np.asarray(tpi["C"]).flatten(),
+        K=np.asarray(tpi["K"]).flatten(),
+        L=np.asarray(tpi["L"]).flatten(),
+        I=np.asarray(tpi["I"]).flatten(),
+        G=np.asarray(tpi["G"]).flatten(),
+        r=np.asarray(tpi["r"]).flatten(),
+        w=np.asarray(tpi["w"]).flatten(),
+        tax_revenue=np.asarray(tpi["total_tax_revenue"]).flatten(),
+        debt=np.asarray(tpi["D"]).flatten(),
+    )
 
 
 def solve_steady_state(
@@ -510,8 +670,7 @@ def solve_steady_state(
     policy: Policy | None = None,
     max_iter: int = 250,
 ) -> SteadyStateResult:
-    """
-    Solve for steady state equilibrium.
+    """Solve for steady state equilibrium.
 
     Args:
         start_year: First year of simulation
@@ -521,91 +680,137 @@ def solve_steady_state(
     Returns:
         SteadyStateResult with equilibrium values
     """
-    from ogcore.parameters import Specifications
     from ogcore.SS import run_SS
 
     with tempfile.TemporaryDirectory() as tmpdir, _suppress_output():
-        p = Specifications(baseline=True, output_base=tmpdir, baseline_dir=tmpdir)
-
-        # Load UK default parameters (fiscal, tax rates, economic params)
-        defaults_path = os.path.join(
-            os.path.dirname(__file__), "oguk_default_parameters.json"
-        )
-        with open(defaults_path) as f:
-            defaults = json.load(f)
-        # Strip keys that calibration will override
-        for key in [
-            "etr_params",
-            "mtrx_params",
-            "mtry_params",
-            "mean_income_data",
-            "frac_tax_payroll",
-            "omega",
-            "omega_SS",
-            "rho",
-            "g_n",
-            "g_n_ss",
-            "imm_rates",
-            "omega_S_preTP",
-        ]:
-            defaults.pop(key, None)
-        p.update_specifications(defaults)
-
-        p.update_specifications(
-            {
-                "tax_func_type": "GS",
-                "age_specific": False,
-                "start_year": start_year,
-            }
-        )
-
-        cal = calibrate(start_year=start_year, policy=policy)
-
-        T, S = p.T, p.S
-        BW = len(cal.etr_params)
-        etr_params = [
-            [cal.etr_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)
-        ]
-        mtrx_params = [
-            [cal.mtrx_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)
-        ]
-        mtry_params = [
-            [cal.mtry_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)
-        ]
-
-        frac_tax = np.append(
-            cal.frac_tax_payroll, np.ones(T + S - BW) * cal.frac_tax_payroll[-1]
-        )
-        p.update_specifications(
-            {
-                "etr_params": etr_params,
-                "mtrx_params": mtrx_params,
-                "mtry_params": mtry_params,
-                "mean_income_data": cal.mean_income,
-                "frac_tax_payroll": frac_tax.tolist(),
-            }
-        )
-
-        p.g_n_ss = cal.g_n_ss
-        p.omega = cal.omega
-        p.omega_SS = cal.omega_SS
-        p.rho = cal.rho
-        p.g_n = cal.g_n
-        p.imm_rates = cal.imm_rates
-        p.omega_S_preTP = cal.omega_S_preTP
-        p.maxiter = max_iter
-
+        p = _build_specs(start_year, policy, tmpdir, tmpdir, max_iter=max_iter)
         ss = run_SS(p, client=None)
+        return _ss_dict_to_result(ss)
 
-        return SteadyStateResult(
-            r=float(np.asarray(ss["r"]).flat[0]),
-            w=float(np.asarray(ss["w"]).flat[0]),
-            Y=float(np.asarray(ss["Y"]).flat[0]),
-            K=float(np.asarray(ss["K"]).flat[0]),
-            L=float(np.asarray(ss["L"]).flat[0]),
-            C=float(np.asarray(ss["C"]).flat[0]),
-            I=float(np.asarray(ss["I"]).flat[0]),
-            G=float(np.asarray(ss["G"]).flat[0]),
-            tax_revenue=float(np.asarray(ss["total_tax_revenue"]).flat[0]),
-            debt=float(np.asarray(ss["D"]).flat[0]),
-        )
+
+def run_transition_path(
+    start_year: int = 2026,
+    policy: Policy | None = None,
+    client=None,
+) -> tuple[TransitionPathResult, TransitionPathResult | None]:
+    """Run baseline (and optionally reform) transition path.
+
+    Solves for the full dynamic transition using OG-Core's SS + TPI
+    solver. If a reform policy is provided, runs both baseline and
+    reform and returns both paths.
+
+    Args:
+        start_year: First year of simulation
+        policy: Optional PolicyEngine Policy for reform scenario
+        client: Optional Dask distributed client for parallelisation
+
+    Returns:
+        (baseline_tp, reform_tp) — reform_tp is None if no policy
+    """
+    from dask.distributed import Client
+    from ogcore.execute import runner
+
+    own_client = False
+    if client is None:
+        client = Client()
+        own_client = True
+
+    try:
+        base_dir = tempfile.mkdtemp()
+        os.makedirs(os.path.join(base_dir, "SS"), exist_ok=True)
+        os.makedirs(os.path.join(base_dir, "TPI"), exist_ok=True)
+
+        # Baseline
+        p_base = _build_specs(start_year, None, base_dir, base_dir, baseline=True)
+        runner(p_base, time_path=True, client=client)
+
+        with open(os.path.join(base_dir, "TPI", "TPI_vars.pkl"), "rb") as f:
+            tpi_base = pickle.load(f)
+        baseline_tp = _tpi_dict_to_result(tpi_base, start_year)
+
+        # Reform
+        reform_tp = None
+        if policy is not None:
+            reform_dir = tempfile.mkdtemp()
+            os.makedirs(os.path.join(reform_dir, "SS"), exist_ok=True)
+            os.makedirs(os.path.join(reform_dir, "TPI"), exist_ok=True)
+
+            p_reform = _build_specs(
+                start_year, policy, reform_dir, base_dir, baseline=False
+            )
+            runner(p_reform, time_path=True, client=client)
+
+            with open(os.path.join(reform_dir, "TPI", "TPI_vars.pkl"), "rb") as f:
+                tpi_reform = pickle.load(f)
+            reform_tp = _tpi_dict_to_result(tpi_reform, start_year)
+
+        return baseline_tp, reform_tp
+    finally:
+        if own_client:
+            client.close()
+
+
+def map_transition_to_real_world(
+    baseline: TransitionPathResult,
+    reform: TransitionPathResult,
+) -> TransitionMacroImpact:
+    """Map TPI time-path changes to real-world £bn values.
+
+    Uses the same GDP-anchored scaling as the SS version, applied
+    element-wise to each period's change.
+
+    Args:
+        baseline: Baseline transition path (model units)
+        reform: Reform transition path (model units)
+
+    Returns:
+        TransitionMacroImpact with £bn time-series
+    """
+    from oguk.sources import fetch_ons_timeseries
+
+    topic_gdp = "economy/grossdomesticproductgdp"
+    topic_psf = "economy/governmentpublicsectorandtaxes/publicsectorfinance"
+
+    gdp_m = fetch_ons_timeseries("YBHA", "ukea", topic_gdp, "years", fallback=2_890_664)
+    cons_m = fetch_ons_timeseries(
+        "ABJQ", "ukea", topic_gdp, "years", fallback=1_477_000
+    )
+    inv_m = fetch_ons_timeseries("NPQS", "ukea", topic_gdp, "years", fallback=414_000)
+    gov_m = fetch_ons_timeseries("NMRP", "ukea", topic_gdp, "years", fallback=584_000)
+    debt_pct = fetch_ons_timeseries("HF6X", "pusf", topic_psf, "months", fallback=92.9)
+
+    gdp_bn = gdp_m / 1000
+    cons_bn = cons_m / 1000
+    inv_bn = inv_m / 1000
+    gov_bn = gov_m / 1000
+    tax_bn = 859.0
+    debt_bn = gdp_bn * debt_pct / 100
+
+    # Per-period scale factor anchored on GDP
+    scale = gdp_bn / baseline.Y
+
+    def _change(base_arr, reform_arr):
+        return (reform_arr - base_arr) * scale
+
+    dy = _change(baseline.Y, reform.Y)
+    dc = _change(baseline.C, reform.C)
+    di = _change(baseline.I, reform.I)
+    dg = _change(baseline.G, reform.G)
+    drev = _change(baseline.tax_revenue, reform.tax_revenue)
+    dd = _change(baseline.debt, reform.debt)
+
+    return TransitionMacroImpact(
+        years=reform.years,
+        gdp=np.round(gdp_bn + dy, 1),
+        consumption=np.round(cons_bn + dc, 1),
+        investment=np.round(inv_bn + di, 1),
+        government=np.round(gov_bn + dg, 1),
+        tax_revenue=np.round(tax_bn + drev, 1),
+        debt=np.round(debt_bn + dd, 1),
+        gdp_change=np.round(dy, 1),
+        consumption_change=np.round(dc, 1),
+        investment_change=np.round(di, 1),
+        government_change=np.round(dg, 1),
+        tax_revenue_change=np.round(drev, 1),
+        debt_change=np.round(dd, 1),
+    )

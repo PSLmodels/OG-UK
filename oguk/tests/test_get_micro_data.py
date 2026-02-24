@@ -1,11 +1,11 @@
 """Tests for OG-UK calibration API."""
 
-import pytest
 from datetime import datetime
-from policyengine.core import Policy, ParameterValue
+
+from policyengine.core import ParameterValue, Policy
 from policyengine.tax_benefit_models.uk import uk_latest
 
-from oguk import calibrate, CalibrationResult
+from oguk import CalibrationResult, calibrate
 
 
 def test_baseline_calibration():

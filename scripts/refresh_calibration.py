@@ -53,7 +53,9 @@ def main() -> None:
         fallback=92.9,
     )
     initial_debt_ratio = round(debt_pct / 100, 4)
-    console.print(f"  initial_debt_ratio = {initial_debt_ratio} (ONS HF6X: {debt_pct}%)")
+    console.print(
+        f"  initial_debt_ratio = {initial_debt_ratio} (ONS HF6X: {debt_pct}%)"
+    )
 
     # Nominal GDP at market prices (£m, SA)
     # ONS series YBHA in dataset ukea
@@ -88,7 +90,9 @@ def main() -> None:
         fallback=-261_400,
     )
     initial_foreign_debt_ratio = round(abs(niip) / gdp_nominal, 4)
-    console.print(f"  initial_foreign_debt_ratio = {initial_foreign_debt_ratio} (ONS HBQC/YBHA)")
+    console.print(
+        f"  initial_foreign_debt_ratio = {initial_foreign_debt_ratio} (ONS HBQC/YBHA)"
+    )
 
     # ------------------------------------------------------------------
     # 2. Fetch from Bank of England
@@ -125,16 +129,18 @@ def main() -> None:
 
     # Fiscal position
     params["initial_debt_ratio"] = initial_debt_ratio
-    params["debt_ratio_ss"] = 0.80  # OBR long-run anchor
+    params["debt_ratio_ss"] = 0.95  # OBR Nov 2025 EFO: debt stabilises ~95-96%
     params["initial_foreign_debt_ratio"] = initial_foreign_debt_ratio
     params["alpha_G"] = [alpha_G]
-    # Social protection spending ~15% of GDP (ONS PESA)
-    params["alpha_T"] = [0.15]
+    # Non-pension welfare transfers ~6% of GDP (OBR Nov 2025: 11% welfare
+    # minus ~5% state pension which is modelled separately via pensions)
+    params["alpha_T"] = [0.06]
     params["budget_balance"] = False
     # Fiscal rule timing: tG1 is when closure begins, tG2 when debt
-    # ratio must hit target. Push out so reform effects have time to play out.
-    params["tG1"] = 80
-    params["tG2"] = 256
+    # ratio must hit target. UK fiscal rules (current budget balance +
+    # debt falling) bite by 2029-30, i.e. ~4 years from start_year 2026.
+    params["tG1"] = 4
+    params["tG2"] = 20
 
     # Tax rates
     params.update(tax_rates)
@@ -191,15 +197,20 @@ def main() -> None:
 
     rows = [
         ("initial_debt_ratio", f"{initial_debt_ratio}", "ONS HF6X"),
-        ("debt_ratio_ss", "0.80", "OBR projection"),
-        ("initial_foreign_debt_ratio", f"{initial_foreign_debt_ratio}", "ONS HBQC/YBHA"),
+        ("debt_ratio_ss", "0.95", "OBR Nov 2025 EFO"),
+        (
+            "initial_foreign_debt_ratio",
+            f"{initial_foreign_debt_ratio}",
+            "ONS HBQC/YBHA",
+        ),
         ("alpha_G", f"{alpha_G}", "ONS NMRP/YBHA"),
-        ("alpha_T", "0.15", "ONS PESA"),
-        ("cit_rate", "0.25", "GOV.UK"),
+        ("alpha_T", "0.06", "OBR (non-pension welfare)"),
+        ("cit_rate", "0.27", "GOV.UK + business rates"),
         ("tau_payroll", "0.15", "GOV.UK employer NICs"),
-        ("tau_c", "0.10", "HMRC/OBR effective VAT"),
+        ("tau_c", "0.19", "HMRC/OBR effective indirect"),
+        ("p_wealth", "0.025", "OBR (council tax/SDLT/CGT)"),
         ("tau_bq", "0.08", "GOV.UK effective IHT"),
-        ("delta_tau_annual", "0.18", "GOV.UK capital allowances"),
+        ("delta_tau_annual", "0.05", "Calibrated to econ. depreciation"),
         ("retirement_age", "46 (age 66)", "GOV.UK"),
         ("g_y_annual", "0.01", "OBR forecast"),
         ("world_int_rate_annual", f"{world_int_rate}", "BoE rate - 2%"),
@@ -209,7 +220,9 @@ def main() -> None:
     console.print(table)
 
     if removed:
-        console.print(f"\n[yellow]Removed {len(removed)} US-specific parameters: {', '.join(removed)}[/yellow]")
+        console.print(
+            f"\n[yellow]Removed {len(removed)} US-specific parameters: {', '.join(removed)}[/yellow]"
+        )
     console.print("[yellow]Fixed r_gov_scale, r_gov_shift (scalar -> list)[/yellow]")
     console.print("[yellow]Fixed rho, replacement_rate_adjust (1D -> 2D)[/yellow]")
     console.print("[yellow]Updated start_year to 2026[/yellow]")

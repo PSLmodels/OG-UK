@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0).
 
+## [0.3.0] - 2026-02-24
+
+### Changed
+
+* Calibrated fiscal parameters to OBR November 2025 Economic and Fiscal Outlook: steady-state debt ratio 95% of GDP, fiscal adjustment beginning in period 4 (matching 2029-30 fiscal rules).
+* Recalibrated tax parameters so model revenue/GDP matches OBR forecasts (~40% of GDP). Added wealth tax parameters (council tax, stamp duty, CGT proxy), raised effective indirect tax rate, and aligned capital depreciation allowances with economic depreciation.
+* Set non-pension welfare transfers (alpha_T) to 6% of GDP, separate from state pension which is modelled via OG-Core's pension system.
+* Replaced five legacy CI workflows (conda, Python 3.9, black, 3-OS matrix) with a single uv-based workflow on Python 3.13 using ruff for linting and formatting.
+* Modernised `oguk/sources.py` data-fetching to return calibrated tax rates consistent with OBR revenue shares.
+
 ## [0.2.0] - 2023-01-16
 
 ### Updated

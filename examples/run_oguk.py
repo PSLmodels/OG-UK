@@ -1,168 +1,51 @@
-"""Example: Run OG-UK baseline and reform steady state simulations."""
+"""Example: Run OG-UK baseline and reform simulations."""
 
 from __future__ import annotations
 
-import copy
-import json
-import os
+import sys
 import time
 from datetime import datetime
 
-import numpy as np
-from ogcore.parameters import Specifications
-from ogcore.SS import run_SS
 from policyengine.core import ParameterValue, Policy
 from policyengine.tax_benefit_models.uk import uk_latest
 
-from oguk import SteadyStateResult, calibrate, map_to_real_world
+from oguk import (
+    map_to_real_world,
+    map_transition_to_real_world,
+    run_transition_path,
+    solve_steady_state,
+)
+
+# Reform: increase basic rate from 20% to 21%
+basic_rate_param = uk_latest.get_parameter("gov.hmrc.income_tax.rates.uk[0].rate")
+REFORM = Policy(
+    name="Basic rate 21%",
+    parameter_values=[
+        ParameterValue(
+            parameter=basic_rate_param,
+            value=0.21,
+            start_date=datetime(2026, 1, 1),
+        )
+    ],
+)
 
 
-def _load_defaults() -> dict:
-    """Load UK default parameters, stripping keys overridden by calibration."""
-    path = os.path.join(
-        os.path.dirname(__file__), "..", "oguk", "oguk_default_parameters.json"
-    )
-    with open(path) as f:
-        defaults = json.load(f)
-    for key in [
-        "etr_params",
-        "mtrx_params",
-        "mtry_params",
-        "mean_income_data",
-        "frac_tax_payroll",
-        "omega",
-        "omega_SS",
-        "rho",
-        "g_n",
-        "g_n_ss",
-        "imm_rates",
-        "omega_S_preTP",
-    ]:
-        defaults.pop(key, None)
-    return defaults
-
-
-def _apply_calibration(p: Specifications, cal) -> None:
-    """Apply calibration results to a Specifications object."""
-    T, S = p.T, p.S
-    BW = len(cal.etr_params)
-    p.update_specifications(
-        {
-            "etr_params": [
-                [cal.etr_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)
-            ],
-            "mtrx_params": [
-                [cal.mtrx_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)
-            ],
-            "mtry_params": [
-                [cal.mtry_params[min(t, BW - 1)][s] for s in range(S)] for t in range(T)
-            ],
-            "mean_income_data": cal.mean_income,
-            "frac_tax_payroll": (
-                list(cal.frac_tax_payroll) + [cal.frac_tax_payroll[-1]] * (T + S - BW)
-            ),
-        }
-    )
-    p.g_n_ss = cal.g_n_ss
-    p.omega = cal.omega
-    p.omega_SS = cal.omega_SS
-    p.rho = cal.rho
-    p.g_n = cal.g_n
-    p.imm_rates = cal.imm_rates
-    p.omega_S_preTP = cal.omega_S_preTP
-
-
-def main():
-    """Run baseline and reform OG-UK steady state simulations."""
-    CUR_DIR = os.path.dirname(os.path.realpath(__file__))
-    base_dir = os.path.join(CUR_DIR, "OG-UK-Example", "OUTPUT_BASELINE")
-    reform_dir = os.path.join(CUR_DIR, "OG-UK-Example", "OUTPUT_REFORM")
-    os.makedirs(base_dir, exist_ok=True)
-    os.makedirs(reform_dir, exist_ok=True)
-
-    defaults = _load_defaults()
-
-    # ---- Baseline ----
-    print("Setting up baseline...")
-    p = Specifications(baseline=True, baseline_dir=base_dir, output_base=base_dir)
-    p.update_specifications(defaults)
-    p.update_specifications(
-        {
-            "tax_func_type": "GS",
-            "age_specific": False,
-            "start_year": 2026,
-        }
-    )
-
-    print("Calibrating baseline tax functions and demographics...")
-    cal = calibrate(start_year=2026)
-    _apply_calibration(p, cal)
-
+def run_steady_state():
+    """Run baseline and reform steady state, print results."""
     print("Solving baseline steady state...")
     t0 = time.time()
-    ss_base = run_SS(p, client=None)
-    print(f"Baseline SS solved in {time.time() - t0:.1f}s")
-
-    # ---- Reform: increase basic rate from 20% to 21% ----
-    print("\nSetting up reform (basic rate 20% -> 21%)...")
-    basic_rate_param = uk_latest.get_parameter("gov.hmrc.income_tax.rates.uk[0].rate")
-    reform = Policy(
-        name="Basic rate 21%",
-        parameter_values=[
-            ParameterValue(
-                parameter=basic_rate_param,
-                value=0.21,
-                start_date=datetime(2026, 1, 1),
-            )
-        ],
-    )
-
-    p2 = copy.deepcopy(p)
-    p2.baseline = False
-    p2.output_base = reform_dir
-
-    print("Calibrating reform tax functions...")
-    cal2 = calibrate(start_year=2026, policy=reform)
-    _apply_calibration(p2, cal2)
+    baseline = solve_steady_state(start_year=2026)
+    print(f"  Done in {time.time() - t0:.1f}s")
 
     print("Solving reform steady state...")
     t0 = time.time()
-    ss_reform = run_SS(p2, client=None)
-    print(f"Reform SS solved in {time.time() - t0:.1f}s")
+    reform = solve_steady_state(start_year=2026, policy=REFORM)
+    print(f"  Done in {time.time() - t0:.1f}s")
 
-    # ---- Results (model units) ----
-    print("\n" + "=" * 60)
-    print("Steady state comparison (model units)")
-    print("=" * 60)
-    print(f"{'Variable':<15} {'Baseline':>12} {'Reform':>12} {'% Change':>12}")
-    print("-" * 51)
-    for var in ["Y", "C", "K", "L", "r", "w", "G", "D", "total_tax_revenue"]:
-        base_val = float(np.asarray(ss_base[var]).flat[0])
-        ref_val = float(np.asarray(ss_reform[var]).flat[0])
-        pct = ((ref_val - base_val) / abs(base_val)) * 100 if base_val != 0 else 0
-        label = "tax_revenue" if var == "total_tax_revenue" else var
-        print(f"{label:<15} {base_val:>12.4f} {ref_val:>12.4f} {pct:>11.2f}%")
-    print("=" * 60)
-
-    # ---- Results (real-world £bn) ----
-    def _to_ss_result(ss_dict):
-        return SteadyStateResult(
-            r=float(np.asarray(ss_dict["r"]).flat[0]),
-            w=float(np.asarray(ss_dict["w"]).flat[0]),
-            Y=float(np.asarray(ss_dict["Y"]).flat[0]),
-            K=float(np.asarray(ss_dict["K"]).flat[0]),
-            L=float(np.asarray(ss_dict["L"]).flat[0]),
-            C=float(np.asarray(ss_dict["C"]).flat[0]),
-            I=float(np.asarray(ss_dict["I"]).flat[0]),
-            G=float(np.asarray(ss_dict["G"]).flat[0]),
-            tax_revenue=float(np.asarray(ss_dict["total_tax_revenue"]).flat[0]),
-            debt=float(np.asarray(ss_dict["D"]).flat[0]),
-        )
-
-    impact = map_to_real_world(_to_ss_result(ss_base), _to_ss_result(ss_reform))
+    impact = map_to_real_world(baseline, reform)
 
     print("\n" + "=" * 60)
-    print("Real-world impact (£bn, current prices)")
+    print("Steady state impact (£bn, current prices)")
     print("=" * 60)
     print(f"{'Variable':<15} {'Baseline':>12} {'Reform':>12} {'Change':>10} {'%':>8}")
     print("-" * 57)
@@ -200,6 +83,56 @@ def main():
         )
     print(f"\nInterest rate:  {impact.r_baseline:.2%} -> {impact.r_reform:.2%}")
     print("=" * 60)
+
+
+def run_tpi():
+    """Run baseline and reform transition paths, print results."""
+    print("Running baseline + reform transition paths...")
+    print("(This solves SS + TPI for both scenarios — may take a while.)")
+    t0 = time.time()
+    base_tp, reform_tp = run_transition_path(start_year=2026, policy=REFORM)
+    print(f"Done in {time.time() - t0:.1f}s")
+
+    impact = map_transition_to_real_world(base_tp, reform_tp)
+
+    print("\n" + "=" * 70)
+    print("Transition path: reform impact (£bn change from baseline)")
+    print("=" * 70)
+    print(
+        f"{'Year':<8} {'GDP':>8} {'Cons':>8} {'Inv':>8} {'Gov':>8} {'Tax rev':>8} {'Debt':>8}"
+    )
+    print("-" * 70)
+
+    # Show first 10 years, then every 10th, then final
+    T = len(impact.years)
+    indices = list(range(min(10, T)))
+    indices += list(range(10, T, 10))
+    if T - 1 not in indices:
+        indices.append(T - 1)
+    indices = sorted(set(indices))
+
+    for i in indices:
+        print(
+            f"{int(impact.years[i]):<8}"
+            f" {impact.gdp_change[i]:>+7.1f}"
+            f" {impact.consumption_change[i]:>+7.1f}"
+            f" {impact.investment_change[i]:>+7.1f}"
+            f" {impact.government_change[i]:>+7.1f}"
+            f" {impact.tax_revenue_change[i]:>+7.1f}"
+            f" {impact.debt_change[i]:>+7.1f}"
+        )
+    print("=" * 70)
+
+
+def main():
+    mode = sys.argv[1] if len(sys.argv) > 1 else "ss"
+    if mode == "ss":
+        run_steady_state()
+    elif mode == "tpi":
+        run_tpi()
+    else:
+        print(f"Usage: {sys.argv[0]} [ss|tpi]")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

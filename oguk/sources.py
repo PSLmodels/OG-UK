@@ -46,7 +46,9 @@ def fetch_ons_timeseries(
         return _parse_ons_csv(resp.text, frequency)
     except Exception as exc:
         if fallback is not None:
-            logger.warning("Could not fetch ONS %s/%s: %s — using fallback", cdid, dataset, exc)
+            logger.warning(
+                "Could not fetch ONS %s/%s: %s — using fallback", cdid, dataset, exc
+            )
             return fallback
         raise
 
@@ -115,7 +117,9 @@ def fetch_boe_series(
         return float(values.iloc[-1])
     except Exception as exc:
         if fallback is not None:
-            logger.warning("Could not fetch BoE %s: %s — using fallback", series_code, exc)
+            logger.warning(
+                "Could not fetch BoE %s: %s — using fallback", series_code, exc
+            )
             return fallback
         raise
 
@@ -123,26 +127,34 @@ def fetch_boe_series(
 def get_uk_tax_rates() -> dict:
     """Return current UK tax rates from GOV.UK.
 
-    All values sourced from GOV.UK and HMRC publications.
+    All values sourced from GOV.UK, HMRC, and OBR publications. Rates are
+    calibrated so that model revenue/GDP matches OBR Nov 2025 EFO (~40% of GDP).
     """
     return {
-        # Corporation tax main rate: 25% from April 2023
-        # Source: https://www.gov.uk/corporation-tax-rates
-        "cit_rate": [[0.25]],
+        # Corporation tax main rate 25% (GOV.UK) + ~2pp for business rates
+        # Source: https://www.gov.uk/corporation-tax-rates, OBR EFO Nov 2025
+        "cit_rate": [[0.27]],
         # Employer NICs: 15% from April 2025
         # Source: https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2025-to-2026
         "tau_payroll": [0.15],
-        # VAT effective rate on total consumption ~10% (standard rate 20%
-        # but many goods are zero-rated or exempt)
-        # Source: HMRC VAT receipts / ONS household final consumption
-        "tau_c": [[0.10]],
+        # Effective consumption tax: VAT (~10% effective) + excise duties +
+        # insurance premium tax + other indirect taxes (~9pp)
+        # Source: HMRC receipts / ONS household final consumption, OBR EFO
+        "tau_c": [[0.19]],
         # Inheritance tax: 40% above £325k nil-rate band
         # Effective rate ~8% accounting for band, exemptions, and reliefs
         # Source: https://www.gov.uk/inheritance-tax
         "tau_bq": [0.08],
-        # Capital allowances: 18% writing-down allowance (main pool)
-        # Source: https://www.gov.uk/capital-allowances
-        "delta_tau_annual": [[0.18]],
+        # Capital depreciation allowance rate, set to match economic
+        # depreciation so business tax revenue is positive
+        # Source: calibrated to OBR business tax revenue share
+        "delta_tau_annual": [[0.05]],
+        # Wealth tax parameters: proxy for council tax (~1.7% of GDP),
+        # stamp duty (~0.5%), and CGT (~0.5%)
+        # Source: OBR EFO Nov 2025, HMRC receipts
+        "p_wealth": [0.025],
+        "h_wealth": [0.1],
+        "m_wealth": [1.0],
         # State pension age: 66, rising to 67 from 2026-28
         # In model periods: 66 - starting_age(20) = 46
         # Source: https://www.gov.uk/state-pension-age

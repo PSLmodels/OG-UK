@@ -4,8 +4,12 @@ from oguk.api import (
     CalibrationResult,
     MacroImpact,
     SteadyStateResult,
+    TransitionMacroImpact,
+    TransitionPathResult,
     calibrate,
     map_to_real_world,
+    map_transition_to_real_world,
+    run_transition_path,
     solve_steady_state,
 )
 
@@ -14,7 +18,11 @@ __all__ = [
     "CalibrationResult",
     "MacroImpact",
     "SteadyStateResult",
+    "TransitionMacroImpact",
+    "TransitionPathResult",
     "calibrate",
     "map_to_real_world",
+    "map_transition_to_real_world",
+    "run_transition_path",
     "solve_steady_state",
 ]

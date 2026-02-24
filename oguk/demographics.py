@@ -22,11 +22,12 @@ This module contains the following functions:
 
 # Import packages
 import os
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.optimize as opt
 from ogcore import parameter_plots as pp
-import matplotlib.pyplot as plt
 
 # create output director for figures
 CUR_PATH = os.path.split(os.path.abspath(__file__))[0]
@@ -154,10 +155,7 @@ def get_un_fert_data(
         1000 * (1 + (fert_rates_df["pop_male"] / fert_rates_df["pop_female"]))
     )
     fert_rates_df = fert_rates_df[
-        (
-            (fert_rates_df["year"] >= start_year)
-            & (fert_rates_df["year"] <= end_year)
-        )
+        ((fert_rates_df["year"] >= start_year) & (fert_rates_df["year"] <= end_year))
     ]
 
     return fert_rates_df
@@ -309,9 +307,7 @@ def get_un_mort_data(
     mort_rates_df = deaths_df.copy()
 
     # Clean the data
-    infmort_rate_df["infmort_rate"] = (
-        infmort_rate_df["inf_deaths_p_1000"] / 1000
-    )
+    infmort_rate_df["infmort_rate"] = infmort_rate_df["inf_deaths_p_1000"] / 1000
 
     infmort_rate_df = infmort_rate_df[
         (
@@ -415,9 +411,7 @@ def get_un_pop_data(
     )
 
     # Clean the data
-    pop_df = pop_df[
-        ((pop_df["year"] >= start_year) & (pop_df["year"] <= end_year))
-    ]
+    pop_df = pop_df[((pop_df["year"] >= start_year) & (pop_df["year"] <= end_year))]
 
     return pop_df
 
@@ -445,9 +439,9 @@ def get_fert(totpers, start_year=2021, end_year=None, graph=False):
     # Get UN fertility rates for United Kingdom for ages 15-49
     ages_15_49 = np.arange(15, 50)
     fert_rates_15_49 = (
-        get_un_fert_data(
-            start_year=start_year, end_year=end_year, download=False
-        )["fert_rate"]
+        get_un_fert_data(start_year=start_year, end_year=end_year, download=False)[
+            "fert_rate"
+        ]
         .to_numpy()
         .flatten()
     )
@@ -472,9 +466,7 @@ def get_fert(totpers, start_year=2021, end_year=None, graph=False):
         (57, 0.0001),
         low=False,
     )
-    fert_rates_1_100 = np.hstack(
-        (fert_rates_1_14, fert_rates_15_49, fert_rates_50_100)
-    )
+    fert_rates_1_100 = np.hstack((fert_rates_1_14, fert_rates_15_49, fert_rates_50_100))
     if totpers == 100:
         fert_rates = fert_rates_1_100.copy()
         ages = np.arange(1, 101)
@@ -557,7 +549,7 @@ def get_mort(totpers, start_year=2021, end_year=None, graph=False):
     un_infmort_rate_df, mort_rates_df = get_un_mort_data(
         start_year=start_year, end_year=end_year, download=False
     )
-    un_infmort_rate = un_infmort_rate_df["infmort_rate"][
+    _un_infmort_rate = un_infmort_rate_df["infmort_rate"][
         un_infmort_rate_df["sex_num"] == 3
     ].to_numpy()[0]
 
@@ -569,17 +561,12 @@ def get_mort(totpers, start_year=2021, end_year=None, graph=False):
             start_year=most_recent_wb_infmort_datayear, download=False
         )
     else:
-        wb_infmort_rate = get_wb_infmort_rate(
-            start_year=start_year, download=False
-        )
+        wb_infmort_rate = get_wb_infmort_rate(start_year=start_year, download=False)
     infmort_rate = wb_infmort_rate
     if totpers == 100:
         mort_rates = (
             mort_rates_df["mort_rate"][
-                (
-                    (mort_rates_df["sex_num"] == 3)
-                    & (mort_rates_df["age"] < 100)
-                )
+                ((mort_rates_df["sex_num"] == 3) & (mort_rates_df["age"] < 100))
             ]
             .to_numpy()
             .flatten()
@@ -593,25 +580,19 @@ def get_mort(totpers, start_year=2021, end_year=None, graph=False):
         end_pct = 0.0
         deaths_0_99 = (
             mort_rates_df[
-                (
-                    (mort_rates_df["sex_num"] == 3)
-                    & (mort_rates_df["age"] < 100)
-                )
+                ((mort_rates_df["sex_num"] == 3) & (mort_rates_df["age"] < 100))
             ]["deaths"]
             .to_numpy()
             .flatten()
         )
         pop_0_99 = (
             mort_rates_df[
-                (
-                    (mort_rates_df["sex_num"] == 3)
-                    & (mort_rates_df["age"] < 100)
-                )
+                ((mort_rates_df["sex_num"] == 3) & (mort_rates_df["age"] < 100))
             ]["pop"]
             .to_numpy()
             .flatten()
         )
-        deaths_pop_0_99 = mort_rates_df[
+        _deaths_pop_0_99 = mort_rates_df[
             ((mort_rates_df["sex_num"] == 3) & (mort_rates_df["age"] < 100))
         ][["age", "deaths", "pop"]]
         for i in range(totpers):
@@ -791,12 +772,10 @@ def get_imm_resid(totpers, start_year=2021, end_year=None, graph=False):
     )
 
     imm_rate_1_2020 = (
-        pop_2021_EpS[0]
-        - (1 - infmort_rate) * (fert_rates * pop_2020_EpS).sum()
+        pop_2021_EpS[0] - (1 - infmort_rate) * (fert_rates * pop_2020_EpS).sum()
     ) / pop_2020_EpS[0]
     imm_rate_1_2019 = (
-        pop_2020_EpS[0]
-        - (1 - infmort_rate) * (fert_rates * pop_2019_EpS).sum()
+        pop_2020_EpS[0] - (1 - infmort_rate) * (fert_rates * pop_2019_EpS).sum()
     ) / pop_2019_EpS[0]
     imm_rate_1 = (imm_rate_1_2020 + imm_rate_1_2019) / 2
 
@@ -944,17 +923,13 @@ def get_pop_objs(E, S, T, curr_year, GraphDiag=False):
     if curr_year == most_recent_data_year:
         pop_past = pop_curr.copy()
         pop_curr = np.dot(OMEGA_orig, pop_past)
-        g_n_curr = (pop_curr[-S:].sum() - pop_past[-S:].sum()) / pop_past[
-            -S:
-        ].sum()
+        g_n_curr = (pop_curr[-S:].sum() - pop_past[-S:].sum()) / pop_past[-S:].sum()
         omega_path_lev[:, 0] = pop_curr
     elif curr_year > most_recent_data_year:
         for per in range(curr_year - most_recent_data_year):
             pop_past = pop_curr.copy()
             pop_curr = np.dot(OMEGA_orig, pop_past)
-            g_n_curr = (pop_curr[-S:].sum() - pop_past[-S:].sum()) / pop_past[
-                -S:
-            ].sum()
+            g_n_curr = (pop_curr[-S:].sum() - pop_past[-S:].sum()) / pop_past[-S:].sum()
         omega_path_lev[:, 0] = pop_curr
     for per in range(1, T + S):
         pop_next = np.dot(OMEGA_orig, pop_curr)
@@ -992,8 +967,7 @@ def get_pop_objs(E, S, T, curr_year, GraphDiag=False):
     g_n_path = np.zeros(T + S)
     g_n_path[0] = g_n_curr.copy()
     g_n_path[1:] = (
-        omega_path_lev[-S:, 1:].sum(axis=0)
-        - omega_path_lev[-S:, :-1].sum(axis=0)
+        omega_path_lev[-S:, 1:].sum(axis=0) - omega_path_lev[-S:, :-1].sum(axis=0)
     ) / omega_path_lev[-S:, :-1].sum(axis=0)
     # Compute adjusted population growth rate
     OMEGA2 = np.zeros((E + S, E + S))
@@ -1008,9 +982,7 @@ def get_pop_objs(E, S, T, curr_year, GraphDiag=False):
     imm_rates_mat = np.hstack(
         (
             np.tile(np.reshape(imm_rates_orig[E:], (S, 1)), (1, fixper)),
-            np.tile(
-                np.reshape(imm_rates_adj[E:], (S, 1)), (1, T + S - fixper)
-            ),
+            np.tile(np.reshape(imm_rates_adj[E:], (S, 1)), (1, T + S - fixper)),
         )
     )
 
@@ -1238,13 +1210,10 @@ def extrap_exp_3(
         a_guess = 0.1
         b_guess = 0.1
         ab_guess = np.array([a_guess, b_guess])
-        solution = opt.root(
-            ab_zero_eqs_exp_func, ab_guess, args=params, method="lm"
-        )
+        solution = opt.root(ab_zero_eqs_exp_func, ab_guess, args=params, method="lm")
         if not solution.success:
             err_msg = (
-                "ERROR extrap_exp_3: Root finder failed in "
-                + "ab_zero_eqs_exp_func."
+                "ERROR extrap_exp_3: Root finder failed in " + "ab_zero_eqs_exp_func."
             )
             raise ValueError(err_msg)
         a, b = solution.x
@@ -1264,21 +1233,13 @@ def extrap_exp_3(
             y_vals = np.hstack(
                 (
                     np.zeros(len_x_vals - len_y_pos_ind),
-                    np.exp(
-                        a * (x_vals[y_pos_ind] ** 2)
-                        + b * x_vals[y_pos_ind]
-                        + c
-                    ),
+                    np.exp(a * (x_vals[y_pos_ind] ** 2) + b * x_vals[y_pos_ind] + c),
                 )
             )
         else:
             y_vals = np.hstack(
                 (
-                    np.exp(
-                        a * (x_vals[y_pos_ind] ** 2)
-                        + b * x_vals[y_pos_ind]
-                        + c
-                    ),
+                    np.exp(a * (x_vals[y_pos_ind] ** 2) + b * x_vals[y_pos_ind] + c),
                     np.zeros(len_x_vals - len_y_pos_ind),
                 )
             )
@@ -1286,9 +1247,7 @@ def extrap_exp_3(
     return y_vals
 
 
-def extrap_arctan_3(
-    x_vals, con_slope: float, x_con, y_con, x_eps, low: bool = True
-):
+def extrap_arctan_3(x_vals, con_slope: float, x_con, y_con, x_eps, low: bool = True):
     """
     This function fits an arctangent function to extrapolate data that
     monotonically decrease to zero and start with small absolute slope, then
@@ -1331,8 +1290,7 @@ def extrap_arctan_3(
     solution = opt.root(b_zero_eq_arctan_func, b_guess, args=params)
     if not solution.success:
         err_msg = (
-            "ERROR extrap_arctan_3: Root finder failed in "
-            + "b_zero_eq_arctan_func."
+            "ERROR extrap_arctan_3: Root finder failed in " + "b_zero_eq_arctan_func."
         )
         raise ValueError(err_msg)
     b = solution.x
@@ -1340,9 +1298,7 @@ def extrap_arctan_3(
     len_x_vals = len(x_vals)
 
     if low:
-        a = y_con / (
-            (1 / np.pi) * np.arctan((b / 3) * (x_con - x_eps)) + (1 / 2)
-        )
+        a = y_con / ((1 / np.pi) * np.arctan((b / 3) * (x_con - x_eps)) + (1 / 2))
         c = -b * ((2 / 3) * x_con + (1 / 3) * x_eps)
         y_pos_ind = x_vals >= x_eps
         len_y_pos_ind = y_pos_ind.sum()
@@ -1353,9 +1309,7 @@ def extrap_arctan_3(
             )
         )
     else:
-        a = y_con / (
-            (-1 / np.pi) * np.arctan((b / 3) * (x_con - x_eps)) + (1 / 2)
-        )
+        a = y_con / ((-1 / np.pi) * np.arctan((b / 3) * (x_con - x_eps)) + (1 / 2))
         c = -b * ((2 / 3) * x_con + (1 / 3) * x_eps)
         y_pos_ind = x_vals <= x_eps
         len_y_pos_ind = y_pos_ind.sum()
@@ -1378,12 +1332,8 @@ def ab_zero_eqs_exp_func(ab_vals, params):
     a, b = ab_vals
 
     c = np.log(y_con) - a * (x_con**2) - b * x_con
-    error_1 = (2 * a * x_con + b) * np.exp(
-        a * (x_con**2) + b * x_con + c
-    ) - con_slope
-    error_2 = (2 * a * x_eps + b) * np.exp(
-        a * (x_eps**2) + b * x_eps + c
-    ) - eps
+    error_1 = (2 * a * x_con + b) * np.exp(a * (x_con**2) + b * x_con + c) - con_slope
+    error_2 = (2 * a * x_eps + b) * np.exp(a * (x_eps**2) + b * x_eps + c) - eps
 
     error_vec = np.array([error_1, error_2])
 
@@ -1398,17 +1348,13 @@ def b_zero_eq_arctan_func(b, params):
     con_slope, x_con, y_con, x_eps, low = params
 
     if low:
-        a = y_con / (
-            (1 / np.pi) * np.arctan((b / 3) * (x_con - x_eps)) + (1 / 2)
-        )
+        a = y_con / ((1 / np.pi) * np.arctan((b / 3) * (x_con - x_eps)) + (1 / 2))
         a_other = (
             con_slope * np.pi * (1 + ((b / 3) ** 2) * ((x_con - x_eps) ** 2))
         ) / b
         error_val = a_other - a
     else:
-        a = y_con / (
-            (-1 / np.pi) * np.arctan((b / 3) * (x_con - x_eps)) + (1 / 2)
-        )
+        a = y_con / ((-1 / np.pi) * np.arctan((b / 3) * (x_con - x_eps)) + (1 / 2))
         a_other = (
             -con_slope * np.pi * (1 + ((b / 3) ** 2) * ((x_con - x_eps) ** 2))
         ) / b

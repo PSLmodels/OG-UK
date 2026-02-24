@@ -3,7 +3,7 @@
   "g_y_annual": 0.01,
   "S": 80,
   "J": 7,
-  "T": 320,
+  "T": 160,
   "lambdas": [
     0.25,
     0.25,
@@ -771,17 +771,17 @@
   "zeta_K": [
     0.1
   ],
-  "tG1": 80,
-  "tG2": 256,
+  "tG1": 4,
+  "tG2": 20,
   "alpha_T": [
-    0.04
+    0.06
   ],
   "alpha_G": [
     0.209
   ],
-  "rho_G": 0.1,
-  "debt_ratio_ss": 0.8,
-  "initial_debt_ratio": 0.929,
+  "rho_G": 0.6,
+  "debt_ratio_ss": 0.95,
+  "initial_debt_ratio": 0.95,
   "r_gov_scale": [
     1.0
   ],
@@ -790,7 +790,7 @@
   ],
   "cit_rate": [
     [
-      0.25
+      0.27
     ]
   ],
   "c_corp_share_of_assets": 0.55,
@@ -799,12 +799,12 @@
   ],
   "tau_c": [
     [
-      0.1
+      0.19
     ]
   ],
   "delta_tau_annual": [
     [
-      0.18
+      0.05
     ]
   ],
   "h_wealth": [
@@ -814,7 +814,7 @@
     1.0
   ],
   "p_wealth": [
-    0.0
+    0.025
   ],
   "tau_bq": [
     0.08
@@ -2382,7 +2382,7 @@
   "nu": 0.4,
   "maxiter": 250,
   "mindist_SS": 1e-09,
-  "mindist_TPI": 1e-05,
+  "mindist_TPI": 1e-04,
   "initial_guess_r_SS": 0.026,
   "initial_guess_TR_SS": 0.02,
   "initial_guess_factor_SS": 29415,
