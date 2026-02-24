@@ -774,7 +774,7 @@
   "tG1": 80,
   "tG2": 256,
   "alpha_T": [
-    0.15
+    0.04
   ],
   "alpha_G": [
     0.209
@@ -2372,7 +2372,7 @@
   ],
   "replacement_rate_adjust": [
     [
-      1.0
+      0.35
     ]
   ],
   "budget_balance": false,
