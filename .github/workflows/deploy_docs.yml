@@ -1,0 +1,39 @@
+name: Build and Deploy Jupyter Book documentation
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    if: github.repository == 'PSLmodels/OG-UK'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Build Jupyter Book
+        run: |
+          uv run pip install jupyter-book>=0.11.3 sphinxcontrib-bibtex>=2.0.0
+          cd docs
+          uv run jb build ./book
+
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: gh-pages
+          folder: docs/book/_build/html

@@ -15,7 +15,7 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
-from oguk.sources import fetch_boe_series, fetch_ons_timeseries, get_uk_tax_rates
+from oguk.macro_params import fetch_boe_series, fetch_ons_timeseries, get_uk_tax_rates
 
 console = Console()
 

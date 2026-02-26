@@ -177,7 +177,7 @@ def map_to_real_world(
     Returns:
         MacroImpact with £bn levels, changes, and percentage changes
     """
-    from oguk.sources import fetch_ons_timeseries
+    from oguk.macro_params import fetch_ons_timeseries
 
     topic_gdp = "economy/grossdomesticproductgdp"
     topic_psf = "economy/governmentpublicsectorandtaxes/publicsectorfinance"
@@ -903,7 +903,7 @@ def map_transition_to_real_world(
     Returns:
         TransitionMacroImpact with £bn time-series
     """
-    from oguk.sources import fetch_ons_timeseries
+    from oguk.macro_params import fetch_ons_timeseries
 
     topic_gdp = "economy/grossdomesticproductgdp"
     topic_psf = "economy/governmentpublicsectorandtaxes/publicsectorfinance"
