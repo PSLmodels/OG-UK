@@ -23,4 +23,5 @@ jobs:
         with:
           python-version: "3.13"
       - run: uv sync --dev
+      - run: echo "" > un_api_token.txt
       - run: uv run pytest -x -m "not full_run" --tb=short
