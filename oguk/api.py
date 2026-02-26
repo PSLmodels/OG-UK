@@ -647,7 +647,7 @@ def calibrate(
             T=T,
             country_id="826",
             initial_data_year=start_year,
-            final_data_year=start_year + years - 1,
+            final_data_year=start_year + max(years, 2) - 1,
             GraphDiag=False,
         )
 

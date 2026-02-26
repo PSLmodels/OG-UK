@@ -62,8 +62,7 @@ def get_data(
                     "total_labinc": md.labor_income,
                     "total_capinc": md.capital_income,
                     "market_income": md.labor_income + md.capital_income,
-                    "total_tax_liab": md.etr
-                    * (md.labor_income + md.capital_income),
+                    "total_tax_liab": md.etr * (md.labor_income + md.capital_income),
                     "payroll_tax_liab": np.zeros(len(md.age)),
                     "year": np.full(len(md.age), year),
                     "weight": md.weight,
