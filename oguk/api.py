@@ -582,7 +582,7 @@ def calibrate(
     Returns:
         CalibrationResult with tax function and demographic parameters
     """
-    from oguk import demographics
+    from ogcore import demographics
 
     defaults_path = os.path.join(
         os.path.dirname(__file__), "oguk_default_parameters.json"
@@ -641,7 +641,15 @@ def calibrate(
         BW = years
         frac_tax_payroll = np.full(BW, frac_payroll)
 
-        demo = demographics.get_pop_objs(20, S, T, start_year)
+        demo = demographics.get_pop_objs(
+            E=20,
+            S=S,
+            T=T,
+            country_id="826",
+            initial_data_year=start_year,
+            final_data_year=start_year + years - 1,
+            GraphDiag=False,
+        )
 
         return CalibrationResult(
             etr_params=etr_params_S,
@@ -652,7 +660,7 @@ def calibrate(
             g_n_ss=float(demo["g_n_ss"]),
             omega=demo["omega"],
             omega_SS=demo["omega_SS"],
-            rho=np.tile(demo["rho"].reshape(1, -1), (T + S, 1)),
+            rho=demo["rho"],
             g_n=demo["g_n"],
             imm_rates=demo["imm_rates"],
             omega_S_preTP=demo["omega_S_preTP"],

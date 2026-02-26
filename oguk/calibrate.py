@@ -8,7 +8,9 @@ The Calibration class wraps the functional calibrate() API in oguk.api
 and stores results as attributes for downstream use in ogcore.
 """
 
-from oguk import api, demographics
+from ogcore import demographics
+
+from oguk import api
 
 
 class Calibration:
@@ -72,7 +74,13 @@ class Calibration:
 
         # Demographics
         self.demographic_params = demographics.get_pop_objs(
-            p.E, p.S, p.T, p.start_year
+            E=p.E,
+            S=p.S,
+            T=p.T,
+            country_id="826",
+            initial_data_year=p.start_year,
+            final_data_year=p.start_year + 2,
+            GraphDiag=False,
         )
 
     def get_dict(self):
