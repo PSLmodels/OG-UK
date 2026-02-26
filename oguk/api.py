@@ -531,7 +531,14 @@ def _estimate_bracket_tax_functions(
             df_clean = pooled_clean
 
         df_etr = df_clean[
-            ["mtr_labinc", "mtr_capinc", "total_labinc", "total_capinc", "etr", "weight"]
+            [
+                "mtr_labinc",
+                "mtr_capinc",
+                "total_labinc",
+                "total_capinc",
+                "etr",
+                "weight",
+            ]
         ].copy()
 
         etr_params, _, _, _ = txfunc_est(
@@ -790,8 +797,12 @@ def solve_steady_state(
 
     with tempfile.TemporaryDirectory() as tmpdir, _suppress_output():
         p = _build_specs(
-            start_year, policy, tmpdir, tmpdir,
-            max_iter=max_iter, age_specific=age_specific,
+            start_year,
+            policy,
+            tmpdir,
+            tmpdir,
+            max_iter=max_iter,
+            age_specific=age_specific,
         )
         ss = run_SS(p, client=None)
         return _ss_dict_to_result(ss)
@@ -836,8 +847,12 @@ def run_transition_path(
 
         # Baseline
         p_base = _build_specs(
-            start_year, None, base_dir, base_dir,
-            baseline=True, age_specific=age_specific,
+            start_year,
+            None,
+            base_dir,
+            base_dir,
+            baseline=True,
+            age_specific=age_specific,
         )
         runner(p_base, time_path=True, client=client)
 
@@ -853,8 +868,12 @@ def run_transition_path(
             os.makedirs(os.path.join(reform_dir, "TPI"), exist_ok=True)
 
             p_reform = _build_specs(
-                start_year, policy, reform_dir, base_dir,
-                baseline=False, age_specific=age_specific,
+                start_year,
+                policy,
+                reform_dir,
+                base_dir,
+                baseline=False,
+                age_specific=age_specific,
             )
             runner(p_reform, time_path=True, client=client)
 

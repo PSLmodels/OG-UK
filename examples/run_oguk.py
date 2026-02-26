@@ -39,7 +39,9 @@ def run_steady_state(age_specific: str = "pooled"):
 
     print(f"Solving reform steady state (age_specific='{age_specific}')...")
     t0 = time.time()
-    reform = solve_steady_state(start_year=2026, policy=REFORM, age_specific=age_specific)
+    reform = solve_steady_state(
+        start_year=2026, policy=REFORM, age_specific=age_specific
+    )
     print(f"  Done in {time.time() - t0:.1f}s")
 
     impact = map_to_real_world(baseline, reform)
