@@ -30,16 +30,16 @@ REFORM = Policy(
 )
 
 
-def run_steady_state():
+def run_steady_state(age_specific: str = "pooled"):
     """Run baseline and reform steady state, print results."""
-    print("Solving baseline steady state...")
+    print(f"Solving baseline steady state (age_specific='{age_specific}')...")
     t0 = time.time()
-    baseline = solve_steady_state(start_year=2026)
+    baseline = solve_steady_state(start_year=2026, age_specific=age_specific)
     print(f"  Done in {time.time() - t0:.1f}s")
 
-    print("Solving reform steady state...")
+    print(f"Solving reform steady state (age_specific='{age_specific}')...")
     t0 = time.time()
-    reform = solve_steady_state(start_year=2026, policy=REFORM)
+    reform = solve_steady_state(start_year=2026, policy=REFORM, age_specific=age_specific)
     print(f"  Done in {time.time() - t0:.1f}s")
 
     impact = map_to_real_world(baseline, reform)
@@ -126,12 +126,13 @@ def run_tpi():
 
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else "ss"
+    age_specific = sys.argv[2] if len(sys.argv) > 2 else "pooled"
     if mode == "ss":
-        run_steady_state()
+        run_steady_state(age_specific=age_specific)
     elif mode == "tpi":
         run_tpi()
     else:
-        print(f"Usage: {sys.argv[0]} [ss|tpi]")
+        print(f"Usage: {sys.argv[0]} [ss|tpi] [pooled|brackets|each]")
         sys.exit(1)
 
 

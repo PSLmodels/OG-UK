@@ -19,6 +19,20 @@ from pydantic import BaseModel, Field
 if TYPE_CHECKING:
     from policyengine.core import Policy
 
+# Age brackets used when age_specific="brackets".
+# Each tuple is (min_age, max_age, label).
+# Bracket 3 ends at state pension age (66); bracket 4 starts at 67
+# (pension age rising to 67 from 2026-28).
+AGE_BRACKETS: list[tuple[int, int, str]] = [
+    (20, 35, "Young workers"),
+    (36, 50, "Mid-career"),
+    (51, 66, "Late career"),
+    (67, 100, "Post state pension"),
+]
+
+STARTING_AGE = 20
+S_DEFAULT = 80  # ages 20-99
+
 # Suppress all warnings and logging
 warnings.filterwarnings("ignore")
 for name in ["policyengine", "ogcore", "httpx", "httpcore", "huggingface_hub"]:
@@ -476,10 +490,75 @@ def _estimate_tax_functions(
     return etr_params_S, etr_params_S, etr_params_S, avg_income, frac_payroll
 
 
+def _estimate_bracket_tax_functions(
+    data: pd.DataFrame,
+    S: int,
+    age_brackets: list[tuple[int, int, str]],
+) -> tuple[list, list, list, float, float]:
+    """Estimate separate GS tax functions for each age bracket.
+
+    Splits microdata by age group, estimates GS ETR params per bracket,
+    then maps bracket params to individual model ages. Reuses ETR params
+    for MTR (same analytical derivative logic as the pooled estimator).
+
+    Args:
+        data: Pooled microdata DataFrame.
+        S: Number of model age cohorts.
+        age_brackets: List of (min_age, max_age, label) tuples.
+
+    Returns:
+        (etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll)
+    """
+    from ogcore.txfunc import txfunc_est
+
+    numparams = 3  # GS
+    avg_income = float(
+        (data["market_income"] * data["weight"]).sum() / data["weight"].sum()
+    )
+    total_tax = (data["total_tax_liab"] * data["weight"]).sum()
+    payroll_tax = (data["payroll_tax_liab"] * data["weight"]).sum()
+    frac_payroll = float(payroll_tax / total_tax) if total_tax != 0 else 0.0
+
+    output_dir = tempfile.mkdtemp()
+    pooled_clean = _clean_tax_data(data)
+
+    bracket_params = []
+    for min_age, max_age, label in age_brackets:
+        bracket_data = data[(data["age"] >= min_age) & (data["age"] <= max_age)]
+        df_clean = _clean_tax_data(bracket_data)
+
+        if len(df_clean) < 100:
+            df_clean = pooled_clean
+
+        df_etr = df_clean[
+            ["mtr_labinc", "mtr_capinc", "total_labinc", "total_capinc", "etr", "weight"]
+        ].copy()
+
+        etr_params, _, _, _ = txfunc_est(
+            df_etr, 0, 0, "etr", "GS", numparams, output_dir, False, None, True
+        )
+        bracket_params.append(etr_params)
+
+    # Map bracket params to each of the S model ages
+    age_params = []
+    for s in range(S):
+        age = STARTING_AGE + s
+        assigned = bracket_params[-1]  # default: last bracket
+        for i, (min_age, max_age, _) in enumerate(age_brackets):
+            if min_age <= age <= max_age:
+                assigned = bracket_params[i]
+                break
+        age_params.append(assigned)
+
+    etr_params_S = [age_params]  # [1 budget year][S ages]
+    return etr_params_S, etr_params_S, etr_params_S, avg_income, frac_payroll
+
+
 def calibrate(
     start_year: int = 2026,
     years: int = 3,
     policy: Policy | None = None,
+    age_specific: str = "pooled",
 ) -> CalibrationResult:
     """
     Run calibration to estimate tax functions and demographics.
@@ -488,6 +567,10 @@ def calibrate(
         start_year: First year
         years: Number of years in budget window
         policy: Optional PolicyEngine Policy object for reform scenario
+        age_specific: Tax function estimation mode:
+            "pooled"   — one function for all ages (default)
+            "brackets" — separate function per age group (4 groups)
+            "each"     — separate function per individual age (80)
 
     Returns:
         CalibrationResult with tax function and demographic parameters
@@ -528,9 +611,26 @@ def calibrate(
 
         all_data = pd.concat(frames, ignore_index=True)
 
-        etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll = (
-            _estimate_tax_functions(all_data, S)
-        )
+        if age_specific == "pooled":
+            etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll = (
+                _estimate_tax_functions(all_data, S)
+            )
+        elif age_specific == "brackets":
+            etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll = (
+                _estimate_bracket_tax_functions(all_data, S, AGE_BRACKETS)
+            )
+        elif age_specific == "each":
+            per_age_brackets = [
+                (STARTING_AGE + s, STARTING_AGE + s, f"Age {STARTING_AGE + s}")
+                for s in range(S)
+            ]
+            etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll = (
+                _estimate_bracket_tax_functions(all_data, S, per_age_brackets)
+            )
+        else:
+            raise ValueError(
+                f"age_specific must be 'pooled', 'brackets', or 'each', got '{age_specific}'"
+            )
         BW = years
         frac_tax_payroll = np.full(BW, frac_payroll)
 
@@ -559,6 +659,7 @@ def _build_specs(
     baseline_dir: str,
     baseline: bool = True,
     max_iter: int = 250,
+    age_specific: str = "pooled",
 ):
     """Build a calibrated Specifications object (internal)."""
     from ogcore.parameters import Specifications
@@ -572,7 +673,7 @@ def _build_specs(
     # Run calibration with S/T from defaults before constructing Specs
     S = defaults["S"]
     T = defaults["T"]
-    cal = calibrate(start_year=start_year, policy=policy)
+    cal = calibrate(start_year=start_year, policy=policy, age_specific=age_specific)
 
     # Strip calibration-provided keys (we set them from cal below)
     for key in [
@@ -601,7 +702,7 @@ def _build_specs(
     defaults.update(
         {
             "tax_func_type": "GS",
-            "age_specific": False,
+            "age_specific": age_specific != "pooled",
             "start_year": start_year,
             "omega": cal.omega.tolist(),
             "omega_SS": cal.omega_SS.tolist(),
@@ -669,6 +770,7 @@ def solve_steady_state(
     start_year: int = 2026,
     policy: Policy | None = None,
     max_iter: int = 250,
+    age_specific: str = "pooled",
 ) -> SteadyStateResult:
     """Solve for steady state equilibrium.
 
@@ -676,6 +778,10 @@ def solve_steady_state(
         start_year: First year of simulation
         policy: Optional PolicyEngine Policy object for reform scenario
         max_iter: Maximum iterations for solver
+        age_specific: Tax function estimation mode:
+            "pooled"   — one function for all ages (default)
+            "brackets" — separate function per age group (4 groups)
+            "each"     — separate function per individual age (80)
 
     Returns:
         SteadyStateResult with equilibrium values
@@ -683,7 +789,10 @@ def solve_steady_state(
     from ogcore.SS import run_SS
 
     with tempfile.TemporaryDirectory() as tmpdir, _suppress_output():
-        p = _build_specs(start_year, policy, tmpdir, tmpdir, max_iter=max_iter)
+        p = _build_specs(
+            start_year, policy, tmpdir, tmpdir,
+            max_iter=max_iter, age_specific=age_specific,
+        )
         ss = run_SS(p, client=None)
         return _ss_dict_to_result(ss)
 
@@ -692,6 +801,7 @@ def run_transition_path(
     start_year: int = 2026,
     policy: Policy | None = None,
     client=None,
+    age_specific: str = "pooled",
 ) -> tuple[TransitionPathResult, TransitionPathResult | None]:
     """Run baseline (and optionally reform) transition path.
 
@@ -703,6 +813,10 @@ def run_transition_path(
         start_year: First year of simulation
         policy: Optional PolicyEngine Policy for reform scenario
         client: Optional Dask distributed client for parallelisation
+        age_specific: Tax function estimation mode:
+            "pooled"   — one function for all ages (default)
+            "brackets" — separate function per age group (4 groups)
+            "each"     — separate function per individual age (80)
 
     Returns:
         (baseline_tp, reform_tp) — reform_tp is None if no policy
@@ -721,7 +835,10 @@ def run_transition_path(
         os.makedirs(os.path.join(base_dir, "TPI"), exist_ok=True)
 
         # Baseline
-        p_base = _build_specs(start_year, None, base_dir, base_dir, baseline=True)
+        p_base = _build_specs(
+            start_year, None, base_dir, base_dir,
+            baseline=True, age_specific=age_specific,
+        )
         runner(p_base, time_path=True, client=client)
 
         with open(os.path.join(base_dir, "TPI", "TPI_vars.pkl"), "rb") as f:
@@ -736,7 +853,8 @@ def run_transition_path(
             os.makedirs(os.path.join(reform_dir, "TPI"), exist_ok=True)
 
             p_reform = _build_specs(
-                start_year, policy, reform_dir, base_dir, baseline=False
+                start_year, policy, reform_dir, base_dir,
+                baseline=False, age_specific=age_specific,
             )
             runner(p_reform, time_path=True, client=client)
 
