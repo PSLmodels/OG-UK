@@ -846,7 +846,7 @@ def run_transition_path(
         (baseline_tp, reform_tp) — reform_tp is None if no policy
     """
     from dask.distributed import Client
-    from ogcore import SS, TPI, utils
+    from ogcore import SS, TPI
 
     own_client = False
     if client is None:
