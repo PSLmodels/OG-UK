@@ -89,10 +89,18 @@ def run_steady_state(age_specific: str = "pooled"):
 
 def run_tpi():
     """Run baseline and reform transition paths, print results."""
+    from dask.distributed import Client
+
     print("Running baseline + reform transition paths...")
     print("(This solves SS + TPI for both scenarios — may take a while.)")
+    client = Client(n_workers=2, threads_per_worker=1, memory_limit="2GB")
     t0 = time.time()
-    base_tp, reform_tp = run_transition_path(start_year=2026, policy=REFORM)
+    try:
+        base_tp, reform_tp = run_transition_path(
+            start_year=2026, policy=REFORM, client=client
+        )
+    finally:
+        client.close()
     print(f"Done in {time.time() - t0:.1f}s")
 
     impact = map_transition_to_real_world(base_tp, reform_tp)
