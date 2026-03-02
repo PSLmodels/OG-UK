@@ -3,44 +3,37 @@ on:
   push:
     branches:
       - main
+
 jobs:
   build-and-deploy:
     if: github.repository == 'PSLmodels/OG-UK'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@master
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Setup Miniconda
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          activate-environment: oguk-dev
-          environment-file: environment.yml
-          python-version: 3.9
-          auto-activate-base: false
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: "3.11"
 
-      - name: Build  # Build Jupyter Book
-        shell: bash -l {0}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Build Jupyter Book
         run: |
-          pip install -e .
-          pip install jupyter-book>=0.11.3
-          pip install sphinxcontrib-bibtex>=2.0.0
-          pip install policyengine-uk
+          pip install jupyter-book>=0.11.3 sphinxcontrib-bibtex>=2.0.0
           cd docs
-          jb build ./book
+          python -m jupyter_book build ./book
 
       - name: Deploy
-        uses: JamesIves/github-pages-deploy-action@releases/v3
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: gh-pages # The branch the action should deploy to.
-          FOLDER: docs/book/_build/html # The folder the action should deploy.
-
-      - name: Publish a git tag
-        run: ".github/publish-git-tag.sh"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: gh-pages
+          folder: docs/book/_build/html

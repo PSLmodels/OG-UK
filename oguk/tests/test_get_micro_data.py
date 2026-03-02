@@ -1,82 +1,55 @@
-import multiprocessing
-from distributed import Client, LocalCluster
-import pytest
-import os
-from oguk import get_micro_data
-from oguk.get_micro_data import DATA_LAST_YEAR
-from policyengine_core.reforms import Reform
+"""Tests for OG-UK calibration API."""
+
+from datetime import datetime
+
+from policyengine.core import ParameterValue, Policy
+from policyengine.tax_benefit_models.uk import uk_latest
+
+from oguk import CalibrationResult, calibrate
 
 
-NUM_WORKERS = min(multiprocessing.cpu_count(), 7)
-# get path to puf if puf.csv in ogusa/ directory
-CUR_PATH = os.path.abspath(os.path.dirname(__file__))
-PUF_PATH = os.path.join(CUR_PATH, "..", "puf.csv")
+def test_baseline_calibration():
+    """Test baseline calibration produces valid results."""
+    result = calibrate(start_year=2026, years=1)
+
+    assert isinstance(result, CalibrationResult)
+    assert result.mean_income > 0
+    assert len(result.etr_params) == 1
+    assert len(result.omega_SS) > 0
 
 
-@pytest.fixture(scope="module")
-def dask_client():
-    cluster = LocalCluster(n_workers=NUM_WORKERS, threads_per_worker=2)
-    client = Client(cluster)
-    yield client
-    # teardown
-    client.close()
-    cluster.close()
-
-
-def test_frs():
-    """
-    Check that setting `data` to 'frs' uses frs data
-    """
-    baseline = False
-    start_year = 2022
-
-    # create a parametric reform
-    def lower_pa(parameters):
-        parameters.gov.hmrc.income_tax.allowances.personal_allowance.amount.update(
-            period="year:2022:10", value=10000
-        )
-        return parameters
-
-    class lower_personal_tax_allowance(Reform):
-        def apply(self):
-            self.modify_parameters(lower_pa)
-
-    reform = lower_personal_tax_allowance
-
-    calc_out = get_micro_data.get_calculator_output(
-        baseline, start_year, reform=reform, data="frs"
+def test_reform_calibration():
+    """Test calibration with a policy reform."""
+    pa_param = uk_latest.get_parameter(
+        "gov.hmrc.income_tax.allowances.personal_allowance.amount"
     )
-    # check some trivial variable
-    assert calc_out["age"].sum() > 0
-
-
-def test_get_calculator_exception():
-    with pytest.raises(Exception):
-        assert get_micro_data.get_calculator_output(
-            baseline=False, year=DATA_LAST_YEAR + 1, reform=None, data=None
-        )
-
-
-def test_household_mtr_calculation():
-    """Test that the household MTR function works as expected"""
-    mtr_x = get_micro_data.get_household_mtrs(
-        None,
-        "employment_income",
-        2022,
-        dataset=get_micro_data.dataset,
-        dataset_year=2022,
+    reform = Policy(
+        name="Lower PA",
+        parameter_values=[
+            ParameterValue(
+                parameter=pa_param,
+                value=10000,
+                start_date=datetime(2026, 1, 1),
+            )
+        ],
     )
-    assert mtr_x.isna().sum() == 0
-    assert mtr_x.min() >= 0
-    assert mtr_x.max() <= 1
 
-    mtr_y = get_micro_data.get_household_mtrs(
-        None,
-        "savings_interest_income",
-        2022,
-        dataset=get_micro_data.dataset,
-        dataset_year=2022,
-    )
-    assert mtr_y.isna().sum() == 0
-    assert mtr_y.min() >= 0
-    assert mtr_y.max() <= 1
+    result = calibrate(start_year=2026, years=1, policy=reform)
+
+    assert isinstance(result, CalibrationResult)
+    assert result.mean_income > 0
+
+
+def test_demographic_outputs():
+    """Test demographic parameters are valid."""
+    result = calibrate(start_year=2026, years=1)
+
+    # Population growth should be reasonable
+    assert -0.05 < result.g_n_ss < 0.05
+
+    # Mortality rates should be probabilities
+    assert result.rho.min() >= 0
+    assert result.rho.max() <= 1
+
+    # Population shares should sum to 1
+    assert abs(result.omega_SS.sum() - 1.0) < 0.01

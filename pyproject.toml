@@ -1,0 +1,73 @@
+[project]
+name = "oguk"
+version = "0.3.0"
+description = "United Kingdom calibration for OG-Core overlapping generations model"
+readme = "README.md"
+license = "CC0-1.0"
+requires-python = ">=3.11"
+authors = [
+    { name = "Richard W. Evans" },
+    { name = "Jason DeBacker" },
+]
+keywords = ["economics", "fiscal policy", "tax", "overlapping generations", "UK"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "pandas>=2.0",
+    "matplotlib>=3.7",
+    "pydantic>=2.0",
+    "ogcore>=0.15",
+    "policyengine>=0.1",
+    "policyengine-uk>=2.0",
+    "requests>=2.31",
+    "rich>=13.0",
+    "openpyxl>=3.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.1",
+    "mypy>=1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/PSLmodels/OG-UK"
+Documentation = "https://pslmodels.github.io/OG-UK/"
+Repository = "https://github.com/PSLmodels/OG-UK"
+Issues = "https://github.com/PSLmodels/OG-UK/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["oguk"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["oguk/tests"]

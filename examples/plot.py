@@ -1,9 +1,10 @@
-from ogcore.utils import safe_read_pickle
-from ogcore import txfunc
+from argparse import ArgumentParser
+
 import numpy as np
 import pandas as pd
-from argparse import ArgumentParser
 import plotly.express as px
+from ogcore import txfunc
+from ogcore.utils import safe_read_pickle
 
 
 def main(
@@ -19,7 +20,7 @@ def main(
         tax_funcs_reform = safe_read_pickle(
             "./examples/OG-UK-Example/OUTPUT_REFORM/TxFuncEst_policy.pkl"
         )
-    except:
+    except Exception:
         tax_funcs_reform = tax_funcs_base
 
     # read in micro data from pickle
@@ -42,7 +43,7 @@ def main(
             max_inc_amt=100000,
             data_list=[micro_data],
             labels=["Baseline", "Reform"],
-            title=f"Rate type: GS, over labour income",
+            title="Rate type: GS, over labour income",
             path=None,
         )
 
@@ -118,17 +119,17 @@ def get_tax_fn(
     inc_fix = other_inc_val
 
     if over_labinc:
-        key1 = "total_labinc"
+        _key1 = "total_labinc"
         X = inc_sup
         Y = inc_fix
     else:
-        key1 = "total_capinc"
+        _key1 = "total_capinc"
         X = inc_fix
         Y = inc_sup
 
     # get tax rates for each point in the income support and plot
     for i, tax_params in enumerate(tax_param_list):
-        rates = txfunc.get_tax_rates(
+        txfunc.get_tax_rates(
             tax_params[rate_key][s, t, :],
             X,
             Y,

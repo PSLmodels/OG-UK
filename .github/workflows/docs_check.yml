@@ -1,32 +1,29 @@
 name: Check that docs build
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@master
-        with:
-          persist-credentials: false
+        uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: "3.11"
 
-      - name: Setup Miniconda
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          activate-environment: oguk-dev
-          environment-file: environment.yml
-          python-version: 3.9
-          auto-activate-base: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
 
-      - name: Build # Build Jupyter Book
-        shell: bash -l {0}
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Build Jupyter Book
         run: |
-          make install
-          pip install jupyter-book>=0.11.3
-          pip install sphinxcontrib-bibtex>=2.0.0
+          pip install jupyter-book>=0.11.3 sphinxcontrib-bibtex>=2.0.0
           cd docs
-          jb build ./book
+          python -m jupyter_book build ./book

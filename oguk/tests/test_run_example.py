@@ -4,12 +4,13 @@ work by making sure that it does not break (is still running) after
 5 minutes (300 seconds).
 """
 
+import importlib.util
 import multiprocessing
-import time
 import os
 import sys
-import importlib.util
+import time
 from pathlib import Path
+
 import pytest
 
 
