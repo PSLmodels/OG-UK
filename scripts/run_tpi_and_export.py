@@ -282,7 +282,9 @@ def main() -> None:
     output_path = Path(__file__).parent / "tpi_results.xlsx"
 
     print("Launching Dask client...")
-    client = Client(n_workers=2, threads_per_worker=1, memory_limit="2GB")
+    import os
+    n_workers = os.cpu_count()
+    client = Client(n_workers=n_workers, threads_per_worker=1)
 
     try:
         print("Running baseline + reform transition paths (SS + TPI for both)...")
