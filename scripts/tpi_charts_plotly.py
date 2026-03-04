@@ -23,6 +23,10 @@ OBR_FORECAST_END = "2030-31"   # last fiscal year in OBR Nov 2025 EFO
 OUTTURN_LAST_FY  = "2023-24"   # last fiscal year with full ONS/HMRC outturn
                                 # (2024-25 is provisional/outturn in OBR)
 
+def _fy_to_int(fy: str) -> int:
+    """Convert fiscal year label e.g. '2027-28' to start year integer 2027."""
+    return int(fy[:4])
+
 OBR_DATA = Path("/Users/nikhil.woodruff/10ds/obr-macroeconomic-model/data")
 
 BLUE   = "#1a3a6e"
@@ -198,19 +202,26 @@ def _ons_backfill() -> pd.DataFrame:
     Fetch ONS calendar-year national accounts and convert to fiscal years.
     Used to backfill pre-2008-09 history where OBR tables don't reach.
     Returns DataFrame with columns: gdp, consumption, investment (all £bn).
+    Consumption = GDP - investment - gov_consumption (residual approximation).
     """
     gdp_topic = "economy/grossdomesticproductgdp"
+    import time as _time
     try:
-        gdp_m   = _fetch_ons_cal("YBHA", "ukea", gdp_topic)   # nominal GDP £m
-        inv_m   = _fetch_ons_cal("NPQS", "ukea", gdp_topic)   # gross fixed capital formation £m
-        cons_m  = _fetch_ons_cal("ABJQ", "ukea", gdp_topic)   # household cons £m
+        gdp_m  = _fetch_ons_cal("YBHA", "ukea", gdp_topic)   # nominal GDP £m
+        _time.sleep(1)
+        inv_m  = _fetch_ons_cal("NPQS", "ukea", gdp_topic)   # gross fixed capital formation £m
+        _time.sleep(1)
+        gov_m  = _fetch_ons_cal("NMRP", "ukea", gdp_topic)   # gov final consumption £m
     except Exception as exc:
         print(f"  ONS backfill fetch failed ({exc}), skipping pre-2008 history")
         return pd.DataFrame(columns=["gdp", "consumption", "investment"])
 
     gdp_fy  = _fy_from_calendar(gdp_m  / 1000)
     inv_fy  = _fy_from_calendar(inv_m  / 1000)
-    cons_fy = _fy_from_calendar(cons_m / 1000)
+    gov_fy  = _fy_from_calendar(gov_m  / 1000)
+    # Consumption as residual (excludes net exports — close enough for chart context)
+    common  = gdp_fy.index.intersection(inv_fy.index).intersection(gov_fy.index)
+    cons_fy = gdp_fy.loc[common] - inv_fy.loc[common] - gov_fy.loc[common]
 
     bl = pd.DataFrame({"gdp": gdp_fy, "consumption": cons_fy, "investment": inv_fy})
     return bl
@@ -274,13 +285,14 @@ def load_tpi_pct_changes() -> pd.DataFrame:
         "Debt (£bn)":        "debt",
     }
 
+    fy_labels = [f"{int(y)}-{str(int(y)+1)[2:]}" for y in base["Year"]]
     pct = {}
     for tc, key in cols.items():
-        pct[key] = (ref[tc] - base[tc]) / base[tc] * 100
+        s = (ref[tc] - base[tc]) / base[tc] * 100
+        s.index = fy_labels
+        pct[key] = s
 
-    # Convert model year integers to fiscal year labels
-    fy_labels = [f"{int(y)}-{str(int(y)+1)[2:]}" for y in base["Year"]]
-    return pd.DataFrame(pct, index=fy_labels)
+    return pd.DataFrame(pct)
 
 
 # ── Chart ─────────────────────────────────────────────────────────────────────
@@ -295,6 +307,12 @@ def fig_main(baseline: pd.DataFrame, pct: pd.DataFrame) -> go.Figure:
         ("GDP (£bn)",              "gdp",         BLUE),
     ]
 
+    # Use integer start-year as x (numeric axis — no categorical axis bugs)
+    baseline = baseline.copy()
+    baseline.index = [_fy_to_int(fy) for fy in baseline.index]
+    pct = pct.copy()
+    pct.index = [_fy_to_int(fy) for fy in pct.index]
+
     gdp = baseline["gdp"].dropna()
 
     fig = make_subplots(
@@ -305,9 +323,6 @@ def fig_main(baseline: pd.DataFrame, pct: pd.DataFrame) -> go.Figure:
     positions = [(1,1),(1,2),(1,3),(2,1),(2,2),(2,3)]
     shown_base = shown_ref = False
 
-    all_fy = sorted(set(baseline.index) | set(pct.index))
-    all_fy = [fy for fy in all_fy if HIST_START_FY <= fy <= OBR_FORECAST_END]
-
     for (label, key, color), (row, col) in zip(variables, positions):
         s = baseline[key].dropna()
         as_pct_gdp = key != "gdp"
@@ -315,34 +330,29 @@ def fig_main(baseline: pd.DataFrame, pct: pd.DataFrame) -> go.Figure:
             common = s.index.intersection(gdp.index)
             s = s.loc[common] / gdp.loc[common] * 100
 
-        # Single solid baseline
         fig.add_trace(go.Scatter(
             x=s.index.tolist(), y=s.tolist(),
             mode="lines", line=dict(color=color, width=2.5),
             name="OBR outturn / forecast" if not shown_base else None,
             showlegend=not shown_base, legendgroup="base",
             hovertemplate=(
-                f"%{{x}}: %{{y:.1f}}%<extra>Baseline</extra>"
+                "%{x}: %{y:.1f}%<extra>Baseline</extra>"
                 if as_pct_gdp else
-                f"%{{x}}: £%{{y:,.0f}}bn<extra>Baseline</extra>"
+                "%{x}: £%{y:,.0f}bn<extra>Baseline</extra>"
             ),
         ), row=row, col=col)
         shown_base = True
 
-        # Reform — dashed, only over OBR forecast window from reform FY
+        # Reform line — dashed, from reform FY onwards
         if key in pct.columns:
-            reform_fys = [
-                fy for fy in s.index
-                if fy in pct.index and REFORM_FY <= fy <= OBR_FORECAST_END
-            ]
-            if reform_fys:
-                ref_s = s.loc[reform_fys] * (1 + pct.loc[reform_fys, key] / 100)
-                # Anchor one FY before reform
-                fy_list = sorted(s.index.tolist())
-                anchor_idx = fy_list.index(REFORM_FY) - 1
-                if anchor_idx >= 0:
-                    anchor_fy = fy_list[anchor_idx]
-                    ref_s = pd.concat([s[[anchor_fy]], ref_s]).sort_index()
+            reform_start = _fy_to_int(REFORM_FY)
+            reform_xs = [x for x in s.index if x in pct.index and x >= reform_start]
+            if reform_xs:
+                ref_s = s.loc[reform_xs] * (1 + pct.loc[reform_xs, key] / 100)
+                # Anchor at year before reform so line connects
+                anchor = reform_start - 1
+                if anchor in s.index:
+                    ref_s = pd.concat([s[[anchor]], ref_s]).sort_index()
 
                 fig.add_trace(go.Scatter(
                     x=ref_s.index.tolist(), y=ref_s.tolist(),
@@ -357,12 +367,11 @@ def fig_main(baseline: pd.DataFrame, pct: pd.DataFrame) -> go.Figure:
                 ), row=row, col=col)
                 shown_ref = True
 
-        # Outturn / forecast boundary
-        fig.add_vline(x=OUTTURN_LAST_FY, line_width=1, line_dash="dot",
-                      line_color=GREY, row=row, col=col)
-        # Reform start
-        fig.add_vline(x=REFORM_FY, line_width=1.2, line_dash="dash",
-                      line_color=GOLD, row=row, col=col)
+        # Vertical reference lines (numeric x — works cleanly)
+        fig.add_vline(x=_fy_to_int(OUTTURN_LAST_FY), line_width=1,
+                      line_dash="dot", line_color=GREY, row=row, col=col)
+        fig.add_vline(x=_fy_to_int(REFORM_FY), line_width=1.2,
+                      line_dash="dash", line_color=GOLD, row=row, col=col)
 
     fig.update_layout(
         font=dict(family="Inter, sans-serif", size=12),
@@ -383,10 +392,14 @@ def fig_main(baseline: pd.DataFrame, pct: pd.DataFrame) -> go.Figure:
         ),
         height=780,
     )
+    # Format x ticks as fiscal year labels
+    all_years = sorted(baseline.index.tolist())
     fig.update_xaxes(
         showgrid=True, gridcolor="#ececec", zeroline=False,
         tickangle=45, tickfont=dict(size=10),
-        range=[HIST_START_FY, OBR_FORECAST_END],
+        tickmode="array",
+        tickvals=all_years,
+        ticktext=[f"{y}-{str(y+1)[2:]}" for y in all_years],
     )
     for i, (_, key, _) in enumerate(variables):
         r, c = positions[i]
