@@ -82,6 +82,7 @@ def fetch_historical_actuals() -> pd.DataFrame:
     years = range(HIST_START, HIST_END + 1)
     rows = []
     for yr in years:
+        fy = f"{yr}-{str(yr+1)[2:]}"
         gdp = gdp_m.get(yr, float("nan")) / 1000
         inv = inv_m.get(yr, float("nan")) / 1000
         gov = gov_m.get(yr, float("nan")) / 1000
@@ -92,7 +93,7 @@ def fetch_historical_actuals() -> pd.DataFrame:
         ) else float("nan")
         tax = _OBR_TAX_REVENUE.get(yr, float("nan"))
         rows.append({
-            "Year": yr,
+            "Fiscal year": fy,
             "GDP (£bn)": gdp,
             "Consumption (£bn)": cons,
             "Investment (£bn)": inv,
@@ -152,12 +153,11 @@ def _format_sheet(ws, title: str, subtitle: str, header_row: int = 3) -> None:
 
 def _build_transition_df(impact) -> pd.DataFrame:
     """Build a wide DataFrame from a TransitionMacroImpact."""
-    years = impact.years.astype(int)
     rows = []
-    for i, yr in enumerate(years):
+    for i, fy in enumerate(impact.years):
         rows.append(
             {
-                "Year": int(yr),
+                "Fiscal year": str(fy),
                 "GDP (£bn)": float(impact.gdp[i]),
                 "Consumption (£bn)": float(impact.consumption[i]),
                 "Investment (£bn)": float(impact.investment[i]),
@@ -171,12 +171,11 @@ def _build_transition_df(impact) -> pd.DataFrame:
 
 def _build_change_df(impact) -> pd.DataFrame:
     """Build a wide DataFrame of £bn changes from a TransitionMacroImpact."""
-    years = impact.years.astype(int)
     rows = []
-    for i, yr in enumerate(years):
+    for i, fy in enumerate(impact.years):
         rows.append(
             {
-                "Year": int(yr),
+                "Fiscal year": str(fy),
                 "GDP change (£bn)": float(impact.gdp_change[i]),
                 "Consumption change (£bn)": float(impact.consumption_change[i]),
                 "Investment change (£bn)": float(impact.investment_change[i]),

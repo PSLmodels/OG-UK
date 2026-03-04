@@ -1012,8 +1012,13 @@ def map_transition_to_real_world(
     tax_offset = tax_bn - base_tax[0]
     debt_offset = debt_bn - base_debt[0]
 
+    # Convert model integer years to fiscal year labels (2026 → "2026-27")
+    fy_labels = np.array(
+        [f"{int(y)}-{str(int(y)+1)[2:]}" for y in reform.years]
+    )
+
     return TransitionMacroImpact(
-        years=reform.years,
+        years=fy_labels,
         gdp=np.round(base_gdp + dy, 1),
         consumption=np.round(base_cons + dc, 1),
         investment=np.round(base_inv + di, 1),
