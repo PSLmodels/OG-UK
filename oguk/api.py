@@ -775,10 +775,6 @@ def _build_specs(
     # RC error at that single period. All other periods are well within
     # 1e-4. Setting RC_TPI=0.2 allows TPI to complete.
     p.RC_TPI = 0.2
-    # df-sane is derivative-free and typically faster than hybr for the
-    # household FOC and SS root-finds; fall back to hybr if it diverges.
-    p.FOC_root_method = "df-sane"
-    p.SS_root_method = "df-sane"
     return p
 
 
