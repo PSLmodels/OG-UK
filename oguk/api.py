@@ -618,28 +618,54 @@ def calibrate(
 
         all_data = pd.concat(frames, ignore_index=True)
 
-        if age_specific == "pooled":
-            etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll = (
-                _estimate_tax_functions(all_data, S)
-            )
-        elif age_specific == "brackets":
-            etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll = (
-                _estimate_bracket_tax_functions(all_data, S, AGE_BRACKETS)
-            )
-        elif age_specific == "each":
-            per_age_brackets = [
-                (STARTING_AGE + s, STARTING_AGE + s, f"Age {STARTING_AGE + s}")
-                for s in range(S)
-            ]
-            etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll = (
-                _estimate_bracket_tax_functions(all_data, S, per_age_brackets)
-            )
-        else:
-            raise ValueError(
-                f"age_specific must be 'pooled', 'brackets', or 'each', got '{age_specific}'"
-            )
+        # Estimate tax functions separately for each budget-window year so
+        # that OG-Core receives BW distinct parameter sets (one per year)
+        # rather than a single pooled set replicated across all periods.
+        etr_by_year, mtrx_by_year, mtry_by_year = [], [], []
+        frac_payroll_by_year = []
+        avg_incomes = []
+
+        for year in range(start_year, start_year + years):
+            year_data = all_data[all_data["year"] == year]
+            # Fall back to full pooled data if a single year has too few obs
+            if len(year_data) < 200:
+                year_data = all_data
+
+            if age_specific == "pooled":
+                e, mx, my, avg_inc, fp = _estimate_tax_functions(year_data, S)
+            elif age_specific == "brackets":
+                e, mx, my, avg_inc, fp = _estimate_bracket_tax_functions(
+                    year_data, S, AGE_BRACKETS
+                )
+            elif age_specific == "each":
+                per_age_brackets = [
+                    (STARTING_AGE + s, STARTING_AGE + s, f"Age {STARTING_AGE + s}")
+                    for s in range(S)
+                ]
+                e, mx, my, avg_inc, fp = _estimate_bracket_tax_functions(
+                    year_data, S, per_age_brackets
+                )
+            else:
+                raise ValueError(
+                    f"age_specific must be 'pooled', 'brackets', or 'each', "
+                    f"got '{age_specific}'"
+                )
+            # Each estimator returns a list of length 1; unwrap to get [S] entry
+            etr_by_year.append(e[0])
+            mtrx_by_year.append(mx[0])
+            mtry_by_year.append(my[0])
+            avg_incomes.append(avg_inc)
+            frac_payroll_by_year.append(fp)
+
+        # BW entries, each of shape [S]
+        etr_params_S = etr_by_year
+        mtrx_params_S = mtrx_by_year
+        mtry_params_S = mtry_by_year
+        avg_income = float(np.mean(avg_incomes))
+        frac_payroll = float(np.mean(frac_payroll_by_year))
+
         BW = years
-        frac_tax_payroll = np.full(BW, frac_payroll)
+        frac_tax_payroll = np.array(frac_payroll_by_year)
 
         demo = demographics.get_pop_objs(
             E=20,
@@ -955,8 +981,13 @@ def map_transition_to_real_world(
     tax_bn = 859.0
     debt_bn = gdp_bn * debt_pct / 100
 
-    # Per-period scale factor anchored on GDP
-    scale = gdp_bn / baseline.Y
+    # Single scale factor anchored at period 0: £bn per model unit.
+    # Using a per-period scale (gdp_bn / baseline.Y[t]) would cancel out all
+    # growth in the baseline levels, leaving them flat at gdp_bn every period.
+    scale = gdp_bn / baseline.Y[0]
+
+    def _level(base_arr):
+        return base_arr * scale
 
     def _change(base_arr, reform_arr):
         return (reform_arr - base_arr) * scale
@@ -968,14 +999,27 @@ def map_transition_to_real_world(
     drev = _change(baseline.tax_revenue, reform.tax_revenue)
     dd = _change(baseline.debt, reform.debt)
 
+    # Reform levels = baseline levels + change
+    base_gdp = _level(baseline.Y)
+    base_cons = _level(baseline.C)
+    base_inv = _level(baseline.I)
+    base_gov = _level(baseline.G)
+    base_tax = _level(baseline.tax_revenue)
+    base_debt = _level(baseline.debt)
+
+    # Anchor tax revenue and debt to OBR actuals at period 0 by applying
+    # an additive offset so model path starts at the right level.
+    tax_offset = tax_bn - base_tax[0]
+    debt_offset = debt_bn - base_debt[0]
+
     return TransitionMacroImpact(
         years=reform.years,
-        gdp=np.round(gdp_bn + dy, 1),
-        consumption=np.round(cons_bn + dc, 1),
-        investment=np.round(inv_bn + di, 1),
-        government=np.round(gov_bn + dg, 1),
-        tax_revenue=np.round(tax_bn + drev, 1),
-        debt=np.round(debt_bn + dd, 1),
+        gdp=np.round(base_gdp + dy, 1),
+        consumption=np.round(base_cons + dc, 1),
+        investment=np.round(base_inv + di, 1),
+        government=np.round(base_gov + dg, 1),
+        tax_revenue=np.round(base_tax + tax_offset + drev, 1),
+        debt=np.round(base_debt + debt_offset + dd, 1),
         gdp_change=np.round(dy, 1),
         consumption_change=np.round(dc, 1),
         investment_change=np.round(di, 1),
