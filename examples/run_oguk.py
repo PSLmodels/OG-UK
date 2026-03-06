@@ -123,7 +123,7 @@ def run_tpi():
 
     for i in indices:
         print(
-            f"{int(impact.years[i]):<8}"
+            f"{str(impact.years[i]):<8}"
             f" {impact.gdp_change[i]:>+7.1f}"
             f" {impact.consumption_change[i]:>+7.1f}"
             f" {impact.investment_change[i]:>+7.1f}"
