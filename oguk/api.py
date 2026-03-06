@@ -307,10 +307,13 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
     sav_inc = person.get("savings_interest_income", np.zeros(length)).values
     cap_inc = div_inc + pen_inc + prop_inc + sav_inc
 
-    baseline_net = (
-        person["total_income"].values
-        - person.get("income_tax", np.zeros(length)).values
-    )
+    def _hbai_net_per_person(microsim):
+        """Return hbai_household_net_income broadcast to person level."""
+        return microsim.output_dataset.data.map_to_entity(
+            "household", "person", columns=["hbai_household_net_income"], how="project"
+        )["hbai_household_net_income"].values
+
+    baseline_net = _hbai_net_per_person(sim)
 
     # Build perturbation policies.  PolicyEngine silently drops parameter_values
     # when a simulation_modifier is present, so we must apply any reform
@@ -349,12 +352,7 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
         dataset=dataset, tax_benefit_model_version=uk_latest, policy=labor_pol
     )
     labor_sim.ensure()
-    labor_net = (
-        labor_sim.output_dataset.data.person["total_income"].values
-        - labor_sim.output_dataset.data.person.get(
-            "income_tax", np.zeros(length)
-        ).values
-    )
+    labor_net = _hbai_net_per_person(labor_sim)
     mtr_labor = np.clip(1 - (labor_net - baseline_net), 0, 1)
 
     # Capital MTR: perturb dividend income by £1
@@ -370,10 +368,7 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
         dataset=dataset, tax_benefit_model_version=uk_latest, policy=cap_pol
     )
     cap_sim.ensure()
-    cap_net = (
-        cap_sim.output_dataset.data.person["total_income"].values
-        - cap_sim.output_dataset.data.person.get("income_tax", np.zeros(length)).values
-    )
+    cap_net = _hbai_net_per_person(cap_sim)
     mtr_capital = np.clip(1 - (cap_net - baseline_net), 0, 1)
 
     market_inc = labor_inc + cap_inc
@@ -470,16 +465,7 @@ def _estimate_tax_functions(
     output_dir = tempfile.mkdtemp()
 
     etr_params, _, _, _ = txfunc_est(
-        df_etr,
-        0,
-        0,
-        "etr",
-        "GS",
-        numparams,
-        output_dir,
-        False,
-        None,
-        True,  # global_opt=True
+        df_etr, 0, 0, "etr", "GS", numparams, output_dir, False, None, True
     )
 
     # Reuse ETR params for MTRx and MTRy: the GS MTR formula is the
@@ -662,9 +648,6 @@ def calibrate(
         mtrx_params_S = mtrx_by_year
         mtry_params_S = mtry_by_year
         avg_income = float(np.mean(avg_incomes))
-        frac_payroll = float(np.mean(frac_payroll_by_year))
-
-        BW = years
         frac_tax_payroll = np.array(frac_payroll_by_year)
 
         demo = demographics.get_pop_objs(
@@ -711,7 +694,6 @@ def _build_specs(
     with open(defaults_path) as f:
         defaults = json.load(f)
 
-    # Run calibration with S/T from defaults before constructing Specs
     S = defaults["S"]
     T = defaults["T"]
     cal = calibrate(start_year=start_year, policy=policy, age_specific=age_specific)
@@ -884,7 +866,6 @@ def run_transition_path(
         os.makedirs(os.path.join(base_dir, "SS"), exist_ok=True)
         os.makedirs(os.path.join(base_dir, "TPI"), exist_ok=True)
 
-        # Baseline
         p_base = _build_specs(
             start_year,
             None,
