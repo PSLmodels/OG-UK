@@ -360,9 +360,9 @@ def fig_main(baseline: pd.DataFrame, pct: pd.DataFrame) -> go.Figure:
                     name="Reform +1pp basic rate" if not shown_ref else None,
                     showlegend=not shown_ref, legendgroup="ref",
                     hovertemplate=(
-                        f"%{{x}}: %{{y:.1f}}%<extra>Reform</extra>"
+                        "%{x}: %{y:.1f}%<extra>Reform</extra>"
                         if as_pct_gdp else
-                        f"%{{x}}: £%{{y:,.0f}}bn<extra>Reform</extra>"
+                        "%{x}: £%{y:,.0f}bn<extra>Reform</extra>"
                     ),
                 ), row=row, col=col)
                 shown_ref = True

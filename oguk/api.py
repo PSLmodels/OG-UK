@@ -948,17 +948,9 @@ def map_transition_to_real_world(
     topic_psf = "economy/governmentpublicsectorandtaxes/publicsectorfinance"
 
     gdp_m = fetch_ons_timeseries("YBHA", "ukea", topic_gdp, "years", fallback=2_890_664)
-    cons_m = fetch_ons_timeseries(
-        "ABJQ", "ukea", topic_gdp, "years", fallback=1_477_000
-    )
-    inv_m = fetch_ons_timeseries("NPQS", "ukea", topic_gdp, "years", fallback=414_000)
-    gov_m = fetch_ons_timeseries("NMRP", "ukea", topic_gdp, "years", fallback=584_000)
     debt_pct = fetch_ons_timeseries("HF6X", "pusf", topic_psf, "months", fallback=92.9)
 
     gdp_bn = gdp_m / 1000
-    cons_bn = cons_m / 1000
-    inv_bn = inv_m / 1000
-    gov_bn = gov_m / 1000
     tax_bn = 859.0
     debt_bn = gdp_bn * debt_pct / 100
 
