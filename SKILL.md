@@ -88,8 +88,33 @@ print(p.label)  # "Basic rate"
 
 **Note:** Corporation tax (cit_rate) is NOT a PolicyEngine parameter — it is set
 directly as an OG-Core parameter (`cit_rate` in `oguk_default_parameters.json`).
-CT reforms require using `_build_specs_ct()` from `scripts/run_ct_and_export.py`
-as a reference, not the standard `solve_steady_state()`.
+Use `param_overrides={"cit_rate": [[0.26]]}` to shock CT rate.
+
+### Structural parameter shocks (param_overrides)
+
+Both `solve_steady_state()` and `run_transition_path()` accept `param_overrides`,
+a dict of OG-Core parameter names → values applied after all other configuration.
+Use this for shocks to structural parameters that aren't PolicyEngine tax/benefit
+parameters (e.g. TFP, corporation tax rate, government spending share).
+
+```python
+# TFP level shock (+0.4% cumulative productivity gain)
+base_tp, reform_tp = run_transition_path(
+    start_year=2026,
+    client=client,
+    param_overrides={"Z": [[1.004]]},
+)
+impact = map_transition_to_real_world(base_tp, reform_tp)
+
+# Corporation tax cut
+ss = solve_steady_state(param_overrides={"cit_rate": [[0.25]]})
+```
+
+**Important:** `g_y_annual` is a normalisation parameter that defines the balanced
+growth path the model detrends by. It is NOT a productivity lever. To model
+productivity shocks, use `Z` (TFP level in the CES production function).
+Hat variables (Ŷ, K̂, etc.) are already stationary — dividing by `(1+g_y)^t` is
+wrong and manufactures fake differences.
 
 ## Multiple simultaneous reforms
 

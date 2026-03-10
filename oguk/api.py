@@ -126,6 +126,10 @@ class TransitionPathResult(BaseModel):
     w: np.ndarray = Field(description="Wage rate")
     tax_revenue: np.ndarray = Field(description="Total tax revenue")
     debt: np.ndarray = Field(description="Government debt")
+    g_y_annual: float = Field(
+        default=0.010,
+        description="Annual productivity growth rate used in this run",
+    )
 
 
 class TransitionMacroImpact(BaseModel):
@@ -684,8 +688,18 @@ def _build_specs(
     baseline: bool = True,
     max_iter: int = 250,
     age_specific: str = "pooled",
+    param_overrides: dict | None = None,
 ):
-    """Build a calibrated Specifications object (internal)."""
+    """Build a calibrated Specifications object (internal).
+
+    Args:
+        param_overrides: Optional dict of OG-Core parameter names to values
+            that are applied after all other configuration. Use this to shock
+            structural parameters (e.g. ``{"g_y_annual": 0.011}``). Overrides
+            are applied last so they take precedence over defaults and
+            calibration outputs. Demographic / tax-function keys are not
+            permitted here — those are set by calibrate().
+    """
     from ogcore.parameters import Specifications
 
     defaults_path = os.path.join(
@@ -750,6 +764,8 @@ def _build_specs(
             ).tolist(),
         }
     )
+    if param_overrides:
+        defaults.update(param_overrides)
     p.update_specifications(defaults)
     p.maxiter = max_iter
     # Relax RC tolerance for TPI: the last period (t=T-1) has a known
@@ -799,6 +815,7 @@ def solve_steady_state(
     policy: Policy | None = None,
     max_iter: int = 250,
     age_specific: str = "pooled",
+    param_overrides: dict | None = None,
 ) -> SteadyStateResult:
     """Solve for steady state equilibrium.
 
@@ -810,6 +827,8 @@ def solve_steady_state(
             "pooled"   — one function for all ages (default)
             "brackets" — separate function per age group (4 groups)
             "each"     — separate function per individual age (80)
+        param_overrides: Optional dict of OG-Core parameter names to values
+            for structural shocks (e.g. ``{"g_y_annual": 0.011}``).
 
     Returns:
         SteadyStateResult with equilibrium values
@@ -824,6 +843,7 @@ def solve_steady_state(
             tmpdir,
             max_iter=max_iter,
             age_specific=age_specific,
+            param_overrides=param_overrides,
         )
         ss = run_SS(p, client=None)
         return _ss_dict_to_result(ss)
@@ -834,12 +854,13 @@ def run_transition_path(
     policy: Policy | None = None,
     client=None,
     age_specific: str = "pooled",
+    param_overrides: dict | None = None,
 ) -> tuple[TransitionPathResult, TransitionPathResult | None]:
     """Run baseline (and optionally reform) transition path.
 
     Solves for the full dynamic transition using OG-Core's SS + TPI
-    solver. If a reform policy is provided, runs both baseline and
-    reform and returns both paths.
+    solver. If a reform policy or param_overrides are provided, runs
+    both baseline and reform and returns both paths.
 
     Args:
         start_year: First year of simulation
@@ -849,9 +870,11 @@ def run_transition_path(
             "pooled"   — one function for all ages (default)
             "brackets" — separate function per age group (4 groups)
             "each"     — separate function per individual age (80)
+        param_overrides: Optional dict of OG-Core parameter names to values
+            for structural shocks (e.g. ``{"Z": [[1.004]]}``).
 
     Returns:
-        (baseline_tp, reform_tp) — reform_tp is None if no policy
+        (baseline_tp, reform_tp) — reform_tp is None if no policy/overrides
     """
     from dask.distributed import Client
     from ogcore import SS, TPI
@@ -893,7 +916,7 @@ def run_transition_path(
 
         # Reform
         reform_tp = None
-        if policy is not None:
+        if policy is not None or param_overrides:
             reform_dir = tempfile.mkdtemp()
             os.makedirs(os.path.join(reform_dir, "SS"), exist_ok=True)
             os.makedirs(os.path.join(reform_dir, "TPI"), exist_ok=True)
@@ -905,6 +928,7 @@ def run_transition_path(
                 base_dir,
                 baseline=False,
                 age_specific=age_specific,
+                param_overrides=param_overrides,
             )
 
             ss_reform = SS.run_SS(p_reform, client=client)
