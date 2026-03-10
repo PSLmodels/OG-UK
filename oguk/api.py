@@ -986,9 +986,7 @@ def map_transition_to_real_world(
     debt_offset = debt_bn - base_debt[0]
 
     # Convert model integer years to fiscal year labels (2026 → "2026-27")
-    fy_labels = np.array(
-        [f"{int(y)}-{str(int(y)+1)[2:]}" for y in reform.years]
-    )
+    fy_labels = np.array([f"{int(y)}-{str(int(y) + 1)[2:]}" for y in reform.years])
 
     return TransitionMacroImpact(
         years=fy_labels,

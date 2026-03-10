@@ -41,8 +41,16 @@ _ONS_TIMEOUT = 30
 # OBR Nov 2025 EFO / HMRC outturn: HMRC total receipts (£bn, fiscal year
 # mapped to calendar year, i.e. 2024 = 2024-25 fiscal year).
 _OBR_TAX_REVENUE: dict[int, float] = {
-    2016: 656, 2017: 692, 2018: 729, 2019: 742,
-    2020: 669, 2021: 718, 2022: 786, 2023: 827, 2024: 859, 2025: 893,
+    2016: 656,
+    2017: 692,
+    2018: 729,
+    2019: 742,
+    2020: 669,
+    2021: 718,
+    2022: 786,
+    2023: 827,
+    2024: 859,
+    2025: 893,
 }
 
 
@@ -82,25 +90,25 @@ def fetch_historical_actuals() -> pd.DataFrame:
     years = range(HIST_START, HIST_END + 1)
     rows = []
     for yr in years:
-        fy = f"{yr}-{str(yr+1)[2:]}"
+        fy = f"{yr}-{str(yr + 1)[2:]}"
         gdp = gdp_m.get(yr, float("nan")) / 1000
         inv = inv_m.get(yr, float("nan")) / 1000
         gov = gov_m.get(yr, float("nan")) / 1000
         cons = gdp - inv - gov
         dpct = debt_pct.get(yr, float("nan"))
-        debt = dpct / 100 * gdp if not (
-            pd.isna(dpct) or pd.isna(gdp)
-        ) else float("nan")
+        debt = dpct / 100 * gdp if not (pd.isna(dpct) or pd.isna(gdp)) else float("nan")
         tax = _OBR_TAX_REVENUE.get(yr, float("nan"))
-        rows.append({
-            "Fiscal year": fy,
-            "GDP (£bn)": gdp,
-            "Consumption (£bn)": cons,
-            "Investment (£bn)": inv,
-            "Government (£bn)": gov,
-            "Tax revenue (£bn)": tax,
-            "Debt (£bn)": debt,
-        })
+        rows.append(
+            {
+                "Fiscal year": fy,
+                "GDP (£bn)": gdp,
+                "Consumption (£bn)": cons,
+                "Investment (£bn)": inv,
+                "Government (£bn)": gov,
+                "Tax revenue (£bn)": tax,
+                "Debt (£bn)": debt,
+            }
+        )
     return pd.DataFrame(rows)
 
 
@@ -110,7 +118,9 @@ TITLE_FONT = Font(bold=True, size=14)
 SUBTITLE_FONT = Font(italic=True)
 BOLD_FONT = Font(bold=True)
 SECTION_FILL = PatternFill(start_color="D6DCE5", end_color="D6DCE5", fill_type="solid")
-HIST_FILL = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")  # light yellow
+HIST_FILL = PatternFill(
+    start_color="FFF2CC", end_color="FFF2CC", fill_type="solid"
+)  # light yellow
 
 CENTER = Alignment(horizontal="center", vertical="center")
 LEFT = Alignment(horizontal="left", vertical="center")
@@ -241,9 +251,7 @@ def save_to_xlsx(
         n_hist = 0
 
     hist_note = (
-        f" Yellow rows = ONS/OBR actuals {HIST_START}–{HIST_END}."
-        if n_hist > 0
-        else ""
+        f" Yellow rows = ONS/OBR actuals {HIST_START}–{HIST_END}." if n_hist > 0 else ""
     )
     _write_df_to_sheet(
         wb,
@@ -283,6 +291,7 @@ def main() -> None:
 
     print("Launching Dask client...")
     import os
+
     n_workers = os.cpu_count()
     client = Client(n_workers=n_workers, threads_per_worker=1)
 
