@@ -702,6 +702,8 @@ def _build_specs(
     """
     from ogcore.parameters import Specifications
 
+    from oguk.industry_params import get_industry_params
+
     defaults_path = os.path.join(
         os.path.dirname(__file__), "oguk_default_parameters.json"
     )
@@ -726,6 +728,22 @@ def _build_specs(
         "g_n_ss",
         "imm_rates",
         "omega_S_preTP",
+    ]:
+        defaults.pop(key, None)
+
+    # Strip single-industry defaults that will be replaced by industry_params
+    for key in [
+        "gamma",
+        "gamma_g",
+        "epsilon",
+        "Z",
+        "cit_rate",
+        "io_matrix",
+        "alpha_c",
+        "c_min",
+        "delta_tau_annual",
+        "inv_tax_credit",
+        "tau_c",
     ]:
         defaults.pop(key, None)
 
@@ -764,6 +782,12 @@ def _build_specs(
             ).tolist(),
         }
     )
+
+    # Apply 8-sector industry calibration
+    defaults.update(get_industry_params())
+    # Levenberg-Marquardt is more robust than the default 'hybr' for M>1
+    defaults["SS_root_method"] = "lm"
+
     if param_overrides:
         defaults.update(param_overrides)
     p.update_specifications(defaults)

@@ -5,7 +5,8 @@ OG-UK is an overlapping-generations (OLG) macroeconomic model for the UK, built 
 
 ## Key files
 - `oguk/api.py` — all public functions and data classes; the only file you need for scoring
-- `oguk/__init__.py` — re-exports everything public from `api.py`
+- `oguk/__init__.py` — re-exports everything public from `api.py` and `industry_params.py`
+- `oguk/industry_params.py` — 8-sector industry calibration (M=8, SIC-based)
 - `oguk/oguk_default_parameters.json` — OG-Core calibration (S=80 ages, T=60 periods, cit_rate=0.27)
 - `oguk/macro_params.py` — ONS/OBR data fetching helpers used internally
 - `examples/run_oguk.py` — complete working example (SS + TPI) to crib from
@@ -143,6 +144,33 @@ cd ~/og/og-uk
 .venv/bin/python3 examples/run_oguk.py tpi       # full transition path
 .venv/bin/python3 examples/run_oguk.py ss brackets  # bracket age functions
 ```
+
+## Multi-industry model (M=8)
+
+OG-UK runs with 8 production industries calibrated from ONS SIC data:
+
+| # | Sector | SIC | gamma | GVA share |
+|---|--------|-----|-------|-----------|
+| 0 | Energy | B,D | 0.55 | 2.5% |
+| 1 | Manufacturing | C | 0.40 | 8.8% |
+| 2 | Construction | F | 0.37 | 6.1% |
+| 3 | Trade & Transport | G,H,I | 0.39 | 18.7% |
+| 4 | Info & Finance | J,K | 0.46 | 15.0% |
+| 5 | Real Estate | L | 0.60 | 13.5% |
+| 6 | Business Services | M,N | 0.36 | 12.0% |
+| 7 | Public & Other | A,E,O-U | 0.29 | 23.4% |
+
+Key implementation notes:
+- `SS_root_method = "lm"` (Levenberg-Marquardt) required for M>1 convergence
+- Capital shares (gamma) are shrunk from raw ONS values toward the mean for stability
+  (raw real estate is 0.92 from imputed rent; too extreme for solver)
+- I-O matrix is identity (each industry → own good); full inter-industry flows
+  cause numerical instability with 8 sectors
+- `alpha_c` (consumption shares) set proportional to GVA shares
+- `c_min` calibrated for energy (non-discretionary heating) and housing
+- `ENERGY_COST_SHARES` dict available for building energy price shock scenarios
+- All per-industry params (Z, cit_rate, epsilon) are uniform across sectors
+- See `examples/energy_price_shock.py` for energy price shock use case
 
 ## Patterns and conventions
 - Always use `.venv/bin/python3`; system Python doesn't have deps
