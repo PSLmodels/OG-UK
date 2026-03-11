@@ -135,13 +135,13 @@ ENERGY_COST_SHARES = {
 # Other goods have zero or negligible floors.
 _C_MIN = [
     0.005,  # Energy: ~2.5% of avg consumption (non-discretionary heating/lighting)
-    0.0,    # Manufacturing
-    0.0,    # Construction
+    0.0,  # Manufacturing
+    0.0,  # Construction
     0.001,  # Trade & Transport: minimal food baseline
-    0.0,    # Info & Finance
+    0.0,  # Info & Finance
     0.001,  # Real Estate: minimal housing
-    0.0,    # Business Services
-    0.0,    # Public & Other
+    0.0,  # Business Services
+    0.0,  # Public & Other
 ]
 
 
