@@ -26,7 +26,7 @@ from __future__ import annotations
 import numpy as np
 
 M = 8  # production industries
-I = 8  # consumption goods (one per industry)
+NUM_CONSUMPTION_GOODS = 8  # one per industry
 
 SECTOR_NAMES = [
     "Energy",
@@ -159,7 +159,7 @@ def get_industry_params() -> dict:
 
     return {
         "M": M,
-        "I": I,
+        "I": NUM_CONSUMPTION_GOODS,
         "gamma": list(_GAMMA),
         "gamma_g": [0.0] * M,
         "epsilon": [1.0] * M,  # Cobb-Douglas
@@ -170,5 +170,5 @@ def get_industry_params() -> dict:
         "c_min": list(_C_MIN),
         "delta_tau_annual": [[0.05] * M],
         "inv_tax_credit": [[0.0] * M],
-        "tau_c": [[0.19] * I],
+        "tau_c": [[0.19] * NUM_CONSUMPTION_GOODS],
     }

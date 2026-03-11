@@ -16,9 +16,9 @@ from oguk.api import (
 from oguk.industry_params import (
     ENERGY,
     ENERGY_COST_SHARES,
-    M,
     SECTOR_NAMES,
     SECTOR_SIC_SECTIONS,
+    M,
     get_industry_params,
 )
 
