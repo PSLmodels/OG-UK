@@ -171,14 +171,14 @@ _EPSILON = [
 # Values aggregated to match the 8-sector mapping above.
 # Note: Real Estate includes dwellings (owner-occupied imputed rental).
 _CAPITAL_STOCK = [
-    197_000,   # Energy (B + D)
-    168_000,   # Manufacturing (C)
-    32_000,    # Construction (F)
-    248_000,   # Trade & Transport (G + H + I)
-    178_000,   # Info & Finance (J + K)
-    1_510_000, # Real Estate (L) — dominated by dwelling stock
-    98_000,    # Business Services (M + N)
-    495_000,   # Public & Other (A + E + O + P + Q + R + S + T)
+    197_000,  # Energy (B + D)
+    168_000,  # Manufacturing (C)
+    32_000,  # Construction (F)
+    248_000,  # Trade & Transport (G + H + I)
+    178_000,  # Info & Finance (J + K)
+    1_510_000,  # Real Estate (L) — dominated by dwelling stock
+    98_000,  # Business Services (M + N)
+    495_000,  # Public & Other (A + E + O + P + Q + R + S + T)
 ]
 
 # --- Workforce jobs by sector (thousands, 2022 Q4) ---
@@ -186,14 +186,14 @@ _CAPITAL_STOCK = [
 # SIC 2007 sections. Includes employees, self-employed, HM Forces.
 # https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/datasets/workforcejobsbyindustryjobs02
 _WORKFORCE_JOBS = [
-    178,   # Energy (B + D)
-    2_590, # Manufacturing (C)
-    2_310, # Construction (F)
-    8_470, # Trade & Transport (G + H + I)
-    2_580, # Info & Finance (J + K)
-    590,   # Real Estate (L)
-    5_760, # Business Services (M + N)
-    8_960, # Public & Other (A + E + O + P + Q + R + S + T)
+    178,  # Energy (B + D)
+    2_590,  # Manufacturing (C)
+    2_310,  # Construction (F)
+    8_470,  # Trade & Transport (G + H + I)
+    2_580,  # Info & Finance (J + K)
+    590,  # Real Estate (L)
+    5_760,  # Business Services (M + N)
+    8_960,  # Public & Other (A + E + O + P + Q + R + S + T)
 ]
 
 # --- Input-output matrix (I × M) ---
