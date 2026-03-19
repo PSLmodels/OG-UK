@@ -1,150 +1,147 @@
-"""Example: Run OG-UK baseline and reform simulations."""
-
-from __future__ import annotations
-
-import sys
+import multiprocessing
+from distributed import Client
+import json
 import time
-from datetime import datetime
-
-from policyengine.core import ParameterValue, Policy
-from policyengine.tax_benefit_models.uk import uk_latest
-
-from oguk import (
-    map_to_real_world,
-    map_transition_to_real_world,
-    run_transition_path,
-    solve_steady_state,
-)
-
-# Reform: increase basic rate from 20% to 21%
-basic_rate_param = uk_latest.get_parameter("gov.hmrc.income_tax.rates.uk[0].rate")
-REFORM = Policy(
-    name="Basic rate 21%",
-    parameter_values=[
-        ParameterValue(
-            parameter=basic_rate_param,
-            value=0.21,
-            start_date=datetime(2026, 1, 1),
-        )
-    ],
-)
+import os
+import copy
+from policyengine_core.reforms import Reform
+from policyengine_uk.model_api import *
+from oguk.calibrate import Calibration
+from ogcore.parameters import Specifications
+from ogcore import output_tables as ot
+from ogcore import output_plots as op
+from ogcore.execute import runner
+from ogcore.utils import safe_read_pickle
+from argparse import ArgumentParser
 
 
-def run_steady_state(age_specific: str = "pooled"):
-    """Run baseline and reform steady state, print results."""
-    print(f"Solving baseline steady state (age_specific='{age_specific}')...")
-    t0 = time.time()
-    baseline = solve_steady_state(start_year=2026, age_specific=age_specific)
-    print(f"  Done in {time.time() - t0:.1f}s")
+def main(reform=None):
+    # Define parameters to use for multiprocessing
+    client = Client()
+    num_workers = min(multiprocessing.cpu_count(), 7)
+    print("Number of workers = ", num_workers)
 
-    print(f"Solving reform steady state (age_specific='{age_specific}')...")
-    t0 = time.time()
-    reform = solve_steady_state(
-        start_year=2026, policy=REFORM, age_specific=age_specific
+    # Directories to save data
+    CUR_DIR = os.path.dirname(os.path.realpath(__file__))
+    base_dir = os.path.join(CUR_DIR, "OG-UK-Example", "OUTPUT_BASELINE")
+    reform_dir = os.path.join(CUR_DIR, "OG-UK-Example", "OUTPUT_REFORM")
+
+    """
+    ---------------------------------------------------------------------------
+    Run baseline policy
+    ---------------------------------------------------------------------------
+    """
+    # Set up baseline parameterization
+    p = Specifications(
+        baseline=True,
+        num_workers=num_workers,
+        baseline_dir=base_dir,
+        output_base=base_dir,
     )
-    print(f"  Done in {time.time() - t0:.1f}s")
-
-    impact = map_to_real_world(baseline, reform)
-
-    print("\n" + "=" * 60)
-    print("Steady state impact (£bn, current prices)")
-    print("=" * 60)
-    print(f"{'Variable':<15} {'Baseline':>12} {'Reform':>12} {'Change':>10} {'%':>8}")
-    print("-" * 57)
-    for label, level, change, pct in [
-        ("GDP", impact.gdp, impact.gdp_change, impact.gdp_pct),
-        (
-            "Consumption",
-            impact.consumption,
-            impact.consumption_change,
-            impact.consumption_pct,
-        ),
-        (
-            "Investment",
-            impact.investment,
-            impact.investment_change,
-            impact.investment_pct,
-        ),
-        (
-            "Government",
-            impact.government,
-            impact.government_change,
-            impact.government_pct,
-        ),
-        (
-            "Tax revenue",
-            impact.tax_revenue,
-            impact.tax_revenue_change,
-            impact.tax_revenue_pct,
-        ),
-        ("Debt", impact.debt, impact.debt_change, impact.debt_pct),
-    ]:
-        base_bn = level - change
-        print(
-            f"{label:<15} {base_bn:>10.1f} {level:>12.1f} {change:>+9.1f} {pct:>+7.3f}%"
+    # Update parameters for baseline from default json file
+    p.update_specifications(
+        json.load(
+            open(
+                os.path.join(
+                    CUR_DIR, "..", "oguk", "oguk_default_parameters.json"
+                )
+            )
         )
-    print(f"\nInterest rate:  {impact.r_baseline:.2%} -> {impact.r_reform:.2%}")
-    print("=" * 60)
-
-
-def run_tpi():
-    """Run baseline and reform transition paths, print results."""
-    from dask.distributed import Client
-
-    print("Running baseline + reform transition paths...")
-    print("(This solves SS + TPI for both scenarios — may take a while.)")
-    client = Client(n_workers=2, threads_per_worker=1, memory_limit="2GB")
-    t0 = time.time()
-    try:
-        base_tp, reform_tp = run_transition_path(
-            start_year=2026, policy=REFORM, client=client
-        )
-    finally:
-        client.close()
-    print(f"Done in {time.time() - t0:.1f}s")
-
-    impact = map_transition_to_real_world(base_tp, reform_tp)
-
-    print("\n" + "=" * 70)
-    print("Transition path: reform impact (£bn change from baseline)")
-    print("=" * 70)
-    print(
-        f"{'Year':<8} {'GDP':>8} {'Cons':>8} {'Inv':>8} {'Gov':>8} {'Tax rev':>8} {'Debt':>8}"
     )
-    print("-" * 70)
+    # specify tax function form and start year
+    p.update_specifications(
+        {
+            "tax_func_type": "DEP",
+            "age_specific": False,
+            "start_year": 2022,
+        }
+    )
+    # Update parameters from calibrate.py Calibration class
+    c = Calibration(p, estimate_tax_functions=True, client=client)
+    d = c.get_dict()
+    updated_params = {
+        "etr_params": d["etr_params"],
+        "mtrx_params": d["mtrx_params"],
+        "mtry_params": d["mtry_params"],
+        "mean_income_data": d["mean_income_data"],
+        "frac_tax_payroll": d["frac_tax_payroll"],
+    }
+    p.update_specifications(updated_params)
 
-    # Show first 10 years, then every 10th, then final
-    T = len(impact.years)
-    indices = list(range(min(10, T)))
-    indices += list(range(10, T, 10))
-    if T - 1 not in indices:
-        indices.append(T - 1)
-    indices = sorted(set(indices))
+    # Run model
+    start_time = time.time()
+    runner(p, time_path=True, client=client)
+    print("run time = ", time.time() - start_time)
 
-    for i in indices:
-        print(
-            f"{str(impact.years[i]):<8}"
-            f" {impact.gdp_change[i]:>+7.1f}"
-            f" {impact.consumption_change[i]:>+7.1f}"
-            f" {impact.investment_change[i]:>+7.1f}"
-            f" {impact.government_change[i]:>+7.1f}"
-            f" {impact.tax_revenue_change[i]:>+7.1f}"
-            f" {impact.debt_change[i]:>+7.1f}"
-        )
-    print("=" * 70)
+    """
+    ------------------------------------------------------------------------
+    Run reform policy
+    ------------------------------------------------------------------------
+    """
 
+    # create new Specifications object for reform simulation
+    p2 = copy.deepcopy(p)
+    p2.baseline = False
+    p2.output_base = reform_dir
 
-def main():
-    mode = sys.argv[1] if len(sys.argv) > 1 else "ss"
-    age_specific = sys.argv[2] if len(sys.argv) > 2 else "pooled"
-    if mode == "ss":
-        run_steady_state(age_specific=age_specific)
-    elif mode == "tpi":
-        run_tpi()
-    else:
-        print(f"Usage: {sys.argv[0]} [ss|tpi] [pooled|brackets|each]")
-        sys.exit(1)
+    # Estimate reform tax functions from PolicyEngine-UK, passing Reform
+    # class object
+    reform = Reform.set_parameter(
+        "tax.income_tax.rates.uk[0].rate", 0.3, "year:2022:10"
+    )
+    c2 = Calibration(
+        p2, iit_reform=reform, estimate_tax_functions=True, client=client
+    )
+    # update tax function parameters in Specifications Object
+    d2 = c2.get_dict()
+    updated_params2 = {
+        "etr_params": d2["etr_params"],
+        "mtrx_params": d2["mtrx_params"],
+        "mtry_params": d2["mtry_params"],
+        "mean_income_data": d2["mean_income_data"],
+        "frac_tax_payroll": d2["frac_tax_payroll"],
+    }
+    p2.update_specifications(updated_params2)
+    # Run model
+    start_time = time.time()
+    runner(p2, time_path=True, client=client)
+    print("run time = ", time.time() - start_time)
+
+    """
+    ------------------------------------------------------------------------
+    Save some results of simulations
+    ------------------------------------------------------------------------
+    """
+    base_tpi = safe_read_pickle(os.path.join(base_dir, "TPI", "TPI_vars.pkl"))
+    base_params = safe_read_pickle(os.path.join(base_dir, "model_params.pkl"))
+    reform_tpi = safe_read_pickle(
+        os.path.join(reform_dir, "TPI", "TPI_vars.pkl")
+    )
+    reform_params = safe_read_pickle(
+        os.path.join(reform_dir, "model_params.pkl")
+    )
+    ans = ot.macro_table(
+        base_tpi,
+        base_params,
+        reform_tpi=reform_tpi,
+        reform_params=reform_params,
+        var_list=["Y", "C", "K", "L", "r", "w"],
+        output_type="pct_diff",
+        num_years=10,
+        start_year=base_params.start_year,
+    )
+
+    # create plots of output
+    op.plot_all(
+        base_dir, reform_dir, os.path.join(CUR_DIR, "OG-UK_example_plots")
+    )
+
+    print("Percentage changes in aggregates:", ans)
+    # save percentage change output to csv file
+    ans.to_csv("oguk_example_output.csv")
+    client.close()
 
 
 if __name__ == "__main__":
+    # execute only if run as a script
     main()
