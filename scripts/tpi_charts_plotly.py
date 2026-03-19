@@ -670,7 +670,9 @@ def _extrapolate_anchor(hist_dict: dict, model_start_fy: str) -> list[float]:
     return [last_vals[m] * (1 + growth_rates[m]) ** gap_years for m in range(n_sectors)]
 
 
-def _bridge_gap(hist_dict: dict, model_start_fy: str, anchor_values: list[float]) -> dict:
+def _bridge_gap(
+    hist_dict: dict, model_start_fy: str, anchor_values: list[float]
+) -> dict:
     """Fill the gap between last outturn and model start with linear interpolation."""
     sorted_fys = sorted(hist_dict.keys())
     last_fy = sorted_fys[-1]
@@ -787,7 +789,9 @@ def fig_sector_real(sector_pct: dict, gdp: pd.Series | None = None) -> go.Figure
                     y=base_y,
                     mode="lines",
                     line=dict(color=color, width=2.5),
-                    name="ONS outturn / forecast" if row_idx == 1 and col_idx == 1 else None,
+                    name="ONS outturn / forecast"
+                    if row_idx == 1 and col_idx == 1
+                    else None,
                     showlegend=(row_idx == 1 and col_idx == 1),
                     legendgroup="baseline",
                     hovertemplate=f"%{{x}}: %{{y:,.1f}} {unit}<extra>Baseline</extra>",
@@ -827,7 +831,9 @@ def fig_sector_real(sector_pct: dict, gdp: pd.Series | None = None) -> go.Figure
                         y=ref_y,
                         mode="lines",
                         line=dict(color=color, width=2.5, dash="dash"),
-                        name="Reform +1pp basic rate" if row_idx == 1 and col_idx == 1 else None,
+                        name="Reform +1pp basic rate"
+                        if row_idx == 1 and col_idx == 1
+                        else None,
                         showlegend=(row_idx == 1 and col_idx == 1),
                         legendgroup="reform",
                         hovertemplate=f"%{{x}}: %{{y:,.1f}} {unit}<extra>Reform</extra>",
@@ -839,13 +845,19 @@ def fig_sector_real(sector_pct: dict, gdp: pd.Series | None = None) -> go.Figure
             # Vertical lines
             fig.add_vline(
                 x=_fy_to_int(OUTTURN_LAST_FY),
-                line_width=1, line_dash="dot", line_color=GREY,
-                row=row_idx, col=col_idx,
+                line_width=1,
+                line_dash="dot",
+                line_color=GREY,
+                row=row_idx,
+                col=col_idx,
             )
             fig.add_vline(
                 x=reform_start,
-                line_width=1.2, line_dash="dash", line_color=GOLD,
-                row=row_idx, col=col_idx,
+                line_width=1.2,
+                line_dash="dash",
+                line_color=GOLD,
+                row=row_idx,
+                col=col_idx,
             )
 
     # Collect all years for tick marks
@@ -854,19 +866,25 @@ def fig_sector_real(sector_pct: dict, gdp: pd.Series | None = None) -> go.Figure
         all_years.update(_fy_to_int(fy) for fy in hist_dict)
     for label in labels:
         all_years.update(
-            y for y in (_fy_to_int(fy) for fy in sector_pct[label].index)
+            y
+            for y in (_fy_to_int(fy) for fy in sector_pct[label].index)
             if y <= SECTOR_CHART_END
         )
     tick_years = sorted(y for y in all_years if y % 5 == 0)
 
     fig.update_xaxes(
-        showgrid=True, gridcolor="#ececec", tickangle=0,
+        showgrid=True,
+        gridcolor="#ececec",
+        tickangle=0,
         tickfont=dict(size=9),
-        tickmode="array", tickvals=tick_years,
+        tickmode="array",
+        tickvals=tick_years,
         ticktext=[f"{y}-{str(y + 1)[2:]}" for y in tick_years],
     )
     fig.update_yaxes(
-        showgrid=True, gridcolor="#ececec", tickfont=dict(size=9),
+        showgrid=True,
+        gridcolor="#ececec",
+        tickfont=dict(size=9),
     )
     fig.update_layout(
         font=dict(family="Inter, sans-serif", size=11),
@@ -875,9 +893,13 @@ def fig_sector_real(sector_pct: dict, gdp: pd.Series | None = None) -> go.Figure
         hovermode="x unified",
         legend=dict(
             bgcolor="rgba(255,255,255,0.9)",
-            bordercolor="#ddd", borderwidth=1,
-            font=dict(size=11), orientation="h",
-            x=0.5, xanchor="center", y=-0.02,
+            bordercolor="#ddd",
+            borderwidth=1,
+            font=dict(size=11),
+            orientation="h",
+            x=0.5,
+            xanchor="center",
+            y=-0.02,
         ),
         title=dict(
             text=(
@@ -885,7 +907,8 @@ def fig_sector_real(sector_pct: dict, gdp: pd.Series | None = None) -> go.Figure
                 "<sup>Solid = ONS outturn · Dotted = OG-UK baseline · "
                 "Dashed = reform (+1pp basic rate) · Gold dashed = reform start</sup>"
             ),
-            x=0.5, font=dict(size=15),
+            x=0.5,
+            font=dict(size=15),
         ),
         height=300 * len(SECTOR_NAMES),
     )
@@ -947,26 +970,37 @@ def fig_sector_pct(sector_pct: dict[str, pd.DataFrame]) -> go.Figure | None:
             )
         fig.add_vline(
             x=_fy_to_int(REFORM_FY),
-            line_width=1.2, line_dash="dash", line_color=GOLD,
-            row=1, col=col_idx,
+            line_width=1.2,
+            line_dash="dash",
+            line_color=GOLD,
+            row=1,
+            col=col_idx,
         )
 
-    all_years = sorted(set(
-        y for df in sector_pct.values()
-        for y in (_fy_to_int(fy) for fy in df.index)
-        if y <= SECTOR_CHART_END
-    ))
+    all_years = sorted(
+        set(
+            y
+            for df in sector_pct.values()
+            for y in (_fy_to_int(fy) for fy in df.index)
+            if y <= SECTOR_CHART_END
+        )
+    )
     tick_years = [y for y in all_years if y % 5 == 0]
 
     fig.update_xaxes(
-        showgrid=True, gridcolor="#ececec", tickangle=0,
+        showgrid=True,
+        gridcolor="#ececec",
+        tickangle=0,
         tickfont=dict(size=10),
-        tickmode="array", tickvals=tick_years,
+        tickmode="array",
+        tickvals=tick_years,
         ticktext=[f"{y}-{str(y + 1)[2:]}" for y in tick_years],
     )
     fig.update_yaxes(
-        showgrid=True, gridcolor="#ececec",
-        ticksuffix="%", tickformat=".3f",
+        showgrid=True,
+        gridcolor="#ececec",
+        ticksuffix="%",
+        tickformat=".3f",
     )
     fig.update_layout(
         font=dict(family="Inter, sans-serif", size=12),
@@ -975,16 +1009,21 @@ def fig_sector_pct(sector_pct: dict[str, pd.DataFrame]) -> go.Figure | None:
         hovermode="x unified",
         legend=dict(
             bgcolor="rgba(255,255,255,0.9)",
-            bordercolor="#ddd", borderwidth=1,
-            font=dict(size=10), orientation="h",
-            x=0.5, xanchor="center", y=-0.12,
+            bordercolor="#ddd",
+            borderwidth=1,
+            font=dict(size=10),
+            orientation="h",
+            x=0.5,
+            xanchor="center",
+            y=-0.12,
         ),
         title=dict(
             text=(
                 "<b>OG-UK 8-Sector Model: Per-Industry Impacts of Basic Rate +1pp</b><br>"
                 "<sup>% change from baseline by sector · Gold dashed = reform start</sup>"
             ),
-            x=0.5, font=dict(size=15),
+            x=0.5,
+            font=dict(size=15),
         ),
         height=500,
     )
@@ -1019,7 +1058,9 @@ def main():
         # Pass OBR GDP (indexed by FY as integers) for growth-rate projection
         gdp_fy = baseline["gdp"].copy()
         gdp_fy.index = [_fy_to_int(fy) for fy in gdp_fy.index]
-        sector_real_fig = fig_sector_real(sector_pct, gdp=gdp_fy) if sector_pct else None
+        sector_real_fig = (
+            fig_sector_real(sector_pct, gdp=gdp_fy) if sector_pct else None
+        )
     except Exception as exc:
         print(f"  Sector real-world charts skipped: {exc}")
         import traceback  # noqa: E402
