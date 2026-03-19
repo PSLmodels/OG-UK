@@ -46,3 +46,5 @@ docs/book/_build/*
 oguk/data/
 uv.lock
 test_api.py
+scripts/tpi_results.xlsx
+scripts/tpi_charts.html
