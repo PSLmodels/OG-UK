@@ -3,15 +3,16 @@
 Calibrates M=8 production industries and I=8 consumption goods from
 ONS Blue Book / Supply and Use Table data (SIC 2007 sections).
 
-Sector mapping:
+Sector mapping (Manufacturing last — the Mth industry produces the
+capital good in OG-Core):
     0: Energy           — SIC B (mining/quarrying), D (electricity/gas)
-    1: Manufacturing    — SIC C
-    2: Construction     — SIC F
-    3: Trade & Transport— SIC G, H, I (wholesale, retail, transport, hospitality)
-    4: Info & Finance   — SIC J, K (ICT, financial services)
-    5: Real Estate      — SIC L
-    6: Business Services— SIC M, N (professional, admin)
-    7: Public & Other   — SIC A, E, O, P, Q, R, S, T
+    1: Construction     — SIC F
+    2: Trade & Transport— SIC G, H, I (wholesale, retail, transport, hospitality)
+    3: Info & Finance   — SIC J, K (ICT, financial services)
+    4: Real Estate      — SIC L
+    5: Business Services— SIC M, N (professional, admin)
+    6: Public & Other   — SIC A, E, O, P, Q, R, S, T
+    7: Manufacturing    — SIC C (capital good producer)
 
 Sources:
     GVA by section:
@@ -64,24 +65,24 @@ NUM_CONSUMPTION_GOODS = 8  # one per industry
 
 SECTOR_NAMES = [
     "Energy",
-    "Manufacturing",
     "Construction",
     "Trade & Transport",
     "Info & Finance",
     "Real Estate",
     "Business Services",
     "Public & Other",
+    "Manufacturing",
 ]
 
 # Index constants for readability
 ENERGY = 0
-MANUFACTURING = 1
-CONSTRUCTION = 2
-TRADE_TRANSPORT = 3
-INFO_FINANCE = 4
-REAL_ESTATE = 5
-BUSINESS_SERVICES = 6
-PUBLIC_OTHER = 7
+CONSTRUCTION = 1
+TRADE_TRANSPORT = 2
+INFO_FINANCE = 3
+REAL_ESTATE = 4
+BUSINESS_SERVICES = 5
+PUBLIC_OTHER = 6
+MANUFACTURING = 7  # Mth industry produces the capital good in OG-Core
 
 # SIC 2007 sections in each sector
 SECTOR_SIC_SECTIONS = {
@@ -137,13 +138,13 @@ def _sector_gva() -> np.ndarray:
 # get_industry_params() for solver stability (40% shrinkage).
 _GAMMA = [
     0.55,  # Energy         (B+D, capital-heavy)
-    0.40,  # Manufacturing  (C)
     0.37,  # Construction   (F)
     0.39,  # Trade&Transport(G+H+I)
     0.46,  # Info & Finance (J+K)
     0.60,  # Real Estate    (L, capped from ~0.92)
     0.36,  # Business Svcs  (M+N)
     0.29,  # Public & Other (A+E+O+P+Q+R+S+T)
+    0.40,  # Manufacturing  (C, capital good producer)
 ]
 
 # --- Elasticity of substitution (epsilon) ---
@@ -157,13 +158,13 @@ _GAMMA = [
 # for solver stability (50% shrinkage).
 _EPSILON = [
     0.50,  # Energy       — capital-heavy, hard to substitute
-    0.80,  # Manufacturing— moderate substitutability
     0.70,  # Construction — labour-intensive but equipment-dependent
     1.00,  # Trade & Transport — roughly unit-elastic
     1.20,  # Info & Finance — tech substitutes for labour easily
     0.40,  # Real Estate  — extremely capital-bound (structures)
     1.30,  # Business Svcs— labour-flexible, can substitute tech
     0.90,  # Public & Other — near unit-elastic
+    0.80,  # Manufacturing— moderate substitutability (capital good)
 ]
 
 # --- Net capital stock by sector (£m, 2022) ---
@@ -174,13 +175,13 @@ _EPSILON = [
 # Note: Real Estate includes dwellings (owner-occupied imputed rental).
 _CAPITAL_STOCK = [
     197_000,  # Energy (B + D)
-    168_000,  # Manufacturing (C)
     32_000,  # Construction (F)
     248_000,  # Trade & Transport (G + H + I)
     178_000,  # Info & Finance (J + K)
     1_510_000,  # Real Estate (L) — dominated by dwelling stock
     98_000,  # Business Services (M + N)
     495_000,  # Public & Other (A + E + O + P + Q + R + S + T)
+    168_000,  # Manufacturing (C, capital good producer)
 ]
 
 # --- Workforce jobs by sector (thousands, 2022 Q4) ---
@@ -189,13 +190,13 @@ _CAPITAL_STOCK = [
 # https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/datasets/workforcejobsbyindustryjobs02
 _WORKFORCE_JOBS = [
     178,  # Energy (B + D)
-    2_590,  # Manufacturing (C)
     2_310,  # Construction (F)
     8_470,  # Trade & Transport (G + H + I)
     2_580,  # Info & Finance (J + K)
     590,  # Real Estate (L)
     5_760,  # Business Services (M + N)
     8_960,  # Public & Other (A + E + O + P + Q + R + S + T)
+    2_590,  # Manufacturing (C, capital good producer)
 ]
 
 # --- Input-output matrix (I × M) ---
@@ -211,15 +212,15 @@ _WORKFORCE_JOBS = [
 # cross-industry supply chains (e.g. energy inputs to manufacturing,
 # business services to finance).
 _IO_MATRIX = [
-    #  Enrgy  Manuf  Const  Trade  InfoF  RealE  BusSv  PubOt
-    [0.65, 0.10, 0.02, 0.05, 0.03, 0.01, 0.08, 0.06],  # Energy good
-    [0.06, 0.58, 0.03, 0.10, 0.03, 0.01, 0.12, 0.07],  # Manufacturing good
-    [0.04, 0.15, 0.50, 0.08, 0.02, 0.04, 0.12, 0.05],  # Construction good
-    [0.03, 0.08, 0.02, 0.60, 0.05, 0.02, 0.12, 0.08],  # Trade & Transport good
-    [0.02, 0.04, 0.01, 0.06, 0.62, 0.02, 0.15, 0.08],  # Info & Finance good
-    [0.02, 0.03, 0.05, 0.04, 0.04, 0.65, 0.10, 0.07],  # Real Estate good
-    [0.02, 0.06, 0.02, 0.08, 0.08, 0.02, 0.62, 0.10],  # Business Svcs good
-    [0.03, 0.05, 0.03, 0.07, 0.04, 0.02, 0.10, 0.66],  # Public & Other good
+    #  Enrgy  Const  Trade  InfoF  RealE  BusSv  PubOt  Manuf
+    [0.65, 0.02, 0.05, 0.03, 0.01, 0.08, 0.06, 0.10],  # Energy good
+    [0.04, 0.50, 0.08, 0.02, 0.04, 0.12, 0.05, 0.15],  # Construction good
+    [0.03, 0.02, 0.60, 0.05, 0.02, 0.12, 0.08, 0.08],  # Trade & Transport good
+    [0.02, 0.01, 0.06, 0.62, 0.02, 0.15, 0.08, 0.04],  # Info & Finance good
+    [0.02, 0.05, 0.04, 0.04, 0.65, 0.10, 0.07, 0.03],  # Real Estate good
+    [0.02, 0.02, 0.08, 0.08, 0.02, 0.62, 0.10, 0.06],  # Business Svcs good
+    [0.03, 0.03, 0.07, 0.04, 0.02, 0.10, 0.66, 0.05],  # Public & Other good
+    [0.06, 0.03, 0.10, 0.03, 0.01, 0.12, 0.07, 0.58],  # Manufacturing good
 ]
 
 # --- Energy cost shares of intermediate inputs by sector ---
@@ -228,13 +229,13 @@ _IO_MATRIX = [
 # These are used to translate global energy price shocks into Z shocks.
 ENERGY_COST_SHARES = {
     "Energy": 0.30,  # energy sector uses energy as feedstock
-    "Manufacturing": 0.12,  # heavy energy user (process heat, electricity)
     "Construction": 0.05,  # fuel for machinery, heating
     "Trade & Transport": 0.10,  # fuel for transport, heating retail
     "Info & Finance": 0.02,  # data centres, offices
     "Real Estate": 0.01,  # minimal direct energy use
     "Business Services": 0.02,  # offices
     "Public & Other": 0.04,  # hospitals, schools, streetlighting
+    "Manufacturing": 0.12,  # heavy energy user (process heat, electricity)
 }
 
 # --- Minimum consumption levels (c_min) ---
@@ -246,13 +247,13 @@ ENERGY_COST_SHARES = {
 # Other goods have zero or negligible floors.
 _C_MIN = [
     0.005,  # Energy: ~2.5% of avg consumption (non-discretionary heating/lighting)
-    0.0,  # Manufacturing
     0.0,  # Construction
     0.001,  # Trade & Transport: minimal food baseline
     0.0,  # Info & Finance
     0.001,  # Real Estate: minimal housing
     0.0,  # Business Services
     0.0,  # Public & Other
+    0.0,  # Manufacturing
 ]
 
 
