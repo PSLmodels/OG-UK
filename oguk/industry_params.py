@@ -318,7 +318,7 @@ def get_industry_params() -> dict:
         "cit_rate": [[0.27] * M],
         "io_matrix": _IO_MATRIX,
         "alpha_c": alpha_c.tolist(),
-        # "c_min": list(_C_MIN),  # not yet supported by OG-Core
+        "c_min": list(_C_MIN),
         "delta_tau_annual": [[0.05] * M],
         "inv_tax_credit": [[0.0] * M],
         "tau_c": [[0.19] * NUM_CONSUMPTION_GOODS],

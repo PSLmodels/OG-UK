@@ -17,6 +17,7 @@ from policyengine.core import ParameterValue, Policy
 from policyengine.tax_benefit_models.uk import uk_latest
 
 from oguk import map_transition_to_real_world, run_transition_path
+from oguk.industry_params import SECTOR_NAMES
 
 # ── Reform definition ────────────────────────────────────────────────────────
 
@@ -223,11 +224,66 @@ def _write_df_to_sheet(
     _format_sheet(ws, title=title, subtitle=subtitle, header_row=3)
 
 
+def _build_sector_df(
+    base_tp,
+    reform_tp,
+    attr: str,
+    label: str,
+) -> pd.DataFrame:
+    """Build a DataFrame of per-sector % changes (reform vs baseline).
+
+    Args:
+        base_tp: Baseline TransitionPathResult
+        reform_tp: Reform TransitionPathResult
+        attr: Attribute name on TransitionPathResult (e.g. "Y_m")
+        label: Human-readable label for the variable
+    """
+    base_arr = getattr(base_tp, attr)  # T × M
+    ref_arr = getattr(reform_tp, attr)  # T × M
+    if base_arr is None or ref_arr is None:
+        return pd.DataFrame()
+
+    T = min(len(base_arr), len(ref_arr))
+    base_arr = base_arr[:T]
+    ref_arr = ref_arr[:T]
+
+    pct_change = np.where(
+        np.abs(base_arr) > 1e-12,
+        (ref_arr - base_arr) / base_arr * 100,
+        0.0,
+    )
+
+    fy_labels = [f"{int(y)}-{str(int(y) + 1)[2:]}" for y in base_tp.years[:T]]
+    cols = {"Fiscal year": fy_labels}
+    for m, name in enumerate(SECTOR_NAMES):
+        cols[f"{name} (%)"] = np.round(pct_change[:, m], 3)
+    return pd.DataFrame(cols)
+
+
+def _build_sector_levels_df(
+    tp,
+    attr: str,
+) -> pd.DataFrame:
+    """Build a DataFrame of per-sector levels (model units) from a TransitionPathResult."""
+    arr = getattr(tp, attr)
+    if arr is None:
+        return pd.DataFrame()
+
+    T = len(arr)
+    fy_labels = [f"{int(y)}-{str(int(y) + 1)[2:]}" for y in tp.years[:T]]
+    cols = {"Fiscal year": fy_labels}
+    for m, name in enumerate(SECTOR_NAMES):
+        cols[name] = np.round(arr[:T, m], 6)
+    return pd.DataFrame(cols)
+
+
 def save_to_xlsx(
     baseline_impact,
     reform_impact,
     output_path: Path,
     hist_df: pd.DataFrame | None = None,
+    base_tp=None,
+    reform_tp=None,
 ) -> None:
     """Save TPI results to a formatted xlsx workbook.
 
@@ -281,6 +337,51 @@ def save_to_xlsx(
         title="OG-UK: Reform impact vs baseline (basic rate +1pp, from 2027)",
         subtitle=f"£bn change from baseline. Generated {run_date}.",
     )
+
+    # ── Sector-level sheets (if per-industry data available) ─────────────────
+    if base_tp is not None and reform_tp is not None:
+        sector_vars = [
+            ("Y_m", "Output"),
+            ("K_m", "Capital"),
+            ("L_m", "Labour"),
+            ("p_m", "Prices"),
+        ]
+        for attr, label in sector_vars:
+            if getattr(base_tp, attr, None) is None:
+                continue
+
+            # Sheet: % change by sector
+            pct_df = _build_sector_df(base_tp, reform_tp, attr, label)
+            if not pct_df.empty:
+                _write_df_to_sheet(
+                    wb,
+                    sheet_name=f"Sector {label.lower()} (%chg)",
+                    df=pct_df,
+                    title=f"OG-UK: Sector {label} — Reform vs Baseline (% change)",
+                    subtitle=f"Per-industry % change from basic rate +1pp. Generated {run_date}.",
+                )
+
+            # Sheet: baseline levels (model units)
+            base_df = _build_sector_levels_df(base_tp, attr)
+            if not base_df.empty:
+                _write_df_to_sheet(
+                    wb,
+                    sheet_name=f"Sector {label.lower()} (base)",
+                    df=base_df,
+                    title=f"OG-UK: Baseline Sector {label} (model units)",
+                    subtitle=f"Per-industry baseline levels. Generated {run_date}.",
+                )
+
+            # Sheet: reform levels (model units)
+            ref_df = _build_sector_levels_df(reform_tp, attr)
+            if not ref_df.empty:
+                _write_df_to_sheet(
+                    wb,
+                    sheet_name=f"Sector {label.lower()} (reform)",
+                    df=ref_df,
+                    title=f"OG-UK: Reform Sector {label} (model units)",
+                    subtitle=f"Per-industry reform levels. Generated {run_date}.",
+                )
 
     wb.save(output_path)
     print(f"Saved to: {output_path}")
@@ -338,7 +439,14 @@ def main() -> None:
         hist_df = None
 
     print("Writing xlsx...")
-    save_to_xlsx(baseline_impact, reform_impact, output_path, hist_df=hist_df)
+    save_to_xlsx(
+        baseline_impact,
+        reform_impact,
+        output_path,
+        hist_df=hist_df,
+        base_tp=base_tp,
+        reform_tp=reform_tp,
+    )
 
 
 if __name__ == "__main__":

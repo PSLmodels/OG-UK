@@ -130,6 +130,13 @@ class TransitionPathResult(BaseModel):
         default=0.010,
         description="Annual productivity growth rate used in this run",
     )
+    # Per-industry arrays (T × M)
+    Y_m: np.ndarray | None = Field(default=None, description="Output by sector (T×M)")
+    K_m: np.ndarray | None = Field(default=None, description="Capital by sector (T×M)")
+    L_m: np.ndarray | None = Field(default=None, description="Labour by sector (T×M)")
+    p_m: np.ndarray | None = Field(
+        default=None, description="Output prices by sector (T×M)"
+    )
 
 
 class TransitionMacroImpact(BaseModel):
@@ -830,6 +837,10 @@ def _tpi_dict_to_result(tpi: dict, start_year: int) -> TransitionPathResult:
         w=np.asarray(tpi["w"]).flatten(),
         tax_revenue=np.asarray(tpi["total_tax_revenue"]).flatten(),
         debt=np.asarray(tpi["D"]).flatten(),
+        Y_m=np.asarray(tpi["Y_m"])[:T] if "Y_m" in tpi else None,
+        K_m=np.asarray(tpi["K_m"])[:T] if "K_m" in tpi else None,
+        L_m=np.asarray(tpi["L_m"])[:T] if "L_m" in tpi else None,
+        p_m=np.asarray(tpi["p_m"])[:T] if "p_m" in tpi else None,
     )
 
 
