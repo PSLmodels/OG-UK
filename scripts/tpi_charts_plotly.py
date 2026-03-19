@@ -29,7 +29,7 @@ def _fy_to_int(fy: str) -> int:
     return int(fy[:4])
 
 
-OBR_DATA = Path("/Users/nikhil.woodruff/10ds/obr-macroeconomic-model/data")
+OBR_DATA = Path(__file__).resolve().parent.parent / "data"
 
 BLUE = "#1a3a6e"
 RED = "#c0392b"
@@ -341,11 +341,18 @@ def load_tpi_pct_changes() -> pd.DataFrame:
         "Debt (£bn)": "debt",
     }
 
-    fy_labels = [f"{int(y)}-{str(int(y) + 1)[2:]}" for y in base["Year"]]
+    # Align baseline and reform by fiscal year (baseline may have
+    # historical rows prepended that reform doesn't have)
+    fy_col = "Fiscal year" if "Fiscal year" in base.columns else "Year"
+    base = base.set_index(fy_col)
+    ref = ref.set_index(fy_col)
+    common = base.index.intersection(ref.index)
+    base = base.loc[common]
+    ref = ref.loc[common]
+
     pct = {}
     for tc, key in cols.items():
         s = (ref[tc] - base[tc]) / base[tc] * 100
-        s.index = fy_labels
         pct[key] = s
 
     return pd.DataFrame(pct)
@@ -358,7 +365,7 @@ def fig_main(baseline: pd.DataFrame, pct: pd.DataFrame) -> go.Figure:
     variables = [
         ("Consumption (% GDP)", "consumption", ORANGE),
         ("Investment (% GDP)", "investment", GREEN),
-        ("TME (% GDP)", "tme", PURPLE),
+        ("Gov. Consumption (% GDP)", "tme", PURPLE),
         ("Tax revenue (% GDP)", "tax_revenue", RED),
         ("Debt (% GDP)", "debt", GREY),
         ("GDP (£bn)", "gdp", BLUE),
@@ -475,26 +482,27 @@ def fig_main(baseline: pd.DataFrame, pct: pd.DataFrame) -> go.Figure:
         ),
         title=dict(
             text=(
-                "<b>OG-UK: Basic Rate +1pp from 2027-28 — Impact on OBR Forecast</b><br>"
-                "<sup>Solid = OBR outturn / Nov 2025 EFO forecast · Dashed = reform · "
-                "Grey dotted = outturn/forecast boundary · All in fiscal years</sup>"
+                "<b>OG-UK 8-Sector Model: Basic Rate +1pp from 2027-28</b><br>"
+                "<sup>Solid = OBR outturn / Nov 2025 EFO forecast · Dashed = reform (OG-UK TPI) · "
+                "Grey dotted = outturn/forecast boundary</sup>"
             ),
             x=0.5,
             font=dict(size=15),
         ),
         height=780,
     )
-    # Format x ticks as fiscal year labels
+    # Format x ticks — show every 5th year to avoid overlap
     all_years = sorted(baseline.index.tolist())
+    tick_years = [y for y in all_years if y % 5 == 0]
     fig.update_xaxes(
         showgrid=True,
         gridcolor="#ececec",
         zeroline=False,
-        tickangle=45,
+        tickangle=0,
         tickfont=dict(size=10),
         tickmode="array",
-        tickvals=all_years,
-        ticktext=[f"{y}-{str(y + 1)[2:]}" for y in all_years],
+        tickvals=tick_years,
+        ticktext=[f"{y}-{str(y + 1)[2:]}" for y in tick_years],
     )
     for i, (_, key, _) in enumerate(variables):
         r, c = positions[i]

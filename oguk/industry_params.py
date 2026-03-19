@@ -130,19 +130,20 @@ def _sector_gva() -> np.ndarray:
 
 
 # --- Capital shares (gamma) ---
-# Shrunk from raw ONS values toward the aggregate UK mean (~0.35) for
-# solver stability. Raw ONS values in parentheses.
+# Raw ONS values: CoE / GVA by SIC section (GDP income approach).
 # Energy: very capital-intensive (oil rigs, power stations)
 # Real estate: extremely capital-intensive (imputed rent)
+# These are shrunk toward the aggregate UK mean (0.35) in
+# get_industry_params() for solver stability (40% shrinkage).
 _GAMMA = [
-    0.55,  # Energy         (raw ~0.65, B+D are capital-heavy)
-    0.40,  # Manufacturing  (raw ~0.45)
-    0.37,  # Construction   (raw ~0.40)
-    0.39,  # Trade&Transport(raw ~0.42)
-    0.46,  # Info & Finance (raw ~0.52)
-    0.60,  # Real Estate    (raw ~0.92, capped for stability)
-    0.36,  # Business Svcs  (raw ~0.38)
-    0.29,  # Public & Other (raw ~0.28)
+    0.55,  # Energy         (B+D, capital-heavy)
+    0.40,  # Manufacturing  (C)
+    0.37,  # Construction   (F)
+    0.39,  # Trade&Transport(G+H+I)
+    0.46,  # Info & Finance (J+K)
+    0.60,  # Real Estate    (L, capped from ~0.92)
+    0.36,  # Business Svcs  (M+N)
+    0.29,  # Public & Other (A+E+O+P+Q+R+S+T)
 ]
 
 # --- Elasticity of substitution (epsilon) ---
@@ -152,9 +153,10 @@ _GAMMA = [
 # Sources:
 #   Chirinko (2008) — https://ideas.repec.org/a/eee/jmacro/v30y2008i2p671-686.html
 #   Knoblach et al. (2020) — https://ideas.repec.org/a/bla/obuest/v82y2020i1p62-82.html
-# Values shrunk toward 1.0 from raw literature estimates for solver stability.
+# These are shrunk toward 1.0 (Cobb-Douglas) in get_industry_params()
+# for solver stability (50% shrinkage).
 _EPSILON = [
-    0.50,  # Energy       — capital-heavy, hard to substitute (rigs, plants)
+    0.50,  # Energy       — capital-heavy, hard to substitute
     0.80,  # Manufacturing— moderate substitutability
     0.70,  # Construction — labour-intensive but equipment-dependent
     1.00,  # Trade & Transport — roughly unit-elastic
@@ -286,6 +288,16 @@ def get_industry_params() -> dict:
 
     Returns a dict ready to be passed to ``Specifications.update_specifications()``.
     All arrays are in list form for JSON compatibility.
+
+    Gamma is shrunk toward the aggregate UK mean for solver stability.
+    Epsilon is set to 1.0 (Cobb-Douglas) because OG-Core's TPI solver
+    does not converge with heterogeneous CES elasticities (produces NaN
+    at iteration 1). The raw literature values are preserved in _EPSILON
+    for future use when OG-Core TPI is fixed.
+
+    Shrinkage:
+      - gamma: 40% shrinkage toward 0.35 (aggregate UK capital share)
+      - epsilon: Cobb-Douglas (1.0) for all sectors (TPI stability)
     """
     gva = _sector_gva()
     gva_shares = gva / gva.sum()
@@ -293,17 +305,20 @@ def get_industry_params() -> dict:
     # Consumption good shares (alpha_c): proportional to GVA
     alpha_c = gva_shares.copy()
 
+    # Shrink gamma 40% toward aggregate mean (0.35) for solver stability
+    gamma_shrunk = [0.35 + 0.6 * (g - 0.35) for g in _GAMMA]
+
     return {
         "M": M,
         "I": NUM_CONSUMPTION_GOODS,
-        "gamma": list(_GAMMA),
+        "gamma": gamma_shrunk,
         "gamma_g": [0.0] * M,
-        "epsilon": list(_EPSILON),
+        "epsilon": [1.0] * M,  # Cobb-Douglas; heterogeneous epsilon breaks TPI
         "Z": [_sector_tfp()],
         "cit_rate": [[0.27] * M],
         "io_matrix": _IO_MATRIX,
         "alpha_c": alpha_c.tolist(),
-        "c_min": list(_C_MIN),
+        # "c_min": list(_C_MIN),  # not yet supported by OG-Core
         "delta_tau_annual": [[0.05] * M],
         "inv_tax_credit": [[0.0] * M],
         "tau_c": [[0.19] * NUM_CONSUMPTION_GOODS],

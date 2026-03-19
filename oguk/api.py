@@ -740,7 +740,6 @@ def _build_specs(
         "cit_rate",
         "io_matrix",
         "alpha_c",
-        "c_min",
         "delta_tau_annual",
         "inv_tax_credit",
         "tau_c",
