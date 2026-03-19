@@ -621,7 +621,7 @@ _HIST_LABOUR_BY_SECTOR = {
     "2023-24": [175, 2570, 2330, 8500, 2620, 595, 5820, 9020],
 }
 
-from oguk.industry_params import SECTOR_NAMES
+from oguk.industry_params import SECTOR_NAMES  # noqa: E402
 
 
 def _load_sector_model_levels() -> dict[str, pd.DataFrame]:
@@ -730,7 +730,7 @@ def fig_sector_real(sector_pct: dict, gdp: pd.Series | None = None) -> go.Figure
         "Labour": (_HIST_LABOUR_BY_SECTOR, "thousands"),
     }
 
-    labels = [l for l in ["Output", "Capital", "Labour"] if l in sector_pct]
+    labels = [lb for lb in ["Output", "Capital", "Labour"] if lb in sector_pct]
     if not labels:
         return None
 
@@ -913,14 +913,14 @@ def load_sector_pct_changes() -> dict[str, pd.DataFrame]:
 
 def fig_sector_pct(sector_pct: dict[str, pd.DataFrame]) -> go.Figure | None:
     """Build a 1×3 subplot of per-sector % changes (Output, Capital, Labour)."""
-    labels = [l for l in ["Output", "Capital", "Labour"] if l in sector_pct]
+    labels = [lb for lb in ["Output", "Capital", "Labour"] if lb in sector_pct]
     if not labels:
         return None
 
     fig = make_subplots(
         rows=1,
         cols=len(labels),
-        subplot_titles=[f"Sector {l} (% change)" for l in labels],
+        subplot_titles=[f"Sector {lb} (% change)" for lb in labels],
         horizontal_spacing=0.08,
     )
 
@@ -1022,7 +1022,9 @@ def main():
         sector_real_fig = fig_sector_real(sector_pct, gdp=gdp_fy) if sector_pct else None
     except Exception as exc:
         print(f"  Sector real-world charts skipped: {exc}")
-        import traceback; traceback.print_exc()
+        import traceback  # noqa: E402
+
+        traceback.print_exc()
 
     # Combine into single HTML
     parts = [fig.to_html(full_html=False, include_plotlyjs="cdn")]
