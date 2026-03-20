@@ -126,6 +126,17 @@ class TransitionPathResult(BaseModel):
     w: np.ndarray = Field(description="Wage rate")
     tax_revenue: np.ndarray = Field(description="Total tax revenue")
     debt: np.ndarray = Field(description="Government debt")
+    g_y_annual: float = Field(
+        default=0.010,
+        description="Annual productivity growth rate used in this run",
+    )
+    # Per-industry arrays (T × M)
+    Y_m: np.ndarray | None = Field(default=None, description="Output by sector (T×M)")
+    K_m: np.ndarray | None = Field(default=None, description="Capital by sector (T×M)")
+    L_m: np.ndarray | None = Field(default=None, description="Labour by sector (T×M)")
+    p_m: np.ndarray | None = Field(
+        default=None, description="Output prices by sector (T×M)"
+    )
 
 
 class TransitionMacroImpact(BaseModel):
@@ -307,10 +318,13 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
     sav_inc = person.get("savings_interest_income", np.zeros(length)).values
     cap_inc = div_inc + pen_inc + prop_inc + sav_inc
 
-    baseline_net = (
-        person["total_income"].values
-        - person.get("income_tax", np.zeros(length)).values
-    )
+    def _hbai_net_per_person(microsim):
+        """Return hbai_household_net_income broadcast to person level."""
+        return microsim.output_dataset.data.map_to_entity(
+            "household", "person", columns=["hbai_household_net_income"], how="project"
+        )["hbai_household_net_income"].values
+
+    baseline_net = _hbai_net_per_person(sim)
 
     # Build perturbation policies.  PolicyEngine silently drops parameter_values
     # when a simulation_modifier is present, so we must apply any reform
@@ -349,12 +363,7 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
         dataset=dataset, tax_benefit_model_version=uk_latest, policy=labor_pol
     )
     labor_sim.ensure()
-    labor_net = (
-        labor_sim.output_dataset.data.person["total_income"].values
-        - labor_sim.output_dataset.data.person.get(
-            "income_tax", np.zeros(length)
-        ).values
-    )
+    labor_net = _hbai_net_per_person(labor_sim)
     mtr_labor = np.clip(1 - (labor_net - baseline_net), 0, 1)
 
     # Capital MTR: perturb dividend income by £1
@@ -370,10 +379,7 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
         dataset=dataset, tax_benefit_model_version=uk_latest, policy=cap_pol
     )
     cap_sim.ensure()
-    cap_net = (
-        cap_sim.output_dataset.data.person["total_income"].values
-        - cap_sim.output_dataset.data.person.get("income_tax", np.zeros(length)).values
-    )
+    cap_net = _hbai_net_per_person(cap_sim)
     mtr_capital = np.clip(1 - (cap_net - baseline_net), 0, 1)
 
     market_inc = labor_inc + cap_inc
@@ -470,16 +476,7 @@ def _estimate_tax_functions(
     output_dir = tempfile.mkdtemp()
 
     etr_params, _, _, _ = txfunc_est(
-        df_etr,
-        0,
-        0,
-        "etr",
-        "GS",
-        numparams,
-        output_dir,
-        False,
-        None,
-        True,  # global_opt=True
+        df_etr, 0, 0, "etr", "GS", numparams, output_dir, False, None, True
     )
 
     # Reuse ETR params for MTRx and MTRy: the GS MTR formula is the
@@ -618,28 +615,51 @@ def calibrate(
 
         all_data = pd.concat(frames, ignore_index=True)
 
-        if age_specific == "pooled":
-            etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll = (
-                _estimate_tax_functions(all_data, S)
-            )
-        elif age_specific == "brackets":
-            etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll = (
-                _estimate_bracket_tax_functions(all_data, S, AGE_BRACKETS)
-            )
-        elif age_specific == "each":
-            per_age_brackets = [
-                (STARTING_AGE + s, STARTING_AGE + s, f"Age {STARTING_AGE + s}")
-                for s in range(S)
-            ]
-            etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll = (
-                _estimate_bracket_tax_functions(all_data, S, per_age_brackets)
-            )
-        else:
-            raise ValueError(
-                f"age_specific must be 'pooled', 'brackets', or 'each', got '{age_specific}'"
-            )
-        BW = years
-        frac_tax_payroll = np.full(BW, frac_payroll)
+        # Estimate tax functions separately for each budget-window year so
+        # that OG-Core receives BW distinct parameter sets (one per year)
+        # rather than a single pooled set replicated across all periods.
+        etr_by_year, mtrx_by_year, mtry_by_year = [], [], []
+        frac_payroll_by_year = []
+        avg_incomes = []
+
+        for year in range(start_year, start_year + years):
+            year_data = all_data[all_data["year"] == year]
+            # Fall back to full pooled data if a single year has too few obs
+            if len(year_data) < 200:
+                year_data = all_data
+
+            if age_specific == "pooled":
+                e, mx, my, avg_inc, fp = _estimate_tax_functions(year_data, S)
+            elif age_specific == "brackets":
+                e, mx, my, avg_inc, fp = _estimate_bracket_tax_functions(
+                    year_data, S, AGE_BRACKETS
+                )
+            elif age_specific == "each":
+                per_age_brackets = [
+                    (STARTING_AGE + s, STARTING_AGE + s, f"Age {STARTING_AGE + s}")
+                    for s in range(S)
+                ]
+                e, mx, my, avg_inc, fp = _estimate_bracket_tax_functions(
+                    year_data, S, per_age_brackets
+                )
+            else:
+                raise ValueError(
+                    f"age_specific must be 'pooled', 'brackets', or 'each', "
+                    f"got '{age_specific}'"
+                )
+            # Each estimator returns a list of length 1; unwrap to get [S] entry
+            etr_by_year.append(e[0])
+            mtrx_by_year.append(mx[0])
+            mtry_by_year.append(my[0])
+            avg_incomes.append(avg_inc)
+            frac_payroll_by_year.append(fp)
+
+        # BW entries, each of shape [S]
+        etr_params_S = etr_by_year
+        mtrx_params_S = mtrx_by_year
+        mtry_params_S = mtry_by_year
+        avg_income = float(np.mean(avg_incomes))
+        frac_tax_payroll = np.array(frac_payroll_by_year)
 
         demo = demographics.get_pop_objs(
             E=20,
@@ -675,9 +695,21 @@ def _build_specs(
     baseline: bool = True,
     max_iter: int = 250,
     age_specific: str = "pooled",
+    param_overrides: dict | None = None,
 ):
-    """Build a calibrated Specifications object (internal)."""
+    """Build a calibrated Specifications object (internal).
+
+    Args:
+        param_overrides: Optional dict of OG-Core parameter names to values
+            that are applied after all other configuration. Use this to shock
+            structural parameters (e.g. ``{"g_y_annual": 0.011}``). Overrides
+            are applied last so they take precedence over defaults and
+            calibration outputs. Demographic / tax-function keys are not
+            permitted here — those are set by calibrate().
+    """
     from ogcore.parameters import Specifications
+
+    from oguk.industry_params import get_industry_params
 
     defaults_path = os.path.join(
         os.path.dirname(__file__), "oguk_default_parameters.json"
@@ -685,7 +717,6 @@ def _build_specs(
     with open(defaults_path) as f:
         defaults = json.load(f)
 
-    # Run calibration with S/T from defaults before constructing Specs
     S = defaults["S"]
     T = defaults["T"]
     cal = calibrate(start_year=start_year, policy=policy, age_specific=age_specific)
@@ -704,6 +735,21 @@ def _build_specs(
         "g_n_ss",
         "imm_rates",
         "omega_S_preTP",
+    ]:
+        defaults.pop(key, None)
+
+    # Strip single-industry defaults that will be replaced by industry_params
+    for key in [
+        "gamma",
+        "gamma_g",
+        "epsilon",
+        "Z",
+        "cit_rate",
+        "io_matrix",
+        "alpha_c",
+        "delta_tau_annual",
+        "inv_tax_credit",
+        "tau_c",
     ]:
         defaults.pop(key, None)
 
@@ -742,6 +788,14 @@ def _build_specs(
             ).tolist(),
         }
     )
+
+    # Apply 8-sector industry calibration
+    defaults.update(get_industry_params())
+    # Levenberg-Marquardt is more robust than the default 'hybr' for M>1
+    defaults["SS_root_method"] = "lm"
+
+    if param_overrides:
+        defaults.update(param_overrides)
     p.update_specifications(defaults)
     p.maxiter = max_iter
     # Relax RC tolerance for TPI: the last period (t=T-1) has a known
@@ -783,6 +837,10 @@ def _tpi_dict_to_result(tpi: dict, start_year: int) -> TransitionPathResult:
         w=np.asarray(tpi["w"]).flatten(),
         tax_revenue=np.asarray(tpi["total_tax_revenue"]).flatten(),
         debt=np.asarray(tpi["D"]).flatten(),
+        Y_m=np.asarray(tpi["Y_m"])[:T] if "Y_m" in tpi else None,
+        K_m=np.asarray(tpi["K_m"])[:T] if "K_m" in tpi else None,
+        L_m=np.asarray(tpi["L_m"])[:T] if "L_m" in tpi else None,
+        p_m=np.asarray(tpi["p_m"])[:T] if "p_m" in tpi else None,
     )
 
 
@@ -791,6 +849,7 @@ def solve_steady_state(
     policy: Policy | None = None,
     max_iter: int = 250,
     age_specific: str = "pooled",
+    param_overrides: dict | None = None,
 ) -> SteadyStateResult:
     """Solve for steady state equilibrium.
 
@@ -802,6 +861,8 @@ def solve_steady_state(
             "pooled"   — one function for all ages (default)
             "brackets" — separate function per age group (4 groups)
             "each"     — separate function per individual age (80)
+        param_overrides: Optional dict of OG-Core parameter names to values
+            for structural shocks (e.g. ``{"g_y_annual": 0.011}``).
 
     Returns:
         SteadyStateResult with equilibrium values
@@ -816,6 +877,7 @@ def solve_steady_state(
             tmpdir,
             max_iter=max_iter,
             age_specific=age_specific,
+            param_overrides=param_overrides,
         )
         ss = run_SS(p, client=None)
         return _ss_dict_to_result(ss)
@@ -826,12 +888,13 @@ def run_transition_path(
     policy: Policy | None = None,
     client=None,
     age_specific: str = "pooled",
+    param_overrides: dict | None = None,
 ) -> tuple[TransitionPathResult, TransitionPathResult | None]:
     """Run baseline (and optionally reform) transition path.
 
     Solves for the full dynamic transition using OG-Core's SS + TPI
-    solver. If a reform policy is provided, runs both baseline and
-    reform and returns both paths.
+    solver. If a reform policy or param_overrides are provided, runs
+    both baseline and reform and returns both paths.
 
     Args:
         start_year: First year of simulation
@@ -841,9 +904,11 @@ def run_transition_path(
             "pooled"   — one function for all ages (default)
             "brackets" — separate function per age group (4 groups)
             "each"     — separate function per individual age (80)
+        param_overrides: Optional dict of OG-Core parameter names to values
+            for structural shocks (e.g. ``{"Z": [[1.004]]}``).
 
     Returns:
-        (baseline_tp, reform_tp) — reform_tp is None if no policy
+        (baseline_tp, reform_tp) — reform_tp is None if no policy/overrides
     """
     from dask.distributed import Client
     from ogcore import SS, TPI
@@ -858,7 +923,6 @@ def run_transition_path(
         os.makedirs(os.path.join(base_dir, "SS"), exist_ok=True)
         os.makedirs(os.path.join(base_dir, "TPI"), exist_ok=True)
 
-        # Baseline
         p_base = _build_specs(
             start_year,
             None,
@@ -886,7 +950,7 @@ def run_transition_path(
 
         # Reform
         reform_tp = None
-        if policy is not None:
+        if policy is not None or param_overrides:
             reform_dir = tempfile.mkdtemp()
             os.makedirs(os.path.join(reform_dir, "SS"), exist_ok=True)
             os.makedirs(os.path.join(reform_dir, "TPI"), exist_ok=True)
@@ -898,6 +962,7 @@ def run_transition_path(
                 base_dir,
                 baseline=False,
                 age_specific=age_specific,
+                param_overrides=param_overrides,
             )
 
             ss_reform = SS.run_SS(p_reform, client=client)
@@ -941,22 +1006,19 @@ def map_transition_to_real_world(
     topic_psf = "economy/governmentpublicsectorandtaxes/publicsectorfinance"
 
     gdp_m = fetch_ons_timeseries("YBHA", "ukea", topic_gdp, "years", fallback=2_890_664)
-    cons_m = fetch_ons_timeseries(
-        "ABJQ", "ukea", topic_gdp, "years", fallback=1_477_000
-    )
-    inv_m = fetch_ons_timeseries("NPQS", "ukea", topic_gdp, "years", fallback=414_000)
-    gov_m = fetch_ons_timeseries("NMRP", "ukea", topic_gdp, "years", fallback=584_000)
     debt_pct = fetch_ons_timeseries("HF6X", "pusf", topic_psf, "months", fallback=92.9)
 
     gdp_bn = gdp_m / 1000
-    cons_bn = cons_m / 1000
-    inv_bn = inv_m / 1000
-    gov_bn = gov_m / 1000
     tax_bn = 859.0
     debt_bn = gdp_bn * debt_pct / 100
 
-    # Per-period scale factor anchored on GDP
-    scale = gdp_bn / baseline.Y
+    # Single scale factor anchored at period 0: £bn per model unit.
+    # Using a per-period scale (gdp_bn / baseline.Y[t]) would cancel out all
+    # growth in the baseline levels, leaving them flat at gdp_bn every period.
+    scale = gdp_bn / baseline.Y[0]
+
+    def _level(base_arr):
+        return base_arr * scale
 
     def _change(base_arr, reform_arr):
         return (reform_arr - base_arr) * scale
@@ -968,14 +1030,30 @@ def map_transition_to_real_world(
     drev = _change(baseline.tax_revenue, reform.tax_revenue)
     dd = _change(baseline.debt, reform.debt)
 
+    # Reform levels = baseline levels + change
+    base_gdp = _level(baseline.Y)
+    base_cons = _level(baseline.C)
+    base_inv = _level(baseline.I)
+    base_gov = _level(baseline.G)
+    base_tax = _level(baseline.tax_revenue)
+    base_debt = _level(baseline.debt)
+
+    # Anchor tax revenue and debt to OBR actuals at period 0 by applying
+    # an additive offset so model path starts at the right level.
+    tax_offset = tax_bn - base_tax[0]
+    debt_offset = debt_bn - base_debt[0]
+
+    # Convert model integer years to fiscal year labels (2026 → "2026-27")
+    fy_labels = np.array([f"{int(y)}-{str(int(y) + 1)[2:]}" for y in reform.years])
+
     return TransitionMacroImpact(
-        years=reform.years,
-        gdp=np.round(gdp_bn + dy, 1),
-        consumption=np.round(cons_bn + dc, 1),
-        investment=np.round(inv_bn + di, 1),
-        government=np.round(gov_bn + dg, 1),
-        tax_revenue=np.round(tax_bn + drev, 1),
-        debt=np.round(debt_bn + dd, 1),
+        years=fy_labels,
+        gdp=np.round(base_gdp + dy, 1),
+        consumption=np.round(base_cons + dc, 1),
+        investment=np.round(base_inv + di, 1),
+        government=np.round(base_gov + dg, 1),
+        tax_revenue=np.round(base_tax + tax_offset + drev, 1),
+        debt=np.round(base_debt + debt_offset + dd, 1),
         gdp_change=np.round(dy, 1),
         consumption_change=np.round(dc, 1),
         investment_change=np.round(di, 1),

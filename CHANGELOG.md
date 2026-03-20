@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0).
 
+## [0.3.1] - 2026-03-20
+
+### Added
+
+* Extended calibration to an 8-sector multi-industry model: Energy, Manufacturing, Construction, Trade & Transport, Information & Finance, Real Estate, Business Services, and Public & Other.
+* Added `oguk/industry_params.py` with `get_industry_params()` returning sector-specific capital shares, TFP, and production parameters calibrated from ONS data.
+* Computed sector-level TFP as Solow residuals using ONS capital stocks by industry (CAPSTK) and workforce jobs by SIC (JOBS02), normalised so GVA-weighted mean equals 1.0.
+* Added `run_tpi_and_export.py` to extract and export per-industry TPI results (`Y_m`, `K_m`, `L_m`, `p_m`) to `tpi_results.xlsx`.
+* Added `tpi_charts_plotly.py` with sector-level transition path charts anchored to ONS historical outturn (GVA, capital stocks, workforce jobs from 2000) and projected forward using OBR nominal GDP growth.
+
 ## [0.3.0] - 2026-02-24
 
 ### Changed

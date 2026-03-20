@@ -24,6 +24,6 @@ jobs:
 
       - name: Build Jupyter Book
         run: |
-          pip install jupyter-book>=0.11.3 sphinxcontrib-bibtex>=2.0.0
+          pip install "jupyter-book>=0.11.3,<2" sphinxcontrib-bibtex>=2.0.0
           cd docs
-          python -m jupyter_book build ./book
+          jb build ./book
