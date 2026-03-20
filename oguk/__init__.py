@@ -22,7 +22,7 @@ from oguk.industry_params import (
     get_industry_params,
 )
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 __all__ = [
     "AGE_BRACKETS",
     "CalibrationResult",

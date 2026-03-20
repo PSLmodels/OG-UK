@@ -1,6 +1,6 @@
 [project]
 name = "oguk"
-version = "0.3.0"
+version = "0.3.1"
 description = "United Kingdom calibration for OG-Core overlapping generations model"
 readme = "README.md"
 license = "CC0-1.0"
