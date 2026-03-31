@@ -127,7 +127,7 @@ class TransitionPathResult(BaseModel):
     tax_revenue: np.ndarray = Field(description="Total tax revenue")
     debt: np.ndarray = Field(description="Government debt")
     g_y_annual: float = Field(
-        default=0.010,
+        default=0.011,
         description="Annual productivity growth rate used in this run",
     )
     # Per-industry arrays (T × M)
@@ -696,8 +696,37 @@ def _build_specs(
     max_iter: int = 250,
     age_specific: str = "pooled",
     param_overrides: dict | None = None,
+    multi_sector: bool = False,
 ):
     """Build a calibrated Specifications object (internal).
+
+    UK-calibrated structural parameters (set in oguk_default_parameters.json):
+
+        frisch = 0.35
+            Blundell, MaCurdy & Meghir (1999) "Labor Supply Models: Unobserved
+            Heterogeneity, Nonparticipation and Dynamics", ch. 27 in Handbook
+            of Labor Economics. Central UK estimate ~0.3-0.4.
+            https://doi.org/10.1016/S1573-4463(99)30039-9
+
+        g_y_annual = 0.011
+            OBR "Economic and Fiscal Outlook" (Nov 2025), Table 1.1: potential
+            output growth ~1.1% per year.
+            https://obr.uk/efo/economic-and-fiscal-outlook-november-2025/
+
+        delta_annual = 0.065
+            ONS "Capital stocks and fixed capital consumption" (CAPSTK):
+            ratio of consumption of fixed capital to net capital stock, whole
+            economy excluding dwellings, 2022 (~6-7%).
+            https://www.ons.gov.uk/economy/nationalaccounts/uksectoraccounts/datasets/capitalstocksandfixedcapitalconsumption
+
+        beta_annual = 0.965
+            Calibrated to match UK household saving ratio (~6-9%).
+            ONS "Households saving ratio" (NRJS).
+            https://www.ons.gov.uk/economy/grossdomesticproductgdp/timeseries/dgd8
+
+        world_int_rate_annual = 0.02
+            UK 10-year gilt real yield, Bank of England yield curve data.
+            https://www.bankofengland.co.uk/statistics/yield-curves
 
     Args:
         param_overrides: Optional dict of OG-Core parameter names to values
@@ -706,6 +735,8 @@ def _build_specs(
             are applied last so they take precedence over defaults and
             calibration outputs. Demographic / tax-function keys are not
             permitted here — those are set by calibrate().
+        multi_sector: If True, use 8-sector industry calibration (M=8).
+            If False (default), use a single representative sector (M=1).
     """
     from ogcore.parameters import Specifications
 
@@ -738,20 +769,21 @@ def _build_specs(
     ]:
         defaults.pop(key, None)
 
-    # Strip single-industry defaults that will be replaced by industry_params
-    for key in [
-        "gamma",
-        "gamma_g",
-        "epsilon",
-        "Z",
-        "cit_rate",
-        "io_matrix",
-        "alpha_c",
-        "delta_tau_annual",
-        "inv_tax_credit",
-        "tau_c",
-    ]:
-        defaults.pop(key, None)
+    if multi_sector:
+        # Strip single-industry defaults that will be replaced by industry_params
+        for key in [
+            "gamma",
+            "gamma_g",
+            "epsilon",
+            "Z",
+            "cit_rate",
+            "io_matrix",
+            "alpha_c",
+            "delta_tau_annual",
+            "inv_tax_credit",
+            "tau_c",
+        ]:
+            defaults.pop(key, None)
 
     p = Specifications(
         baseline=baseline, output_base=output_base, baseline_dir=baseline_dir
@@ -789,10 +821,14 @@ def _build_specs(
         }
     )
 
-    # Apply 8-sector industry calibration
-    defaults.update(get_industry_params())
-    # Levenberg-Marquardt is more robust than the default 'hybr' for M>1
-    defaults["SS_root_method"] = "lm"
+    if multi_sector:
+        # Apply 8-sector industry calibration
+        defaults.update(get_industry_params())
+        # hybr (Powell hybrid) for heterogeneous CES; LM gets stuck at ~1e-5
+        defaults["SS_root_method"] = "hybr"
+        # Relax tolerances for heterogeneous CES
+        defaults["mindist_SS"] = 1e-4
+        defaults["RC_SS"] = 1e-4
 
     if param_overrides:
         defaults.update(param_overrides)
@@ -850,6 +886,7 @@ def solve_steady_state(
     max_iter: int = 250,
     age_specific: str = "pooled",
     param_overrides: dict | None = None,
+    multi_sector: bool = False,
 ) -> SteadyStateResult:
     """Solve for steady state equilibrium.
 
@@ -863,6 +900,8 @@ def solve_steady_state(
             "each"     — separate function per individual age (80)
         param_overrides: Optional dict of OG-Core parameter names to values
             for structural shocks (e.g. ``{"g_y_annual": 0.011}``).
+        multi_sector: If True, use 8-sector industry calibration (M=8).
+            If False (default), use a single representative sector (M=1).
 
     Returns:
         SteadyStateResult with equilibrium values
@@ -878,6 +917,7 @@ def solve_steady_state(
             max_iter=max_iter,
             age_specific=age_specific,
             param_overrides=param_overrides,
+            multi_sector=multi_sector,
         )
         ss = run_SS(p, client=None)
         return _ss_dict_to_result(ss)
@@ -889,6 +929,7 @@ def run_transition_path(
     client=None,
     age_specific: str = "pooled",
     param_overrides: dict | None = None,
+    multi_sector: bool = False,
 ) -> tuple[TransitionPathResult, TransitionPathResult | None]:
     """Run baseline (and optionally reform) transition path.
 
@@ -906,6 +947,8 @@ def run_transition_path(
             "each"     — separate function per individual age (80)
         param_overrides: Optional dict of OG-Core parameter names to values
             for structural shocks (e.g. ``{"Z": [[1.004]]}``).
+        multi_sector: If True, use 8-sector industry calibration (M=8).
+            If False (default), use a single representative sector (M=1).
 
     Returns:
         (baseline_tp, reform_tp) — reform_tp is None if no policy/overrides
@@ -930,6 +973,7 @@ def run_transition_path(
             base_dir,
             baseline=True,
             age_specific=age_specific,
+            multi_sector=multi_sector,
         )
 
         # Solve SS first to auto-calibrate alpha_G.
@@ -963,6 +1007,7 @@ def run_transition_path(
                 baseline=False,
                 age_specific=age_specific,
                 param_overrides=param_overrides,
+                multi_sector=multi_sector,
             )
 
             ss_reform = SS.run_SS(p_reform, client=client)
