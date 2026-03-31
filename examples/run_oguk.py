@@ -33,15 +33,24 @@ REFORM = Policy(
 def run_steady_state(age_specific: str = "pooled", multi_sector: bool = False):
     """Run baseline and reform steady state, print results."""
     sector_label = "8-sector" if multi_sector else "1-sector"
-    print(f"Solving baseline steady state (age_specific='{age_specific}', {sector_label})...")
+    print(
+        f"Solving baseline steady state (age_specific='{age_specific}', {sector_label})..."
+    )
     t0 = time.time()
-    baseline = solve_steady_state(start_year=2026, age_specific=age_specific, multi_sector=multi_sector)
+    baseline = solve_steady_state(
+        start_year=2026, age_specific=age_specific, multi_sector=multi_sector
+    )
     print(f"  Done in {time.time() - t0:.1f}s")
 
-    print(f"Solving reform steady state (age_specific='{age_specific}', {sector_label})...")
+    print(
+        f"Solving reform steady state (age_specific='{age_specific}', {sector_label})..."
+    )
     t0 = time.time()
     reform = solve_steady_state(
-        start_year=2026, policy=REFORM, age_specific=age_specific, multi_sector=multi_sector,
+        start_year=2026,
+        policy=REFORM,
+        age_specific=age_specific,
+        multi_sector=multi_sector,
     )
     print(f"  Done in {time.time() - t0:.1f}s")
 
@@ -99,7 +108,10 @@ def run_tpi(multi_sector: bool = False):
     t0 = time.time()
     try:
         base_tp, reform_tp = run_transition_path(
-            start_year=2026, policy=REFORM, client=client, multi_sector=multi_sector,
+            start_year=2026,
+            policy=REFORM,
+            client=client,
+            multi_sector=multi_sector,
         )
     finally:
         client.close()
