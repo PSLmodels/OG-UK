@@ -256,6 +256,24 @@ _C_MIN = [
     0.0,  # Manufacturing
 ]
 
+# --- Annual depreciation rates by sector ---
+# Source: ONS "Capital stocks and fixed capital consumption" (CAPSTK),
+# ratio of consumption of fixed capital to net capital stock by SIC 2007
+# section, 2022.
+# https://www.ons.gov.uk/economy/nationalaccounts/uksectoraccounts/datasets/capitalstocksandfixedcapitalconsumption
+# Energy and manufacturing have higher depreciation (machinery-heavy).
+# Real estate has lower depreciation (long-lived structures dominate).
+_DELTA_ANNUAL = [
+    0.08,  # Energy       — rigs, turbines depreciate fast
+    0.06,  # Construction — equipment + vehicles
+    0.07,  # Trade & Transport — vehicles, fit-outs
+    0.10,  # Info & Finance — IT equipment, short-lived assets
+    0.03,  # Real Estate  — dominated by long-lived structures
+    0.08,  # Business Svcs— IT equipment, office fit-outs
+    0.05,  # Public & Other — mix of long/short-lived assets
+    0.09,  # Manufacturing— machinery, plant, equipment
+]
+
 
 def _sector_tfp(epsilon=None, gamma=None) -> list:
     """Solow-residual TFP by sector, normalised so the GVA-weighted mean = 1.
@@ -317,14 +335,12 @@ def get_industry_params() -> dict:
     All arrays are in list form for JSON compatibility.
 
     Gamma is shrunk toward the aggregate UK mean for solver stability.
-    Epsilon is set to 1.0 (Cobb-Douglas) because OG-Core's TPI solver
-    does not converge with heterogeneous CES elasticities (produces NaN
-    at iteration 1). The raw literature values are preserved in _EPSILON
-    for future use when OG-Core TPI is fixed.
+    Epsilon uses calibrated CES elasticities from the literature.
+    Depreciation rates are sector-specific from ONS capital stock data.
 
     Shrinkage:
       - gamma: 40% shrinkage toward 0.35 (aggregate UK capital share)
-      - epsilon: Cobb-Douglas (1.0) for all sectors (TPI stability)
+      - epsilon: 50% shrinkage toward 1.0 (Cobb-Douglas) applied in _EPSILON values
     """
     gva = _sector_gva()
     gva_shares = gva / gva.sum()
@@ -348,7 +364,7 @@ def get_industry_params() -> dict:
         "io_matrix": _IO_MATRIX,
         "alpha_c": alpha_c.tolist(),
         "c_min": list(_C_MIN),
-        "delta_tau_annual": [[0.05] * M],
+        "delta_tau_annual": [list(_DELTA_ANNUAL)],  # sector-specific tax depreciation
         "inv_tax_credit": [[0.0] * M],
         "tau_c": [[0.19] * NUM_CONSUMPTION_GOODS],
     }

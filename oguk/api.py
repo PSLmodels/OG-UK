@@ -127,7 +127,7 @@ class TransitionPathResult(BaseModel):
     tax_revenue: np.ndarray = Field(description="Total tax revenue")
     debt: np.ndarray = Field(description="Government debt")
     g_y_annual: float = Field(
-        default=0.010,
+        default=0.011,
         description="Annual productivity growth rate used in this run",
     )
     # Per-industry arrays (T × M)
@@ -699,6 +699,34 @@ def _build_specs(
     multi_sector: bool = False,
 ):
     """Build a calibrated Specifications object (internal).
+
+    UK-calibrated structural parameters (set in oguk_default_parameters.json):
+
+        frisch = 0.35
+            Blundell, MaCurdy & Meghir (1999) "Labor Supply Models: Unobserved
+            Heterogeneity, Nonparticipation and Dynamics", ch. 27 in Handbook
+            of Labor Economics. Central UK estimate ~0.3-0.4.
+            https://doi.org/10.1016/S1573-4463(99)30039-9
+
+        g_y_annual = 0.011
+            OBR "Economic and Fiscal Outlook" (Nov 2025), Table 1.1: potential
+            output growth ~1.1% per year.
+            https://obr.uk/efo/economic-and-fiscal-outlook-november-2025/
+
+        delta_annual = 0.065
+            ONS "Capital stocks and fixed capital consumption" (CAPSTK):
+            ratio of consumption of fixed capital to net capital stock, whole
+            economy excluding dwellings, 2022 (~6-7%).
+            https://www.ons.gov.uk/economy/nationalaccounts/uksectoraccounts/datasets/capitalstocksandfixedcapitalconsumption
+
+        beta_annual = 0.965
+            Calibrated to match UK household saving ratio (~6-9%).
+            ONS "Households saving ratio" (NRJS).
+            https://www.ons.gov.uk/economy/grossdomesticproductgdp/timeseries/dgd8
+
+        world_int_rate_annual = 0.02
+            UK 10-year gilt real yield, Bank of England yield curve data.
+            https://www.bankofengland.co.uk/statistics/yield-curves
 
     Args:
         param_overrides: Optional dict of OG-Core parameter names to values

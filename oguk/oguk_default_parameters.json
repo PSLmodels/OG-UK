@@ -1,6 +1,6 @@
 {
-  "frisch": 0.4,
-  "g_y_annual": 0.01,
+  "frisch": 0.35,
+  "g_y_annual": 0.011,
   "S": 80,
   "J": 7,
   "T": 60,
@@ -739,13 +739,13 @@
   "ending_age": 100,
   "constant_demographics": false,
   "beta_annual": [
-    0.96,
-    0.96,
-    0.96,
-    0.96,
-    0.96,
-    0.96,
-    0.96
+    0.965,
+    0.965,
+    0.965,
+    0.965,
+    0.965,
+    0.965,
+    0.965
   ],
   "sigma": 1.5,
   "gamma": [
@@ -759,10 +759,10 @@
       1.0
     ]
   ],
-  "delta_annual": 0.05,
+  "delta_annual": 0.065,
   "ltilde": 1.0,
   "world_int_rate_annual": [
-    0.0175
+    0.02
   ],
   "initial_foreign_debt_ratio": 0.0904,
   "zeta_D": [
