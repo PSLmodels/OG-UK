@@ -257,13 +257,17 @@ _C_MIN = [
 ]
 
 
-def _sector_tfp() -> list:
+def _sector_tfp(epsilon=None, gamma=None) -> list:
     """Solow-residual TFP by sector, normalised so the GVA-weighted mean = 1.
 
-    Computes Z_m = GVA_m / (K_m^gamma_m * L_m^(1 - gamma_m)) for each sector,
-    then rescales so that sum(gva_share_m * Z_m) = 1.0.  This ensures the
-    aggregate economy matches the baseline calibration while allowing
-    cross-sector productivity differences.
+    When epsilon is all 1.0 (Cobb-Douglas), computes:
+        Z_m = GVA_m / (K_m^gamma_m * L_m^(1 - gamma_m))
+
+    When epsilon differs from 1.0 (CES), computes the CES residual:
+        Z_m = GVA_m / [gamma_m^(1/eps) * K_m^((eps-1)/eps)
+               + (1-gamma_m)^(1/eps) * L_m^((eps-1)/eps)]^(eps/(eps-1))
+
+    Then rescales so that sum(gva_share_m * Z_m) = 1.0.
 
     Sources:
         GVA: _GVA_BY_SIC_SECTION (ONS Blue Book 2024)
@@ -273,9 +277,31 @@ def _sector_tfp() -> list:
     gva = _sector_gva()
     capital = np.array(_CAPITAL_STOCK, dtype=float)
     labour = np.array(_WORKFORCE_JOBS, dtype=float)
-    gamma = np.array(_GAMMA, dtype=float)
+    if gamma is None:
+        gamma = np.array(_GAMMA, dtype=float)
+    else:
+        gamma = np.array(gamma, dtype=float)
+    if epsilon is None:
+        epsilon = np.ones(M, dtype=float)
+    else:
+        epsilon = np.array(epsilon, dtype=float)
 
-    z_raw = gva / (capital**gamma * labour ** (1 - gamma))
+    z_raw = np.empty(M, dtype=float)
+    for m in range(M):
+        eps = epsilon[m]
+        g = gamma[m]
+        K = capital[m]
+        L = labour[m]
+        if eps == 1.0:
+            # Cobb-Douglas
+            z_raw[m] = gva[m] / (K**g * L ** (1 - g))
+        else:
+            # CES: Y = Z * [gamma^(1/eps)*K^((eps-1)/eps) + (1-gamma)^(1/eps)*L^((eps-1)/eps)]^(eps/(eps-1))
+            ces_aggregate = (
+                g ** (1 / eps) * K ** ((eps - 1) / eps)
+                + (1 - g) ** (1 / eps) * L ** ((eps - 1) / eps)
+            ) ** (eps / (eps - 1))
+            z_raw[m] = gva[m] / ces_aggregate
 
     # Normalise so GVA-weighted mean equals 1
     gva_shares = gva / gva.sum()
@@ -309,13 +335,15 @@ def get_industry_params() -> dict:
     # Shrink gamma 40% toward aggregate mean (0.35) for solver stability
     gamma_shrunk = [0.35 + 0.6 * (g - 0.35) for g in _GAMMA]
 
+    epsilon = list(_EPSILON)
+
     return {
         "M": M,
         "I": NUM_CONSUMPTION_GOODS,
         "gamma": gamma_shrunk,
         "gamma_g": [0.0] * M,
-        "epsilon": [1.0] * M,  # Cobb-Douglas; heterogeneous epsilon breaks TPI
-        "Z": [_sector_tfp()],
+        "epsilon": epsilon,  # calibrated CES elasticities by sector
+        "Z": [_sector_tfp(epsilon=epsilon, gamma=gamma_shrunk)],
         "cit_rate": [[0.27] * M],
         "io_matrix": _IO_MATRIX,
         "alpha_c": alpha_c.tolist(),

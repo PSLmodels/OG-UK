@@ -696,6 +696,7 @@ def _build_specs(
     max_iter: int = 250,
     age_specific: str = "pooled",
     param_overrides: dict | None = None,
+    multi_sector: bool = False,
 ):
     """Build a calibrated Specifications object (internal).
 
@@ -706,6 +707,8 @@ def _build_specs(
             are applied last so they take precedence over defaults and
             calibration outputs. Demographic / tax-function keys are not
             permitted here — those are set by calibrate().
+        multi_sector: If True, use 8-sector industry calibration (M=8).
+            If False (default), use a single representative sector (M=1).
     """
     from ogcore.parameters import Specifications
 
@@ -738,20 +741,21 @@ def _build_specs(
     ]:
         defaults.pop(key, None)
 
-    # Strip single-industry defaults that will be replaced by industry_params
-    for key in [
-        "gamma",
-        "gamma_g",
-        "epsilon",
-        "Z",
-        "cit_rate",
-        "io_matrix",
-        "alpha_c",
-        "delta_tau_annual",
-        "inv_tax_credit",
-        "tau_c",
-    ]:
-        defaults.pop(key, None)
+    if multi_sector:
+        # Strip single-industry defaults that will be replaced by industry_params
+        for key in [
+            "gamma",
+            "gamma_g",
+            "epsilon",
+            "Z",
+            "cit_rate",
+            "io_matrix",
+            "alpha_c",
+            "delta_tau_annual",
+            "inv_tax_credit",
+            "tau_c",
+        ]:
+            defaults.pop(key, None)
 
     p = Specifications(
         baseline=baseline, output_base=output_base, baseline_dir=baseline_dir
@@ -789,10 +793,14 @@ def _build_specs(
         }
     )
 
-    # Apply 8-sector industry calibration
-    defaults.update(get_industry_params())
-    # Levenberg-Marquardt is more robust than the default 'hybr' for M>1
-    defaults["SS_root_method"] = "lm"
+    if multi_sector:
+        # Apply 8-sector industry calibration
+        defaults.update(get_industry_params())
+        # hybr (Powell hybrid) for heterogeneous CES; LM gets stuck at ~1e-5
+        defaults["SS_root_method"] = "hybr"
+        # Relax tolerances for heterogeneous CES
+        defaults["mindist_SS"] = 1e-4
+        defaults["RC_SS"] = 1e-4
 
     if param_overrides:
         defaults.update(param_overrides)
@@ -850,6 +858,7 @@ def solve_steady_state(
     max_iter: int = 250,
     age_specific: str = "pooled",
     param_overrides: dict | None = None,
+    multi_sector: bool = False,
 ) -> SteadyStateResult:
     """Solve for steady state equilibrium.
 
@@ -863,6 +872,8 @@ def solve_steady_state(
             "each"     — separate function per individual age (80)
         param_overrides: Optional dict of OG-Core parameter names to values
             for structural shocks (e.g. ``{"g_y_annual": 0.011}``).
+        multi_sector: If True, use 8-sector industry calibration (M=8).
+            If False (default), use a single representative sector (M=1).
 
     Returns:
         SteadyStateResult with equilibrium values
@@ -878,6 +889,7 @@ def solve_steady_state(
             max_iter=max_iter,
             age_specific=age_specific,
             param_overrides=param_overrides,
+            multi_sector=multi_sector,
         )
         ss = run_SS(p, client=None)
         return _ss_dict_to_result(ss)
@@ -889,6 +901,7 @@ def run_transition_path(
     client=None,
     age_specific: str = "pooled",
     param_overrides: dict | None = None,
+    multi_sector: bool = False,
 ) -> tuple[TransitionPathResult, TransitionPathResult | None]:
     """Run baseline (and optionally reform) transition path.
 
@@ -906,6 +919,8 @@ def run_transition_path(
             "each"     — separate function per individual age (80)
         param_overrides: Optional dict of OG-Core parameter names to values
             for structural shocks (e.g. ``{"Z": [[1.004]]}``).
+        multi_sector: If True, use 8-sector industry calibration (M=8).
+            If False (default), use a single representative sector (M=1).
 
     Returns:
         (baseline_tp, reform_tp) — reform_tp is None if no policy/overrides
@@ -930,6 +945,7 @@ def run_transition_path(
             base_dir,
             baseline=True,
             age_specific=age_specific,
+            multi_sector=multi_sector,
         )
 
         # Solve SS first to auto-calibrate alpha_G.
@@ -963,6 +979,7 @@ def run_transition_path(
                 baseline=False,
                 age_specific=age_specific,
                 param_overrides=param_overrides,
+                multi_sector=multi_sector,
             )
 
             ss_reform = SS.run_SS(p_reform, client=client)
