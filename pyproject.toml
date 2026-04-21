@@ -1,6 +1,6 @@
 [project]
 name = "oguk"
-version = "0.3.1"
+version = "0.3.2"
 description = "United Kingdom calibration for OG-Core overlapping generations model"
 readme = "README.md"
 license = "CC0-1.0"
@@ -22,14 +22,15 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-    "numpy>=1.24",
-    "scipy>=1.10",
+    "numpy>=1.26",
+    "scipy>=1.12",
+    "pygam>=0.10",
     "pandas>=2.0",
     "matplotlib>=3.7",
     "pydantic>=2.0",
-    "ogcore>=0.15",
-    "policyengine>=0.1",
-    "policyengine-uk>=2.0",
+    "ogcore>=0.15.6",
+    "policyengine>=4.3",
+    "policyengine-uk==2.88.0",
     "requests>=2.31",
     "rich>=13.0",
     "openpyxl>=3.1",

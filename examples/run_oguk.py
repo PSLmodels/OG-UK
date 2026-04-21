@@ -30,17 +30,27 @@ REFORM = Policy(
 )
 
 
-def run_steady_state(age_specific: str = "pooled"):
+def run_steady_state(age_specific: str = "pooled", multi_sector: bool = False):
     """Run baseline and reform steady state, print results."""
-    print(f"Solving baseline steady state (age_specific='{age_specific}')...")
+    sector_label = "8-sector" if multi_sector else "1-sector"
+    print(
+        f"Solving baseline steady state (age_specific='{age_specific}', {sector_label})..."
+    )
     t0 = time.time()
-    baseline = solve_steady_state(start_year=2026, age_specific=age_specific)
+    baseline = solve_steady_state(
+        start_year=2026, age_specific=age_specific, multi_sector=multi_sector
+    )
     print(f"  Done in {time.time() - t0:.1f}s")
 
-    print(f"Solving reform steady state (age_specific='{age_specific}')...")
+    print(
+        f"Solving reform steady state (age_specific='{age_specific}', {sector_label})..."
+    )
     t0 = time.time()
     reform = solve_steady_state(
-        start_year=2026, policy=REFORM, age_specific=age_specific
+        start_year=2026,
+        policy=REFORM,
+        age_specific=age_specific,
+        multi_sector=multi_sector,
     )
     print(f"  Done in {time.time() - t0:.1f}s")
 
@@ -87,17 +97,21 @@ def run_steady_state(age_specific: str = "pooled"):
     print("=" * 60)
 
 
-def run_tpi():
+def run_tpi(multi_sector: bool = False):
     """Run baseline and reform transition paths, print results."""
     from dask.distributed import Client
 
-    print("Running baseline + reform transition paths...")
+    sector_label = "8-sector" if multi_sector else "1-sector"
+    print(f"Running baseline + reform transition paths ({sector_label})...")
     print("(This solves SS + TPI for both scenarios — may take a while.)")
     client = Client(n_workers=2, threads_per_worker=1, memory_limit="2GB")
     t0 = time.time()
     try:
         base_tp, reform_tp = run_transition_path(
-            start_year=2026, policy=REFORM, client=client
+            start_year=2026,
+            policy=REFORM,
+            client=client,
+            multi_sector=multi_sector,
         )
     finally:
         client.close()
@@ -137,12 +151,13 @@ def run_tpi():
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else "ss"
     age_specific = sys.argv[2] if len(sys.argv) > 2 else "pooled"
+    multi_sector = "multi-sector" in sys.argv
     if mode == "ss":
-        run_steady_state(age_specific=age_specific)
+        run_steady_state(age_specific=age_specific, multi_sector=multi_sector)
     elif mode == "tpi":
-        run_tpi()
+        run_tpi(multi_sector=multi_sector)
     else:
-        print(f"Usage: {sys.argv[0]} [ss|tpi] [pooled|brackets|each]")
+        print(f"Usage: {sys.argv[0]} [ss|tpi] [pooled|brackets|each] [multi-sector]")
         sys.exit(1)
 
 
