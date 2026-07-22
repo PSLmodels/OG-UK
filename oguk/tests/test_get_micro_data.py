@@ -1,13 +1,25 @@
 """Tests for OG-UK calibration API."""
 
+import os
 from datetime import datetime
 
+import pytest
 from policyengine.core import ParameterValue, Policy
 from policyengine.tax_benefit_models.uk import uk_latest
 
 from oguk import CalibrationResult, calibrate
 
+# The UK microdata lives in a private Hugging Face repo. Same-repo CI has the
+# token secret; FORK pull requests do not (GitHub withholds secrets), and
+# contributors may not have access either — so data-dependent tests skip
+# cleanly without a token instead of failing on a 401.
+requires_uk_microdata = pytest.mark.skipif(
+    not (os.environ.get("HUGGING_FACE_TOKEN") or os.environ.get("HF_TOKEN")),
+    reason="needs a Hugging Face token with access to the private UK microdata",
+)
 
+
+@requires_uk_microdata
 def test_baseline_calibration():
     """Test baseline calibration produces valid results."""
     result = calibrate(start_year=2026, years=1)
@@ -18,6 +30,7 @@ def test_baseline_calibration():
     assert len(result.omega_SS) > 0
 
 
+@requires_uk_microdata
 def test_reform_calibration():
     """Test calibration with a policy reform."""
     pa_param = uk_latest.get_parameter(
@@ -40,6 +53,7 @@ def test_reform_calibration():
     assert result.mean_income > 0
 
 
+@requires_uk_microdata
 def test_demographic_outputs():
     """Test demographic parameters are valid."""
     result = calibrate(start_year=2026, years=1)
@@ -56,6 +70,7 @@ def test_demographic_outputs():
 
 
 # --- dataset-key resolution across policyengine-uk vintages (issue #68) ---
+
 
 def test_resolve_year_dataset_populace_keys():
     from oguk.api import _resolve_year_dataset
@@ -93,7 +108,7 @@ def test_resolve_year_dataset_ambiguous_stems_refused():
         )
 
 
-
+@requires_uk_microdata
 def test_labor_mtr_bites_for_midband_earners():
     """Regression for the silent flat-MTR failure on policyengine-uk >= 2.89
     (employment income moved to employment_income_before_lsr, so perturbing
@@ -101,11 +116,11 @@ def test_labor_mtr_bites_for_midband_earners():
     earners showed a zero labour MTR). A £25-35k earner's marginal rate is
     ~28% (basic-rate income tax + employee NI); the median across that band
     must land near it."""
+    import tempfile
+
     import numpy as np
 
     from oguk.api import _get_micro_data
-
-    import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:
         md = _get_micro_data(2026, None, tmp)

@@ -429,9 +429,7 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
     import uuid as _uuid
 
     run_tag = _uuid.uuid4().hex[:10]
-    labor_pol = Policy(
-        name=f"labor_perturb_{run_tag}", simulation_modifier=add_labor
-    )
+    labor_pol = Policy(name=f"labor_perturb_{run_tag}", simulation_modifier=add_labor)
     labor_sim = Simulation(
         dataset=dataset, tax_benefit_model_version=uk_latest, policy=labor_pol
     )
@@ -445,9 +443,7 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
         adult = s.calculate("is_adult", year)
         return _perturb_first_populated(s, ("dividend_income",), adult)
 
-    cap_pol = Policy(
-        name=f"cap_perturb_{run_tag}", simulation_modifier=add_cap
-    )
+    cap_pol = Policy(name=f"cap_perturb_{run_tag}", simulation_modifier=add_cap)
     cap_sim = Simulation(
         dataset=dataset, tax_benefit_model_version=uk_latest, policy=cap_pol
     )
