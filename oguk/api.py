@@ -288,13 +288,37 @@ class _MicroData(BaseModel):
     year: int
 
 
+def _resolve_year_dataset(datasets: dict, year: int):
+    """Pick the per-year dataset from an ensure_datasets result, across
+    policyengine-uk vintages.
+
+    policyengine-uk >= 2.89 keys per-year datasets as
+    ``{stem}_{year}`` with a ``populace_uk_*`` default stem; 2.88 used
+    ``enhanced_frs_2023_24_{year}``. Matching on the year suffix instead of
+    hardcoding the stem keeps OG-UK working across the rename (and the next
+    one). See PSLmodels/OG-UK#68.
+    """
+    matches = sorted(k for k in datasets if k.endswith(f"_{year}"))
+    if not matches:
+        raise KeyError(
+            f"no dataset for year {year} in ensure_datasets result; "
+            f"available keys: {sorted(datasets)}"
+        )
+    if len(matches) > 1:
+        raise KeyError(
+            f"ambiguous datasets for year {year}: {matches}; pass a single "
+            "dataset stem to ensure_datasets"
+        )
+    return datasets[matches[0]]
+
+
 def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _MicroData:
     """Extract microdata from PolicyEngine-UK (internal)."""
     from policyengine.core import Policy, Simulation
     from policyengine.tax_benefit_models.uk import ensure_datasets, uk_latest
 
     datasets = ensure_datasets(data_folder=data_folder, years=[year])
-    dataset = datasets[f"enhanced_frs_2023_24_{year}"]
+    dataset = _resolve_year_dataset(datasets, year)
 
     sim = Simulation(
         dataset=dataset, tax_benefit_model_version=uk_latest, policy=policy
@@ -326,6 +350,20 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
 
     baseline_net = _hbai_net_per_person(sim)
 
+    # The £1 perturbation below is applied to EVERY adult, but net income is
+    # measured at the HOUSEHOLD level (projected per person) — so a
+    # multi-adult household's net moves by ~n_adults × (1 - mtr). Dividing
+    # the household delta by the number of perturbed adults recovers the
+    # per-person marginal rate. Without this, 1 - delta reads ~0 (clipped)
+    # for every multi-adult household: measured on policyengine-uk 2.89,
+    # 80% of £25-35k earners showed a zero labour MTR, with only
+    # single-adult households at the correct ~0.28.
+    is_adult_arr = (age >= 18).astype(float)
+    hh_ids = person["household_id"].values
+    df_adults = pd.DataFrame({"hh": hh_ids, "adult": is_adult_arr})
+    adults_per_hh = df_adults.groupby("hh")["adult"].transform("sum").values
+    adults_per_hh = np.maximum(adults_per_hh, 1.0)
+
     # Build perturbation policies.  PolicyEngine silently drops parameter_values
     # when a simulation_modifier is present, so we must apply any reform
     # parameter changes *inside* the modifier using the TBS parameter tree.
@@ -350,37 +388,72 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
             period = f"year:{start.year}:1"
             node.update(period=period, value=pv.value)
 
-    # Labour MTR: perturb employment income by £1
+    def _perturb_first_populated(s, candidates, delta):
+        """Add ``delta`` to the first POPULATED input among ``candidates``.
+
+        policyengine-uk >= 2.89 moves employment income into
+        employment_income_before_lsr at simulation construction and derives
+        employment_income from it — so setting employment_income no longer
+        reaches the tax pipeline for most records (measured: ~80% of
+        earners showed a zero labour MTR when perturbing it directly).
+        Perturbing the populated holder, with the legacy name as fallback,
+        keeps the finite-difference MTRs correct across vintages. Raising
+        when nothing is populated prevents a silently flat perturbation.
+        """
+        for name in candidates:
+            holder = s.get_holder(name)
+            periods = list(holder.get_known_periods())
+            if not periods:
+                continue
+            for period in periods:
+                values = holder.get_array(period)
+                holder.delete_arrays(period)
+                s.set_input(name, period, values + delta)
+            return s
+        raise RuntimeError(
+            f"no populated input among {candidates}; cannot apply the "
+            "MTR perturbation — refusing to return flat marginal rates"
+        )
+
+    # Labour MTR: perturb employment income by £1 per adult
     def add_labor(s):
         _apply_reform_params(s)
-        emp = s.calculate("employment_income", year)
         adult = s.calculate("is_adult", year)
-        s.set_input("employment_income", year, emp + adult)
-        return s
+        return _perturb_first_populated(
+            s, ("employment_income_before_lsr", "employment_income"), adult
+        )
 
-    labor_pol = Policy(name="labor_perturb", simulation_modifier=add_labor)
+    # Unique names: the engine caches output datasets by a policy-derived
+    # id, so a fixed name would silently reuse stale perturbation results
+    # across code or data changes.
+    import uuid as _uuid
+
+    run_tag = _uuid.uuid4().hex[:10]
+    labor_pol = Policy(
+        name=f"labor_perturb_{run_tag}", simulation_modifier=add_labor
+    )
     labor_sim = Simulation(
         dataset=dataset, tax_benefit_model_version=uk_latest, policy=labor_pol
     )
     labor_sim.ensure()
     labor_net = _hbai_net_per_person(labor_sim)
-    mtr_labor = np.clip(1 - (labor_net - baseline_net), 0, 1)
+    mtr_labor = np.clip(1 - (labor_net - baseline_net) / adults_per_hh, 0, 1)
 
-    # Capital MTR: perturb dividend income by £1
+    # Capital MTR: perturb dividend income by £1 per adult
     def add_cap(s):
         _apply_reform_params(s)
-        div = s.calculate("dividend_income", year)
         adult = s.calculate("is_adult", year)
-        s.set_input("dividend_income", year, div + adult)
-        return s
+        return _perturb_first_populated(s, ("dividend_income",), adult)
 
-    cap_pol = Policy(name="cap_perturb", simulation_modifier=add_cap)
+    cap_pol = Policy(
+        name=f"cap_perturb_{run_tag}", simulation_modifier=add_cap
+    )
     cap_sim = Simulation(
         dataset=dataset, tax_benefit_model_version=uk_latest, policy=cap_pol
     )
     cap_sim.ensure()
     cap_net = _hbai_net_per_person(cap_sim)
-    mtr_capital = np.clip(1 - (cap_net - baseline_net), 0, 1)
+    mtr_capital = np.clip(1 - (cap_net - baseline_net) / adults_per_hh, 0, 1)
 
     market_inc = labor_inc + cap_inc
     tax = (

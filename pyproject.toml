@@ -30,7 +30,7 @@ dependencies = [
     "pydantic>=2.0",
     "ogcore>=0.15.6",
     "policyengine>=4.3",
-    "policyengine-uk==2.88.0",
+    "policyengine-uk>=2.88",
     "requests>=2.31",
     "rich>=13.0",
     "openpyxl>=3.1",
