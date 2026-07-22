@@ -46,3 +46,6 @@ docs/book/_build/*
 oguk/data/
 uv.lock
 test_api.py
+
+# ogcore demographics drops this in the CWD
+un_api_token.txt

@@ -34,8 +34,27 @@ requires_uk_microdata = pytest.mark.skipif(
 )
 
 
+@pytest.fixture()
+def _headless_un_token():
+    """ogcore.demographics.get_un_data prompts on stdin for a UN API token
+    unless un_api_token.txt exists in the CWD; under pytest the prompt
+    raises (stdin is captured, and ogcore catches only EOFError). Pre-seed
+    an empty token: the UN API then returns 401 and ogcore falls back to
+    its public GitHub population-data mirror, which needs no auth. The
+    file is removed only if this fixture created it."""
+    import pathlib
+
+    path = pathlib.Path("un_api_token.txt")
+    created = not path.exists()
+    if created:
+        path.write_text("")
+    yield
+    if created:
+        path.unlink(missing_ok=True)
+
+
 @requires_uk_microdata
-def test_baseline_calibration():
+def test_baseline_calibration(_headless_un_token):
     """Test baseline calibration produces valid results."""
     result = calibrate(start_year=2026, years=1)
 
@@ -46,7 +65,7 @@ def test_baseline_calibration():
 
 
 @requires_uk_microdata
-def test_reform_calibration():
+def test_reform_calibration(_headless_un_token):
     """Test calibration with a policy reform."""
     pa_param = uk_latest.get_parameter(
         "gov.hmrc.income_tax.allowances.personal_allowance.amount"
@@ -62,14 +81,16 @@ def test_reform_calibration():
         ],
     )
 
-    result = calibrate(start_year=2026, years=1, policy=reform)
+    result = calibrate(start_year=2026, years=2, policy=reform)
 
     assert isinstance(result, CalibrationResult)
     assert result.mean_income > 0
+    # multi-year: one fitted ETR set per year, both under the reform
+    assert len(result.etr_params) == 2
 
 
 @requires_uk_microdata
-def test_demographic_outputs():
+def test_demographic_outputs(_headless_un_token):
     """Test demographic parameters are valid."""
     result = calibrate(start_year=2026, years=1)
 
@@ -132,7 +153,34 @@ def test_resolve_year_dataset_ambiguous_within_stem_refused():
         )
 
 
-@requires_uk_microdata
+def _extract_or_skip(year, policy=None):
+    """Run the microdata extraction, skipping (not failing) when the private
+    UK dataset is unreachable from this environment. Attempt-based, because
+    availability is more than env vars: a huggingface-cli login or a warm
+    hub cache also works."""
+    import tempfile
+
+    from oguk.api import _get_micro_data
+
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            return _get_micro_data(year, policy, tmp)
+    except Exception as e:  # noqa: BLE001 — availability gate
+        marker = f"{type(e).__name__}: {e}"
+        if any(
+            s in marker
+            for s in (
+                "401",
+                "Unauthorized",
+                "RepositoryNotFound",
+                "GatedRepo",
+                "LocalEntryNotFound",
+            )
+        ):
+            pytest.skip(f"UK microdata unavailable here: {marker[:200]}")
+        raise
+
+
 def test_person_level_mtrs_discriminate_household_structure():
     """The two historical failure modes, pinned separately:
 
@@ -145,14 +193,9 @@ def test_person_level_mtrs_discriminate_household_structure():
     ~28% in BOTH single- and multi-adult households, while zero-earning
     partners in those same households stay near zero.
     """
-    import tempfile
-
     import numpy as np
 
-    from oguk.api import _get_micro_data
-
-    with tempfile.TemporaryDirectory() as tmp:
-        md = _get_micro_data(2026, None, tmp)
+    md = _extract_or_skip(2026)
     # _MicroData has no household ids, so rebuild bands from income alone:
     mid = (md.labor_income > 25_000) & (md.labor_income < 35_000)
     med_mid = float(np.median(md.mtr_labor[mid]))
@@ -179,34 +222,108 @@ def test_person_level_mtrs_discriminate_household_structure():
     # correct; require instead that a real mass faces positive dividend
     # marginal rates (8.75%/33.75% bands).
     divs = md.capital_income > 2_000
-    if divs.sum() > 1_000:
-        positive_share = float(np.mean(md.mtr_capital[divs] > 0.05))
-        assert positive_share > 0.10, (
-            f"only {positive_share:.0%} of capital-income holders face a "
-            "positive marginal dividend rate — perturbation likely flat"
-        )
-        assert 0.02 < float(md.mtr_capital.mean()) < 0.30
+    assert divs.sum() > 1_000, (
+        f"only {int(divs.sum())} capital-income holders in the sample — "
+        "the capital assertions below would be vacuous"
+    )
+    positive_share = float(np.mean(md.mtr_capital[divs] > 0.05))
+    assert positive_share > 0.10, (
+        f"only {positive_share:.0%} of capital-income holders face a "
+        "positive marginal dividend rate — perturbation likely flat"
+    )
+    assert 0.02 < float(md.mtr_capital.mean()) < 0.30
 
 
-@requires_uk_microdata
 def test_labor_mtr_bites_for_midband_earners():
-    """Regression for the silent flat-MTR failure on policyengine-uk >= 2.89
-    (employment income moved to employment_income_before_lsr, so perturbing
-    employment_income directly stopped reaching the tax pipeline: ~80% of
-    earners showed a zero labour MTR). A £25-35k earner's marginal rate is
-    ~28% (basic-rate income tax + employee NI); the median across that band
-    must land near it."""
-    import tempfile
-
+    """Regression for silently flat labour MTRs. The originally observed
+    failure (~80% of £25-35k earners at a 0.000 MTR) was clipping caused
+    by comparing household-level net-income deltas against per-person tax
+    deltas without household normalisation — NOT an input-layout change;
+    the perturbation reaches the tax pipeline on both 2.88 and 2.89
+    layouts via _perturb_first_populated. A mid-band earner's marginal
+    rate is ~28% (basic-rate income tax + employee NI); the median across
+    the band must land near it."""
     import numpy as np
 
-    from oguk.api import _get_micro_data
-
-    with tempfile.TemporaryDirectory() as tmp:
-        md = _get_micro_data(2026, None, tmp)
+    md = _extract_or_skip(2026)
     mask = (md.labor_income > 25_000) & (md.labor_income < 35_000)
     median_mtr = float(np.median(md.mtr_labor[mask]))
     assert 0.20 < median_mtr < 0.45, (
         f"mid-band labour MTR median {median_mtr:.3f} — the perturbation "
         "is not reaching the tax pipeline"
     )
+
+
+def test_reform_modifier_composes_before_perturbation():
+    """Parametric reforms are applied INSIDE the perturbation modifier,
+    before the income perturbation — pinned with fakes so the ordering
+    cannot silently invert (perturbing the baseline world instead of the
+    reformed one)."""
+    import numpy as np
+
+    from oguk.api import _build_perturbation_modifier
+
+    calls = []
+
+    class _FakeHolder:
+        def __init__(self):
+            self.arrays = {2026: np.array([1.0, 2.0])}
+
+        def get_known_periods(self):
+            return list(self.arrays)
+
+        def get_array(self, period):
+            return self.arrays[period]
+
+        def delete_arrays(self, period):
+            del self.arrays[period]
+
+    class _FakeSim:
+        def __init__(self):
+            self.holder = _FakeHolder()
+            self.values = None
+
+        def get_holder(self, name):
+            return self.holder
+
+        def calculate(self, name, year):
+            calls.append(f"calc:{name}")
+            return np.array([1.0, 0.0])  # adult, child
+
+        def set_input(self, name, period, values):
+            calls.append(f"perturb:{name}")
+            self.values = values
+
+    def fake_reform(s):
+        calls.append("reform")
+        return s
+
+    modifier = _build_perturbation_modifier(fake_reform, 2026, ("employment_income",))
+    sim = _FakeSim()
+    modifier(sim)
+    assert calls[0] == "reform", calls
+    assert "perturb:employment_income" in calls, calls
+    # GBP 1 added only for the adult member
+    assert list(sim.values) == [2.0, 2.0]
+
+
+def test_perturbation_refuses_silently_flat():
+    """No populated candidate input -> hard error, never flat MTRs."""
+    import numpy as np
+
+    from oguk.api import _build_perturbation_modifier
+
+    class _EmptyHolder:
+        def get_known_periods(self):
+            return []
+
+    class _FakeSim:
+        def get_holder(self, name):
+            return _EmptyHolder()
+
+        def calculate(self, name, year):
+            return np.array([1.0])
+
+    modifier = _build_perturbation_modifier(None, 2026, ("employment_income",))
+    with pytest.raises(RuntimeError, match="refusing"):
+        modifier(_FakeSim())
