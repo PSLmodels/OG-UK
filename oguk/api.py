@@ -456,8 +456,10 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
 
         Where taxes couple ACROSS perturbed adults (marriage allowance
         transfers, HICBC), the coupled component is misattributed between
-        the partners; household totals remain exact, so aggregate and
-        distributional moments are unaffected. Genuine negative marginal
+        the partners. Before clipping, the adult rates sum to the exact
+        household withdrawal; partner-level and conditional distributions
+        (quantiles, variance) remain approximate, and the clip below can
+        move even the household sum. Genuine negative marginal
         rates (benefit phase-ins) are clipped to 0 by the long-standing
         [0, 1] clip. Policies carrying a custom simulation_modifier are
         not composed into the perturbation runs (pre-existing behaviour);
