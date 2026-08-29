@@ -982,6 +982,11 @@ def _build_specs(
     # boundary-condition discontinuity in fiscal.py that causes a large
     # RC error at that single period. All other periods are well within
     # 1e-4. Setting RC_TPI=0.2 allows TPI to complete.
+    #
+    # OG-Core compares RC_TPI against every period with np.any, so this
+    # also waives interior violations up to 0.2 (PSLmodels/OG-Core#1210).
+    # _check_interior_resource_constraint restores the tight check on
+    # t < T-1 after the solve.
     p.RC_TPI = 0.2
     return p
 
@@ -1006,6 +1011,54 @@ def tpi_outer_method(multi_sector: bool) -> str:
         str: "picard" or "anderson".
     """
     return "picard" if multi_sector else "anderson"
+
+
+# Tolerance for the resource-constraint error at interior periods
+# (t < T-1). The terminal period is excluded: a truncated transition
+# path does not end at a true steady state, so RC_error[-1] is a
+# boundary artifact rather than a solution failure.
+INTERIOR_RC_TOL = 1e-4
+
+
+def _check_interior_resource_constraint(
+    tpi_vars: dict, tol: float = INTERIOR_RC_TOL, label: str = ""
+) -> None:
+    """Raise if the resource constraint is violated away from the terminal period.
+
+    ``_build_specs`` sets ``RC_TPI = 0.2`` so that TPI can complete despite a
+    known boundary discontinuity at ``t = T-1``. Because OG-Core applies that
+    tolerance to every period at once (``np.any``), a genuine interior
+    violation of the same magnitude would pass silently. This restores the
+    tight check on the interior of the path.
+
+    Args:
+        tpi_vars (dict): the TPI output dict (as saved to TPI_vars.pkl),
+            containing "resource_constraint_error".
+        tol (float): maximum absolute error permitted at interior periods.
+        label (str): "baseline" or "reform", used in the error message.
+
+    Raises:
+        RuntimeError: if any interior period exceeds ``tol``.
+    """
+    rc = tpi_vars.get("resource_constraint_error")
+    if rc is None:
+        return
+    rc = np.absolute(np.asarray(rc, dtype=float))
+    if rc.shape[0] < 2:
+        return
+    # Collapse any trailing axes so the result is indexed by period.
+    interior = rc[:-1].reshape(rc.shape[0] - 1, -1).max(axis=1)
+    worst = int(np.argmax(interior))
+    if interior[worst] >= tol:
+        prefix = f"{label} " if label else ""
+        raise RuntimeError(
+            f"{prefix}transition path violates the resource constraint away "
+            f"from the terminal period: max |RC error| = "
+            f"{interior[worst]:.3e} at period {worst} of {rc.shape[0]} "
+            f"(tolerance {tol:.0e}). The terminal period is excluded as a "
+            "truncation artifact; an interior violation points to an "
+            "inconsistent calibration (spending, revenue, debt_ratio_ss)."
+        )
 
 
 def _ss_dict_to_result(ss: dict) -> SteadyStateResult:
@@ -1156,6 +1209,7 @@ def run_transition_path(
 
         with open(os.path.join(base_dir, "TPI", "TPI_vars.pkl"), "rb") as f:
             tpi_base = pickle.load(f)
+        _check_interior_resource_constraint(tpi_base, label="baseline")
         baseline_tp = _tpi_dict_to_result(tpi_base, start_year)
 
         # Reform
@@ -1187,6 +1241,7 @@ def run_transition_path(
 
             with open(os.path.join(reform_dir, "TPI", "TPI_vars.pkl"), "rb") as f:
                 tpi_reform = pickle.load(f)
+            _check_interior_resource_constraint(tpi_reform, label="reform")
             reform_tp = _tpi_dict_to_result(tpi_reform, start_year)
 
         return baseline_tp, reform_tp
