@@ -30,8 +30,13 @@ dependencies = [
     # ogcore 0.18.0 broke the homogeneous get_pop_objs call (OG-Core#1180);
     # fixed in 0.18.1 (OG-Core#1182). Floor there so the fix is guaranteed.
     "ogcore>=0.18.1",
-    "policyengine>=4.22",
-    "policyengine-uk>=2.89.2",
+    # Depend on the umbrella package's uk extra rather than flooring
+    # policyengine-uk separately: `uk_latest` reports the version from
+    # policyengine's bundled manifest, not the installed package, so an
+    # independent floor cannot raise the model version actually simulated
+    # against -- it only decouples the two and downgrades the mismatch to
+    # a UserWarning. The extra keeps them in lockstep.
+    "policyengine[uk]>=5.0,<6",
     "requests>=2.31",
     "rich>=13.0",
     "openpyxl>=3.1",
