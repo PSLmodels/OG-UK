@@ -10,8 +10,8 @@ import numpy as np
 import pytest
 
 from oguk.api import (
+    INITIAL_RC_TOL,
     INTERIOR_RC_TOL,
-    RC_BOUNDARY_PERIODS,
     _check_interior_resource_constraint,
 )
 
@@ -48,11 +48,38 @@ def test_interior_violation_on_top_of_real_profile_raises():
         _check_interior_resource_constraint(_rc(rc))
 
 
-def test_boundary_periods_are_the_only_exemption():
-    """Period 1 is interior and is not exempt, despite being near the start."""
+def test_period_one_is_interior_and_not_exempt():
     rc = _measured_profile()
-    rc[RC_BOUNDARY_PERIODS] = 0.05
-    with pytest.raises(RuntimeError, match=f"period {RC_BOUNDARY_PERIODS}"):
+    rc[1] = 0.05
+    with pytest.raises(RuntimeError, match="period 1"):
+        _check_interior_resource_constraint(_rc(rc))
+
+
+def test_initial_period_is_checked_not_skipped():
+    """t=0 gets a looser tolerance, but a real violation there still raises."""
+    rc = _measured_profile()
+    rc[0] = 0.05
+    with pytest.raises(RuntimeError, match="initial period"):
+        _check_interior_resource_constraint(_rc(rc))
+
+
+def test_measured_initial_value_is_within_its_tolerance():
+    assert _measured_profile()[0] < INITIAL_RC_TOL
+
+
+@pytest.mark.parametrize("bad", [np.nan, -np.nan, np.inf, -np.inf])
+def test_non_finite_error_always_raises(bad):
+    """`nan >= tol` is False, so a diverged path must be caught explicitly."""
+    rc = _measured_profile()
+    rc[10] = bad
+    with pytest.raises(RuntimeError, match="non-finite"):
+        _check_interior_resource_constraint(_rc(rc))
+
+
+def test_non_finite_in_exempt_terminal_period_still_raises():
+    rc = _measured_profile()
+    rc[-1] = np.nan
+    with pytest.raises(RuntimeError, match="non-finite"):
         _check_interior_resource_constraint(_rc(rc))
 
 
