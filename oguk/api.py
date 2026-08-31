@@ -963,6 +963,8 @@ def _build_specs(
         }
     )
 
+    defaults["TPI_outer_method"] = tpi_outer_method(multi_sector)
+
     if multi_sector:
         # Apply 8-sector industry calibration
         defaults.update(get_industry_params())
@@ -982,6 +984,28 @@ def _build_specs(
     # 1e-4. Setting RC_TPI=0.2 allows TPI to complete.
     p.RC_TPI = 0.2
     return p
+
+
+def tpi_outer_method(multi_sector: bool) -> str:
+    """Return the TPI outer-loop method to use.
+
+    Anderson acceleration halves the outer iteration count at OG-UK's
+    production shape (S=80, J=7, T=60, M=1): 16 -> 8 outer iterations on
+    both a baseline and a CIT reform path, ~95s -> ~47s, converging to the
+    same path (max relative difference across Y, K, L, r, w and C is
+    3.7e-5, well inside ``mindist_TPI``). The trust-region guard is left at
+    its default, which fires once per run and recovers.
+
+    Multi-sector runs stay on OG-Core's default damped Picard: M=8 uses
+    ``hybr`` with relaxed tolerances and there is no evidence either way.
+
+    Args:
+        multi_sector (bool): whether the 8-sector calibration is in use.
+
+    Returns:
+        str: "picard" or "anderson".
+    """
+    return "picard" if multi_sector else "anderson"
 
 
 def _ss_dict_to_result(ss: dict) -> SteadyStateResult:
