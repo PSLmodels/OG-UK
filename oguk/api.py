@@ -982,6 +982,11 @@ def _build_specs(
     # boundary-condition discontinuity in fiscal.py that causes a large
     # RC error at that single period. All other periods are well within
     # 1e-4. Setting RC_TPI=0.2 allows TPI to complete.
+    #
+    # OG-Core compares RC_TPI against every period with np.any, so this
+    # also waives interior violations up to 0.2 (PSLmodels/OG-Core#1210).
+    # _check_interior_resource_constraint restores the tight check on
+    # t < T-1 after the solve.
     p.RC_TPI = 0.2
     return p
 
@@ -1006,6 +1011,107 @@ def tpi_outer_method(multi_sector: bool) -> str:
         str: "picard" or "anderson".
     """
     return "picard" if multi_sector else "anderson"
+
+
+# Tolerances for the resource-constraint error, by region of the path.
+#
+# Both ends of a transition path carry artifacts that are not solution
+# failures. At t = T-1 the path is truncated and does not reach a true
+# steady state (PSLmodels/OG-Core#1216: I_d[T-1] is formed from a
+# steady-state-filled K_d[T] against the actual b_sp1[T-1], so the whole
+# gap lands there). At t = 0 the initial conditions are imposed rather
+# than solved. Measured over four production runs (S=80, J=7, T=60, both
+# solvers, baseline and a CIT reform):
+#
+#     t = 0       6.7e-03      initial-condition artifact
+#     t = 1       ~1e-07
+#     t = 2       6.3e-04      largest genuine interior value
+#     t >= 3      <= 3e-06
+#     t = T-1     1.58e-01     truncation artifact
+#
+# The terminal period is exempt. t = 0 is checked against a looser
+# INITIAL_RC_TOL rather than skipped, because it is the impact year and a
+# genuine period-0 calibration inconsistency should not be invisible.
+# INTERIOR_RC_TOL = 5e-3 gives ~8x headroom over the largest measured
+# genuine interior value while still catching both the terminal magnitude
+# (0.16) and the 0.109 magnitude that motivated RC_TPI = 0.2.
+INTERIOR_RC_TOL = 5e-3
+INITIAL_RC_TOL = 1e-2
+
+
+def _check_interior_resource_constraint(
+    tpi_vars: dict,
+    tol: float = INTERIOR_RC_TOL,
+    label: str = "",
+    initial_tol: float = INITIAL_RC_TOL,
+) -> None:
+    """Raise if the resource constraint is violated away from the terminal period.
+
+    ``_build_specs`` sets ``RC_TPI = 0.2`` so that TPI can complete despite a
+    known boundary discontinuity at ``t = T-1``. Because OG-Core applies that
+    tolerance to every period at once (``np.any``), a genuine interior
+    violation of the same magnitude would pass silently. This restores the
+    tight check on the interior of the path.
+
+    Args:
+        tpi_vars (dict): the TPI output dict (as saved to TPI_vars.pkl),
+            containing "resource_constraint_error".
+        tol (float): maximum absolute error permitted at interior periods.
+        label (str): "baseline" or "reform", used in the error message.
+        initial_tol (float): maximum absolute error permitted at t = 0, whose
+            initial conditions are imposed rather than solved.
+
+    Raises:
+        RuntimeError: if any interior period exceeds ``tol``.
+    """
+    rc = tpi_vars.get("resource_constraint_error")
+    if rc is None:
+        return
+    rc = np.absolute(np.asarray(rc, dtype=float))
+    n_periods = rc.shape[0]
+    prefix = f"{label} " if label else ""
+    # Collapse any trailing axes (RC_error is (T, M)) so the result is
+    # indexed by period.
+    by_period = rc.reshape(n_periods, -1).max(axis=1)
+
+    # Non-finite errors must never pass: `nan >= tol` is False, so a
+    # diverged path would otherwise slip through the comparisons below --
+    # and that is exactly the case this check exists to catch.
+    if not np.isfinite(by_period).all():
+        bad = int(np.argmax(~np.isfinite(by_period)))
+        raise RuntimeError(
+            f"{prefix}transition path has a non-finite resource-constraint "
+            f"error at period {bad} of {n_periods}. The solve did not "
+            "produce a usable path."
+        )
+
+    # t = 0 has its initial conditions imposed rather than solved, so it
+    # carries a larger artifact than the interior -- but it is the impact
+    # year, so it is checked against a looser tolerance rather than skipped.
+    # Only when t = 0 is not itself the (exempt) terminal period.
+    if n_periods >= 2 and by_period[0] >= initial_tol:
+        raise RuntimeError(
+            f"{prefix}transition path violates the resource constraint in "
+            f"the initial period: |RC error| = {by_period[0]:.3e} "
+            f"(tolerance {initial_tol:.0e})."
+        )
+
+    # The terminal period is excluded: the path is truncated at T and does
+    # not reach a true steady state (PSLmodels/OG-Core#1216).
+    if n_periods < 3:
+        return
+    interior = by_period[1:-1]
+    worst = int(np.argmax(interior))
+    if interior[worst] >= tol:
+        raise RuntimeError(
+            f"{prefix}transition path violates the resource constraint on "
+            f"the interior of the path: max |RC error| = "
+            f"{interior[worst]:.3e} at period {worst + 1} of {n_periods} "
+            f"(tolerance {tol:.0e}). The terminal period is excluded as a "
+            "truncation artifact and t = 0 is checked separately; an "
+            "interior violation points to an inconsistent calibration "
+            "(spending, revenue, debt_ratio_ss)."
+        )
 
 
 def _ss_dict_to_result(ss: dict) -> SteadyStateResult:
@@ -1156,6 +1262,7 @@ def run_transition_path(
 
         with open(os.path.join(base_dir, "TPI", "TPI_vars.pkl"), "rb") as f:
             tpi_base = pickle.load(f)
+        _check_interior_resource_constraint(tpi_base, label="baseline")
         baseline_tp = _tpi_dict_to_result(tpi_base, start_year)
 
         # Reform
@@ -1187,6 +1294,7 @@ def run_transition_path(
 
             with open(os.path.join(reform_dir, "TPI", "TPI_vars.pkl"), "rb") as f:
                 tpi_reform = pickle.load(f)
+            _check_interior_resource_constraint(tpi_reform, label="reform")
             reform_tp = _tpi_dict_to_result(tpi_reform, start_year)
 
         return baseline_tp, reform_tp
