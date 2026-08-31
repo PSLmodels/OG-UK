@@ -4,7 +4,7 @@ version = "0.3.2"
 description = "United Kingdom calibration for OG-Core overlapping generations model"
 readme = "README.md"
 license = "CC0-1.0"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 authors = [
     { name = "Richard W. Evans" },
     { name = "Jason DeBacker" },
@@ -16,7 +16,6 @@ classifiers = [
     "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering",
@@ -28,11 +27,9 @@ dependencies = [
     "pandas>=2.0",
     "matplotlib>=3.7",
     "pydantic>=2.0",
-    # ogcore 0.18 makes income_percentiles effectively required in
-    # get_pop_objs (expand_pop_obj_J asserts before its homogeneous-case
-    # branch), breaking calibrate(); cap until oguk migrates to the
-    # income-heterogeneity API.
-    "ogcore>=0.15.6,<0.18",
+    # ogcore 0.18.0 broke the homogeneous get_pop_objs call (OG-Core#1180);
+    # fixed in 0.18.1 (OG-Core#1182). Floor there so the fix is guaranteed.
+    "ogcore>=0.18.1",
     # Depend on the umbrella package's uk extra rather than flooring
     # policyengine-uk separately: `uk_latest` reports the version from
     # policyengine's bundled manifest, not the installed package, so an
