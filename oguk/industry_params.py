@@ -154,8 +154,8 @@ _GAMMA = [
 # Sources:
 #   Chirinko (2008) — https://ideas.repec.org/a/eee/jmacro/v30y2008i2p671-686.html
 #   Knoblach et al. (2020) — https://ideas.repec.org/a/bla/obuest/v82y2020i1p62-82.html
-# These are shrunk toward 1.0 (Cobb-Douglas) in get_industry_params()
-# for solver stability (50% shrinkage).
+# These are the final values used by get_industry_params(); no shrinkage
+# is applied to epsilon.
 _EPSILON = [
     0.50,  # Energy       — capital-heavy, hard to substitute
     0.70,  # Construction — labour-intensive but equipment-dependent
@@ -275,17 +275,37 @@ _DELTA_ANNUAL = [
 ]
 
 
-def _sector_tfp(epsilon=None, gamma=None) -> list:
+def _sector_tfp(epsilon=None, gamma=None, capital=None, labour=None) -> list:
     """Solow-residual TFP by sector, normalised so the GVA-weighted mean = 1.
 
+    K and L are first converted to dimensionless model units, each as a
+    share of its own aggregate (k_m = K_m / sum(K), l_m = L_m / sum(L)),
+    before entering the aggregator. This matters because under CES with
+    epsilon != 1 the two inputs are *summed* inside the aggregator, so the
+    units they are measured in (£m vs £, thousands of jobs vs jobs) would
+    otherwise set their relative weight and the resulting Z dispersion
+    would be a measurement artefact rather than a fact about technology.
+    Normalising each input by its own aggregate makes Z invariant to
+    rescaling K and/or L by any positive constant. (The Cobb-Douglas
+    branch is not scale-free either, since K^gamma_m carries a
+    sector-specific exponent, so the same normalisation is applied there.)
+
     When epsilon is all 1.0 (Cobb-Douglas), computes:
-        Z_m = GVA_m / (K_m^gamma_m * L_m^(1 - gamma_m))
+        Z_m = GVA_m / (k_m^gamma_m * l_m^(1 - gamma_m))
 
     When epsilon differs from 1.0 (CES), computes the CES residual:
-        Z_m = GVA_m / [gamma_m^(1/eps) * K_m^((eps-1)/eps)
-               + (1-gamma_m)^(1/eps) * L_m^((eps-1)/eps)]^(eps/(eps-1))
+        Z_m = GVA_m / [gamma_m^(1/eps) * k_m^((eps-1)/eps)
+               + (1-gamma_m)^(1/eps) * l_m^((eps-1)/eps)]^(eps/(eps-1))
 
     Then rescales so that sum(gva_share_m * Z_m) = 1.0.
+
+    Args:
+        epsilon: CES elasticities by sector (default: all 1.0).
+        gamma: capital shares by sector (default: _GAMMA).
+        capital: capital stock by sector in any consistent unit
+            (default: _CAPITAL_STOCK). Scale is irrelevant.
+        labour: labour input by sector in any consistent unit
+            (default: _WORKFORCE_JOBS). Scale is irrelevant.
 
     Sources:
         GVA: _GVA_BY_SIC_SECTION (ONS Blue Book 2024)
@@ -293,8 +313,12 @@ def _sector_tfp(epsilon=None, gamma=None) -> list:
         L:   _WORKFORCE_JOBS (ONS JOBS02, 2022 Q4)
     """
     gva = _sector_gva()
-    capital = np.array(_CAPITAL_STOCK, dtype=float)
-    labour = np.array(_WORKFORCE_JOBS, dtype=float)
+    capital = np.array(_CAPITAL_STOCK if capital is None else capital, dtype=float)
+    labour = np.array(_WORKFORCE_JOBS if labour is None else labour, dtype=float)
+    # Convert to dimensionless model units: each input as a share of its own
+    # aggregate. This makes the aggregator (and hence Z) unit-invariant.
+    capital = capital / capital.sum()
+    labour = labour / labour.sum()
     if gamma is None:
         gamma = np.array(_GAMMA, dtype=float)
     else:
@@ -340,7 +364,7 @@ def get_industry_params() -> dict:
 
     Shrinkage:
       - gamma: 40% shrinkage toward 0.35 (aggregate UK capital share)
-      - epsilon: 50% shrinkage toward 1.0 (Cobb-Douglas) applied in _EPSILON values
+      - epsilon: none — the _EPSILON literals are used as calibrated
     """
     gva = _sector_gva()
     gva_shares = gva / gva.sum()
