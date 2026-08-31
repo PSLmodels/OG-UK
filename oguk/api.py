@@ -1013,15 +1013,35 @@ def tpi_outer_method(multi_sector: bool) -> str:
     return "picard" if multi_sector else "anderson"
 
 
-# Tolerance for the resource-constraint error at interior periods
-# (t < T-1). The terminal period is excluded: a truncated transition
-# path does not end at a true steady state, so RC_error[-1] is a
-# boundary artifact rather than a solution failure.
-INTERIOR_RC_TOL = 1e-4
+# Tolerance for the resource-constraint error at interior periods, and
+# the number of boundary periods excluded at each end of the path.
+#
+# Both ends of a transition path carry artifacts that are not solution
+# failures. At t = T-1 the path is truncated and does not reach a true
+# steady state (PSLmodels/OG-Core#1216: I_d[T-1] is formed from a
+# steady-state-filled K_d[T] against the actual b_sp1[T-1], so the whole
+# gap lands there). At t = 0 the initial conditions are imposed rather
+# than solved. Measured over four production runs (S=80, J=7, T=60, both
+# solvers, baseline and a CIT reform):
+#
+#     t = 0       6.7e-03      initial-condition artifact
+#     t = 1       ~1e-07
+#     t = 2       6.3e-04      largest genuine interior value
+#     t >= 3      <= 3e-06
+#     t = T-1     1.58e-01     truncation artifact
+#
+# So 1e-3 across t in [1, T-2] passes real runs with margin while still
+# catching a violation of the terminal magnitude (0.16) or of the
+# interior magnitude the loose RC_TPI = 0.2 would otherwise hide.
+INTERIOR_RC_TOL = 1e-3
+RC_BOUNDARY_PERIODS = 1
 
 
 def _check_interior_resource_constraint(
-    tpi_vars: dict, tol: float = INTERIOR_RC_TOL, label: str = ""
+    tpi_vars: dict,
+    tol: float = INTERIOR_RC_TOL,
+    label: str = "",
+    boundary: int = RC_BOUNDARY_PERIODS,
 ) -> None:
     """Raise if the resource constraint is violated away from the terminal period.
 
@@ -1036,6 +1056,7 @@ def _check_interior_resource_constraint(
             containing "resource_constraint_error".
         tol (float): maximum absolute error permitted at interior periods.
         label (str): "baseline" or "reform", used in the error message.
+        boundary (int): number of periods excluded at each end of the path.
 
     Raises:
         RuntimeError: if any interior period exceeds ``tol``.
@@ -1044,20 +1065,24 @@ def _check_interior_resource_constraint(
     if rc is None:
         return
     rc = np.absolute(np.asarray(rc, dtype=float))
-    if rc.shape[0] < 2:
+    n_periods = rc.shape[0]
+    lo, hi = boundary, n_periods - boundary
+    if hi <= lo:
+        # Nothing but boundary periods; there is no interior to check.
         return
     # Collapse any trailing axes so the result is indexed by period.
-    interior = rc[:-1].reshape(rc.shape[0] - 1, -1).max(axis=1)
+    interior = rc[lo:hi].reshape(hi - lo, -1).max(axis=1)
     worst = int(np.argmax(interior))
     if interior[worst] >= tol:
         prefix = f"{label} " if label else ""
         raise RuntimeError(
-            f"{prefix}transition path violates the resource constraint away "
-            f"from the terminal period: max |RC error| = "
-            f"{interior[worst]:.3e} at period {worst} of {rc.shape[0]} "
-            f"(tolerance {tol:.0e}). The terminal period is excluded as a "
-            "truncation artifact; an interior violation points to an "
-            "inconsistent calibration (spending, revenue, debt_ratio_ss)."
+            f"{prefix}transition path violates the resource constraint on "
+            f"the interior of the path: max |RC error| = "
+            f"{interior[worst]:.3e} at period {worst + lo} of {n_periods} "
+            f"(tolerance {tol:.0e}). The first and last {boundary} "
+            "period(s) are excluded as initial-condition and truncation "
+            "artifacts; an interior violation points to an inconsistent "
+            "calibration (spending, revenue, debt_ratio_ss)."
         )
 
 

@@ -11,8 +11,49 @@ import pytest
 
 from oguk.api import (
     INTERIOR_RC_TOL,
+    RC_BOUNDARY_PERIODS,
     _check_interior_resource_constraint,
 )
+
+
+def _measured_profile():
+    """The RC error profile actually observed on a production run.
+
+    Measured over four runs at S=80, J=7, T=60 (baseline and a CIT reform,
+    each under both TPI_outer_method settings). See the comment on
+    INTERIOR_RC_TOL in oguk/api.py.
+    """
+    rc = np.full(60, 3e-06)
+    rc[0] = 6.711e-03  # initial-condition artifact
+    rc[1] = 3.04e-07
+    rc[2] = 6.314e-04  # largest genuine interior value
+    rc[-1] = 1.580e-01  # truncation artifact
+    return rc
+
+
+def test_real_production_profile_passes():
+    """The check must not fire on a run that is actually fine.
+
+    This is the regression test for the first version of this helper, which
+    used a 1e-4 tolerance over rc[:-1] and would have raised on every real
+    transition path because rc[0] is 6.7e-03.
+    """
+    _check_interior_resource_constraint(_rc(_measured_profile()))
+
+
+def test_interior_violation_on_top_of_real_profile_raises():
+    rc = _measured_profile()
+    rc[25] = 0.15
+    with pytest.raises(RuntimeError, match="period 25"):
+        _check_interior_resource_constraint(_rc(rc))
+
+
+def test_boundary_periods_are_the_only_exemption():
+    """Period 1 is interior and is not exempt, despite being near the start."""
+    rc = _measured_profile()
+    rc[RC_BOUNDARY_PERIODS] = 0.05
+    with pytest.raises(RuntimeError, match=f"period {RC_BOUNDARY_PERIODS}"):
+        _check_interior_resource_constraint(_rc(rc))
 
 
 def _rc(values):
