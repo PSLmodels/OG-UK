@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0).
 
+## [Unreleased]
+
+### Added
+
+* `estimate_mtrs` flag (default `False`) on `calibrate()`, `solve_steady_state()` and `run_transition_path()`: when set, the marginal-rate functions are estimated against the engine's own `mtr_labinc` / `mtr_capinc` columns (GS, same cleaning pipeline, `ogcore.txfunc.txfunc_est` with `rate_type="mtrx"`/`"mtry"`), so labour and capital get DIFFERENT marginal schedules instead of the ETR fit reused for both.
+* `separate_payroll` flag (default `False`) on the same three entry points: when set, NICs fill `payroll_tax_liab` and `frac_tax_payroll` is computed from the data instead of being hard-zero, so OG-Core splits revenue between income tax and NICs. NICs remain inside the estimated ETR in both modes (OG-Core's ETR is a combined income-tax-and-payroll schedule; `frac_tax_payroll` is an accounting split of it).
+
+Both flags default to the previous behaviour, so no existing result moves.
+
 ## [0.3.1] - 2026-03-20
 
 ### Added

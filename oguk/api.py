@@ -281,6 +281,8 @@ class _MicroData(BaseModel):
     mtr_labor: np.ndarray
     mtr_capital: np.ndarray
     etr: np.ndarray
+    income_tax: np.ndarray
+    national_insurance: np.ndarray
     age: np.ndarray
     labor_income: np.ndarray
     capital_income: np.ndarray
@@ -525,10 +527,13 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
     mtr_capital = _person_mtr(cap_sim)
 
     market_inc = labor_inc + cap_inc
-    tax = (
-        person.get("income_tax", np.zeros(length)).values
-        + person.get("national_insurance", np.zeros(length)).values
-    )
+    income_tax = person.get("income_tax", np.zeros(length)).values
+    nics = person.get("national_insurance", np.zeros(length)).values
+    # The ETR numerator is income tax PLUS NICs. OG-Core's ETR function is a
+    # combined income-tax-and-payroll schedule (tax.income_tax_liab adds only
+    # the separate flat ``tau_payroll`` on top), and ``frac_tax_payroll`` is an
+    # accounting split of that combined liability — see _payroll_split().
+    tax = income_tax + nics
     etr = np.where(market_inc > 0, tax / market_inc, 0)
     etr = np.clip(etr, -1, 1.5)
 
@@ -538,6 +543,8 @@ def _get_micro_data(year: int, policy: Policy | None, data_folder: str) -> _Micr
         mtr_labor=mtr_labor[adult_mask],
         mtr_capital=mtr_capital[adult_mask],
         etr=etr[adult_mask],
+        income_tax=income_tax[adult_mask],
+        national_insurance=nics[adult_mask],
         age=age[adult_mask],
         labor_income=labor_inc[adult_mask],
         capital_income=cap_inc[adult_mask],
@@ -581,112 +588,168 @@ def _clean_tax_data(data: pd.DataFrame) -> pd.DataFrame:
     return data.loc[finite_mask].copy()
 
 
+TXFUNC_COLS = [
+    "mtr_labinc",
+    "mtr_capinc",
+    "total_labinc",
+    "total_capinc",
+    "etr",
+    "weight",
+]
+
+GS_NUMPARAMS = 3  # Gouveia-Strauss has 3 parameters (phi0, phi1, phi2)
+
+
+def _payroll_split(data: pd.DataFrame) -> float:
+    """Weighted fraction of the combined liability that is payroll tax.
+
+    Definition: sum of weighted ``payroll_tax_liab`` divided by the sum of
+    weighted ``total_tax_liab``, over ALL adult observations in the
+    estimation frame (i.e. before ``_clean_tax_data`` drops outliers), for
+    the single budget-window year the frame covers.
+
+    ``total_tax_liab`` is the COMBINED income-tax-plus-NICs liability, which
+    is what OG-Core expects: ``ogcore.txfunc`` computes the same ratio from
+    US data (txfunc.py:1083) and ``ogcore.aggregates.revenue`` uses
+    ``frac_tax_payroll`` to split the model's combined
+    ``iit_payroll_tax_revenue`` into an income-tax and a payroll-tax
+    component (aggregates.py:416, 436). So this is a fraction OF combined
+    income tax + NICs, OVER the adult estimation sample for one year — an
+    accounting split of revenue, not a separate tax base. NICs stay inside
+    the estimated ETR either way.
+    """
+    total_tax = (data["total_tax_liab"] * data["weight"]).sum()
+    payroll_tax = (data["payroll_tax_liab"] * data["weight"]).sum()
+    return float(payroll_tax / total_tax) if total_tax != 0 else 0.0
+
+
+def _fit_gs(df_clean: pd.DataFrame, rate_type: str, output_dir: str):
+    """Fit a Gouveia-Strauss function of ``rate_type`` to cleaned microdata.
+
+    ``rate_type`` is passed straight to ``ogcore.txfunc.txfunc_est``, which
+    reads the target column from it: "etr" -> ``etr``, "mtrx" ->
+    ``mtr_labinc``, "mtry" -> ``mtr_capinc``. Uses differential evolution
+    (deterministic, seed=1 inside OG-Core) for global optimisation.
+    """
+    from ogcore.txfunc import txfunc_est
+
+    params, _, _, _ = txfunc_est(
+        df_clean[TXFUNC_COLS].copy(),
+        0,
+        0,
+        rate_type,
+        "GS",
+        GS_NUMPARAMS,
+        output_dir,
+        False,
+        None,
+        True,
+    )
+    return params
+
+
+def _fit_gs_triple(
+    df_clean: pd.DataFrame, output_dir: str, estimate_mtrs: bool
+) -> tuple:
+    """Return (etr_params, mtrx_params, mtry_params) for one sample.
+
+    With ``estimate_mtrs=False`` (default) the ETR fit is reused verbatim for
+    both marginal schedules: the GS marginal rate is the analytical
+    derivative of the GS average rate, so the same 3 parameters give
+    internally consistent ETR and MTR schedules — but labour and capital then
+    face an IDENTICAL marginal schedule, and the engine-computed
+    ``mtr_labinc`` / ``mtr_capinc`` columns never enter the objective.
+
+    With ``estimate_mtrs=True`` the marginal schedules are estimated against
+    those engine columns, so labour and capital can diverge (UK dividend
+    rates, the savings allowance and the PSA all differ from earned income).
+    Same GS form, same cleaning pipeline, same global optimiser.
+    """
+    etr_params = _fit_gs(df_clean, "etr", output_dir)
+    if not estimate_mtrs:
+        return etr_params, etr_params, etr_params
+    mtrx_params = _fit_gs(df_clean, "mtrx", output_dir)
+    mtry_params = _fit_gs(df_clean, "mtry", output_dir)
+    return etr_params, mtrx_params, mtry_params
+
+
 def _estimate_tax_functions(
     data: pd.DataFrame,
     S: int,
+    estimate_mtrs: bool = False,
 ) -> tuple[list, list, list, float, float]:
-    """Estimate Gouveia-Strauss tax functions from UK microdata.
+    """Estimate pooled Gouveia-Strauss tax functions from UK microdata.
 
-    Estimates ETR parameters only, then reuses them for MTRx and MTRy.
-    This works because the GS MTR formula is the analytical derivative
-    of the GS ETR formula — the same 3 parameters produce mathematically
-    consistent ETR and MTR schedules. Estimating MTR functions separately
-    introduces instability (the optimiser can land in distant basins for
-    nearly identical data).
-
-    Uses differential evolution (deterministic, seed=1) for global
-    optimisation of the ETR.
+    One function for all ages. See ``_fit_gs_triple`` for what
+    ``estimate_mtrs`` changes.
 
     Returns:
         (etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll)
     """
-    from ogcore.txfunc import txfunc_est
-
-    numparams = 3  # GS has 3 parameters
     avg_income = float(
         (data["market_income"] * data["weight"]).sum() / data["weight"].sum()
     )
-    total_tax = (data["total_tax_liab"] * data["weight"]).sum()
-    payroll_tax = (data["payroll_tax_liab"] * data["weight"]).sum()
-    frac_payroll = float(payroll_tax / total_tax) if total_tax != 0 else 0.0
+    frac_payroll = _payroll_split(data)
 
     df_clean = _clean_tax_data(data)
-    df_etr = df_clean[
-        ["mtr_labinc", "mtr_capinc", "total_labinc", "total_capinc", "etr", "weight"]
-    ].copy()
-
     output_dir = tempfile.mkdtemp()
 
-    etr_params, _, _, _ = txfunc_est(
-        df_etr, 0, 0, "etr", "GS", numparams, output_dir, False, None, True
+    etr_params, mtrx_params, mtry_params = _fit_gs_triple(
+        df_clean, output_dir, estimate_mtrs
     )
 
-    # Reuse ETR params for MTRx and MTRy: the GS MTR formula is the
-    # analytical derivative of GS ETR, so the same params give
-    # mathematically consistent marginal rates.
-    etr_params_S = [[etr_params] * S]
-
-    return etr_params_S, etr_params_S, etr_params_S, avg_income, frac_payroll
+    return (
+        [[etr_params] * S],
+        [[mtrx_params] * S],
+        [[mtry_params] * S],
+        avg_income,
+        frac_payroll,
+    )
 
 
 def _estimate_bracket_tax_functions(
     data: pd.DataFrame,
     S: int,
     age_brackets: list[tuple[int, int, str]],
+    estimate_mtrs: bool = False,
 ) -> tuple[list, list, list, float, float]:
     """Estimate separate GS tax functions for each age bracket.
 
-    Splits microdata by age group, estimates GS ETR params per bracket,
-    then maps bracket params to individual model ages. Reuses ETR params
-    for MTR (same analytical derivative logic as the pooled estimator).
+    Splits microdata by age group, estimates GS params per bracket, then maps
+    bracket params to individual model ages. See ``_fit_gs_triple`` for what
+    ``estimate_mtrs`` changes.
 
     Args:
         data: Pooled microdata DataFrame.
         S: Number of model age cohorts.
         age_brackets: List of (min_age, max_age, label) tuples.
+        estimate_mtrs: If True, estimate mtrx/mtry against the engine's
+            ``mtr_labinc`` / ``mtr_capinc`` columns instead of reusing the
+            ETR fit.
 
     Returns:
         (etr_params_S, mtrx_params_S, mtry_params_S, avg_income, frac_payroll)
     """
-    from ogcore.txfunc import txfunc_est
-
-    numparams = 3  # GS
     avg_income = float(
         (data["market_income"] * data["weight"]).sum() / data["weight"].sum()
     )
-    total_tax = (data["total_tax_liab"] * data["weight"]).sum()
-    payroll_tax = (data["payroll_tax_liab"] * data["weight"]).sum()
-    frac_payroll = float(payroll_tax / total_tax) if total_tax != 0 else 0.0
+    frac_payroll = _payroll_split(data)
 
     output_dir = tempfile.mkdtemp()
     pooled_clean = _clean_tax_data(data)
 
     bracket_params = []
-    for min_age, max_age, label in age_brackets:
+    for min_age, max_age, _label in age_brackets:
         bracket_data = data[(data["age"] >= min_age) & (data["age"] <= max_age)]
         df_clean = _clean_tax_data(bracket_data)
 
         if len(df_clean) < 100:
             df_clean = pooled_clean
 
-        df_etr = df_clean[
-            [
-                "mtr_labinc",
-                "mtr_capinc",
-                "total_labinc",
-                "total_capinc",
-                "etr",
-                "weight",
-            ]
-        ].copy()
-
-        etr_params, _, _, _ = txfunc_est(
-            df_etr, 0, 0, "etr", "GS", numparams, output_dir, False, None, True
-        )
-        bracket_params.append(etr_params)
+        bracket_params.append(_fit_gs_triple(df_clean, output_dir, estimate_mtrs))
 
     # Map bracket params to each of the S model ages
-    age_params = []
+    age_etr, age_mtrx, age_mtry = [], [], []
     for s in range(S):
         age = STARTING_AGE + s
         assigned = bracket_params[-1]  # default: last bracket
@@ -694,10 +757,37 @@ def _estimate_bracket_tax_functions(
             if min_age <= age <= max_age:
                 assigned = bracket_params[i]
                 break
-        age_params.append(assigned)
+        age_etr.append(assigned[0])
+        age_mtrx.append(assigned[1])
+        age_mtry.append(assigned[2])
 
-    etr_params_S = [age_params]  # [1 budget year][S ages]
-    return etr_params_S, etr_params_S, etr_params_S, avg_income, frac_payroll
+    # [1 budget year][S ages]
+    return [age_etr], [age_mtrx], [age_mtry], avg_income, frac_payroll
+
+
+def _liability_columns(
+    md: "_MicroData", separate_payroll: bool
+) -> tuple[np.ndarray, np.ndarray]:
+    """Build the (total_tax_liab, payroll_tax_liab) columns for one year.
+
+    ``separate_payroll=False`` (default) reproduces the historical
+    behaviour: total liability is imputed from the (already clipped) ETR
+    times market income, and the payroll column is hard zeros — so OG-Core
+    is told there is no payroll tax at all and ``frac_tax_payroll`` comes
+    out 0.
+
+    ``separate_payroll=True`` uses the engine's own liability columns: NICs
+    go into ``payroll_tax_liab`` and the total is income tax + NICs (not the
+    clipped-ETR imputation). Only the SPLIT changes — the combined total is
+    still income tax plus NICs, because OG-Core's estimated ETR schedule is
+    a combined income-tax-and-payroll schedule and ``frac_tax_payroll`` is
+    an accounting split of it (see ``_payroll_split``).
+    """
+    if not separate_payroll:
+        market_income = md.labor_income + md.capital_income
+        return md.etr * market_income, np.zeros(len(md.age))
+    nics = md.national_insurance
+    return md.income_tax + nics, nics
 
 
 def calibrate(
@@ -705,6 +795,8 @@ def calibrate(
     years: int = 3,
     policy: Policy | None = None,
     age_specific: str = "pooled",
+    estimate_mtrs: bool = False,
+    separate_payroll: bool = False,
 ) -> CalibrationResult:
     """
     Run calibration to estimate tax functions and demographics.
@@ -717,6 +809,21 @@ def calibrate(
             "pooled"   — one function for all ages (default)
             "brackets" — separate function per age group (4 groups)
             "each"     — separate function per individual age (80)
+        estimate_mtrs: If True, estimate the marginal-rate functions
+            against the engine's own ``mtr_labinc`` / ``mtr_capinc``
+            columns, so labour and capital get DIFFERENT marginal
+            schedules. If False (default), the ETR fit is reused verbatim
+            for both (historical behaviour — the GS marginal rate is the
+            analytical derivative of the GS average rate, so the reused
+            parameters are internally consistent but identical across
+            labour and capital).
+        separate_payroll: If True, carry NICs as a payroll tax: NICs fill
+            ``payroll_tax_liab`` and ``frac_tax_payroll`` is computed from
+            the data, so OG-Core splits revenue between income tax and
+            NICs. If False (default), ``payroll_tax_liab`` is zeros and
+            ``frac_tax_payroll`` is 0 (historical behaviour). NICs remain
+            inside the estimated ETR in both modes — that is what OG-Core's
+            combined income-tax-and-payroll ETR expects.
 
     Returns:
         CalibrationResult with tax function and demographic parameters
@@ -736,6 +843,7 @@ def calibrate(
         frames = []
         for year in range(start_year, start_year + years):
             md = _get_micro_data(year, policy, tmpdir)
+            total_liab, payroll_liab = _liability_columns(md, separate_payroll)
             frames.append(
                 pd.DataFrame(
                     {
@@ -746,9 +854,8 @@ def calibrate(
                         "total_labinc": md.labor_income,
                         "total_capinc": md.capital_income,
                         "market_income": md.labor_income + md.capital_income,
-                        "total_tax_liab": md.etr
-                        * (md.labor_income + md.capital_income),
-                        "payroll_tax_liab": np.zeros(len(md.age)),
+                        "total_tax_liab": total_liab,
+                        "payroll_tax_liab": payroll_liab,
                         "year": np.full(len(md.age), year),
                         "weight": md.weight,
                     }
@@ -771,10 +878,12 @@ def calibrate(
                 year_data = all_data
 
             if age_specific == "pooled":
-                e, mx, my, avg_inc, fp = _estimate_tax_functions(year_data, S)
+                e, mx, my, avg_inc, fp = _estimate_tax_functions(
+                    year_data, S, estimate_mtrs=estimate_mtrs
+                )
             elif age_specific == "brackets":
                 e, mx, my, avg_inc, fp = _estimate_bracket_tax_functions(
-                    year_data, S, AGE_BRACKETS
+                    year_data, S, AGE_BRACKETS, estimate_mtrs=estimate_mtrs
                 )
             elif age_specific == "each":
                 per_age_brackets = [
@@ -782,7 +891,7 @@ def calibrate(
                     for s in range(S)
                 ]
                 e, mx, my, avg_inc, fp = _estimate_bracket_tax_functions(
-                    year_data, S, per_age_brackets
+                    year_data, S, per_age_brackets, estimate_mtrs=estimate_mtrs
                 )
             else:
                 raise ValueError(
@@ -839,6 +948,8 @@ def _build_specs(
     age_specific: str = "pooled",
     param_overrides: dict | None = None,
     multi_sector: bool = False,
+    estimate_mtrs: bool = False,
+    separate_payroll: bool = False,
 ):
     """Build a calibrated Specifications object (internal).
 
@@ -879,6 +990,13 @@ def _build_specs(
             permitted here — those are set by calibrate().
         multi_sector: If True, use 8-sector industry calibration (M=8).
             If False (default), use a single representative sector (M=1).
+        estimate_mtrs: If True, estimate the marginal-rate functions against
+            the engine's ``mtr_labinc`` / ``mtr_capinc`` columns so labour and
+            capital get different marginal schedules. If False (default), the
+            ETR fit is reused for both (historical behaviour).
+        separate_payroll: If True, carry NICs as a payroll tax
+            (``payroll_tax_liab`` and ``frac_tax_payroll`` from the data). If
+            False (default), payroll liability is zero (historical behaviour).
     """
     from ogcore.parameters import Specifications
 
@@ -892,7 +1010,13 @@ def _build_specs(
 
     S = defaults["S"]
     T = defaults["T"]
-    cal = calibrate(start_year=start_year, policy=policy, age_specific=age_specific)
+    cal = calibrate(
+        start_year=start_year,
+        policy=policy,
+        age_specific=age_specific,
+        estimate_mtrs=estimate_mtrs,
+        separate_payroll=separate_payroll,
+    )
 
     # Strip calibration-provided keys (we set them from cal below)
     for key in [
@@ -1053,6 +1177,8 @@ def solve_steady_state(
     age_specific: str = "pooled",
     param_overrides: dict | None = None,
     multi_sector: bool = False,
+    estimate_mtrs: bool = False,
+    separate_payroll: bool = False,
 ) -> SteadyStateResult:
     """Solve for steady state equilibrium.
 
@@ -1068,6 +1194,13 @@ def solve_steady_state(
             for structural shocks (e.g. ``{"g_y_annual": 0.011}``).
         multi_sector: If True, use 8-sector industry calibration (M=8).
             If False (default), use a single representative sector (M=1).
+        estimate_mtrs: If True, estimate the marginal-rate functions against
+            the engine's ``mtr_labinc`` / ``mtr_capinc`` columns so labour and
+            capital get different marginal schedules. If False (default), the
+            ETR fit is reused for both (historical behaviour).
+        separate_payroll: If True, carry NICs as a payroll tax
+            (``payroll_tax_liab`` and ``frac_tax_payroll`` from the data). If
+            False (default), payroll liability is zero (historical behaviour).
 
     Returns:
         SteadyStateResult with equilibrium values
@@ -1084,6 +1217,8 @@ def solve_steady_state(
             age_specific=age_specific,
             param_overrides=param_overrides,
             multi_sector=multi_sector,
+            estimate_mtrs=estimate_mtrs,
+            separate_payroll=separate_payroll,
         )
         ss = run_SS(p, client=None)
         return _ss_dict_to_result(ss)
@@ -1096,6 +1231,8 @@ def run_transition_path(
     age_specific: str = "pooled",
     param_overrides: dict | None = None,
     multi_sector: bool = False,
+    estimate_mtrs: bool = False,
+    separate_payroll: bool = False,
 ) -> tuple[TransitionPathResult, TransitionPathResult | None]:
     """Run baseline (and optionally reform) transition path.
 
@@ -1115,6 +1252,13 @@ def run_transition_path(
             for structural shocks (e.g. ``{"Z": [[1.004]]}``).
         multi_sector: If True, use 8-sector industry calibration (M=8).
             If False (default), use a single representative sector (M=1).
+        estimate_mtrs: If True, estimate the marginal-rate functions against
+            the engine's ``mtr_labinc`` / ``mtr_capinc`` columns so labour and
+            capital get different marginal schedules. If False (default), the
+            ETR fit is reused for both (historical behaviour).
+        separate_payroll: If True, carry NICs as a payroll tax
+            (``payroll_tax_liab`` and ``frac_tax_payroll`` from the data). If
+            False (default), payroll liability is zero (historical behaviour).
 
     Returns:
         (baseline_tp, reform_tp) — reform_tp is None if no policy/overrides
@@ -1140,6 +1284,8 @@ def run_transition_path(
             baseline=True,
             age_specific=age_specific,
             multi_sector=multi_sector,
+            estimate_mtrs=estimate_mtrs,
+            separate_payroll=separate_payroll,
         )
 
         # Solve SS first to auto-calibrate alpha_G.
@@ -1174,6 +1320,8 @@ def run_transition_path(
                 age_specific=age_specific,
                 param_overrides=param_overrides,
                 multi_sector=multi_sector,
+                estimate_mtrs=estimate_mtrs,
+                separate_payroll=separate_payroll,
             )
 
             ss_reform = SS.run_SS(p_reform, client=client)
