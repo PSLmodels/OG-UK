@@ -175,6 +175,10 @@ def _extract_or_skip(year, policy=None):
                 "RepositoryNotFound",
                 "GatedRepo",
                 "LocalEntryNotFound",
+                # policyengine[uk] wraps Hugging Face auth failures, e.g. on
+                # fork PRs where CI secrets are not exposed.
+                "DatasetMaterializationError",
+                "rejected the configured credentials",
             )
         ):
             pytest.skip(f"UK microdata unavailable here: {marker[:200]}")
